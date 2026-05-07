@@ -1,0 +1,69 @@
+﻿<Project>
+	<!-- Defining properties to determine if it's a C# project, and what SDK type it is. -->
+	<PropertyGroup Label="Define C# Properties" Condition="'$(MSBuildProjectExtension)' == '.csproj'">
+		<!-- Set some defaults -->
+		<IsCSharpProject>true</IsCSharpProject>
+		<ExcludePurviewTelemetry>false</ExcludePurviewTelemetry>
+		<DisableGenerateAssemblyInfoClass>false</DisableGenerateAssemblyInfoClass>
+		<!-- Test project types -->
+		<IsTestProject>false</IsTestProject>
+		<IsSharedTestingProject>false</IsSharedTestingProject>
+		<!-- Project types -->
+		<IsContainerProject>false</IsContainerProject>
+		<IsSdkProject>false</IsSdkProject>
+		<IsWebProject>false</IsWebProject>
+		<IsWebSdkProject>false</IsWebSdkProject>
+		<IsWorkerSdkProject>false</IsWorkerSdkProject>
+		<IsAspireHostProject>false</IsAspireHostProject>
+		<!-- SDK Project types -->
+		<SdkProjectName>$([System.Text.RegularExpressions.Regex]::Match($([System.IO.File]::ReadAllText(`$(MSBuildProjectFullPath)`)), `(?s-i)(?:^|\s|&gt;)(?s-i)(?:^|\s|&gt;)&lt;\s*(?:Project|Import)\s(?:[^&gt;]*?)\s?Sdk\s*="(?&lt;sdkproj&gt;.*?)"`).Groups['sdkproj'].Value)</SdkProjectName>
+		<IsSdkProject Condition="'$(SdkProjectName)' != ''">true</IsSdkProject>
+		<IsWebSdkProject Condition="'$(SdkProjectName)' == 'Microsoft.NET.Sdk.Web'"
+			>true</IsWebSdkProject
+		>
+		<IsWorkerSdkProject Condition="'$(SdkProjectName)' == 'Microsoft.NET.Sdk.Worker'"
+			>true</IsWorkerSdkProject
+		>
+		<IsContainerProject
+			Condition="Exists('$(MSBuildProjectDirectory)\Dockerfile') OR Exists('$(MSBuildProjectDirectory)\dockerfile') OR Exists('$(MSBuildProjectDirectory)\Dockerfile.dev')"
+			>true</IsContainerProject
+		>
+		<IsAspireHostProject
+			Condition="$([System.String]::Copy('$(SdkProjectName)').StartsWith('Aspire.Sdk.Host'))"
+			>true</IsAspireHostProject
+		>
+		<!-- Determine the testing type, if it has one -->
+		<TestingType
+			Condition="$([System.String]::Copy('$(MSBuildProjectName)').EndsWith('Test')) OR $([System.String]::Copy('$(MSBuildProjectName)').EndsWith('Tests'))"
+			>$([System.Text.RegularExpressions.Regex]::Match($(MSBuildProjectName), `^.*\.([\w|_]\w*)Tests?$`).get_Groups().get_Item(1).ToString())</TestingType
+		>
+		<IsTestProject Condition="'$(TestingType)' != ''">true</IsTestProject>
+		<IsSharedTestingProject Condition="('$(MSBuildProjectName)' == 'SharedTestingFramework') OR ('$(MSBuildProjectName)' == 'SharedTestingInfrastructure') OR ('$(MSBuildProjectName)' == 'SharedTestingUtilities' OR '$(MSBuildProjectName)' == 'SharedTestingInfra')" 
+			>true</IsSharedTestingProject
+		>
+	</PropertyGroup>
+	<!-- Define the Testing Types. -->
+	<ItemGroup Label="Defining Testing Types">
+		<TestType Include="Accessibility" />
+		<TestType Include="Acceptance" />
+		<TestType Include="BlackBox" />
+		<TestType Include="Chaos" />
+		<TestType Include="E2E" />
+		<TestType Include="EndToEnd" />
+		<TestType Include="Environment" />
+		<TestType Include="Functional" />
+		<TestType Include="Interactive" />
+		<TestType Include="Integration" />
+		<TestType Include="Load" />
+		<TestType Include="Performance" />
+		<TestType Include="Regression" />
+		<TestType Include="Security" />
+		<TestType Include="Scenario" />
+		<TestType Include="Smoke" />
+		<TestType Include="Stress" />
+		<TestType Include="System" />
+		<TestType Include="Threat" />
+		<TestType Include="Unit" />
+		<TestType Include="WhiteBox" />
+	</ItemGroup>
+</Project>
