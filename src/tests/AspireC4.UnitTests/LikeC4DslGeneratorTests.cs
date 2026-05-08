@@ -1,3 +1,5 @@
+using TUnit.Core;
+
 namespace Aspire.Hosting.AspireC4;
 
 public sealed class LikeC4DslGeneratorTests
@@ -267,5 +269,100 @@ public sealed class LikeC4DslGeneratorTests
 		}
 
 		return count;
+	}
+
+	[Test]
+	[MethodDataSource(nameof(StateColorMappings))]
+	public async Task Generate_ElementWithState_RendersExpectedColor(
+		LikeC4ResourceState state, string? expectedColor)
+	{
+		var model = new LikeC4Model
+		{
+			Elements =
+			[
+				new LikeC4Element
+				{
+					Name = "api",
+					Label = "API",
+					Kind = LikeC4ElementKind.Component,
+					State = state,
+				},
+			],
+			Relationships = [],
+		};
+
+		var dsl = LikeC4DslGenerator.Generate(model, DefaultOptions);
+
+		if (expectedColor is null)
+		{
+			await Assert.That(dsl).DoesNotContain("color ");
+		}
+		else
+		{
+			await Assert.That(dsl).Contains($"color {expectedColor}");
+		}
+	}
+
+	public static IEnumerable<(LikeC4ResourceState State, string? Color)> StateColorMappings()
+	{
+		yield return (LikeC4ResourceState.Unknown, null);
+		yield return (LikeC4ResourceState.Starting, "sky");
+		yield return (LikeC4ResourceState.Running, "green");
+		yield return (LikeC4ResourceState.Stopping, "slate");
+		yield return (LikeC4ResourceState.Exited, "muted");
+		yield return (LikeC4ResourceState.Failed, "amber");
+		yield return (LikeC4ResourceState.Error, "red");
+	}
+
+	[Test]
+	public async Task Generate_ElementWithStateAndTechnology_RendersColorAndTechnology()
+	{
+		var model = new LikeC4Model
+		{
+			Elements =
+			[
+				new LikeC4Element
+				{
+					Name = "api",
+					Label = "API",
+					Kind = LikeC4ElementKind.Component,
+					Technology = ".NET",
+					State = LikeC4ResourceState.Error,
+				},
+			],
+			Relationships = [],
+		};
+
+		var dsl = LikeC4DslGenerator.Generate(model, DefaultOptions);
+
+		await Assert.That(dsl).Contains("technology '.NET'");
+		await Assert.That(dsl).Contains("color red");
+	}
+
+	[Test]
+	public async Task Generate_ElementWithUnknownState_NoBlockRendered()
+	{
+		// An element with no technology/description/children and Unknown state
+		// should produce a single-line entry (no braces).
+		var model = new LikeC4Model
+		{
+			Elements =
+			[
+				new LikeC4Element
+				{
+					Name = "api",
+					Label = "API",
+					Kind = LikeC4ElementKind.Component,
+					State = LikeC4ResourceState.Unknown,
+				},
+			],
+			Relationships = [],
+		};
+
+		var dsl = LikeC4DslGenerator.Generate(model, DefaultOptions);
+
+		// Should be a single-line entry with no opening brace — no block.
+		await Assert.That(dsl).DoesNotContain("api = component 'API' {");
+		await Assert.That(dsl).DoesNotContain("color");
 	}
 }

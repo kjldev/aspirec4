@@ -13,4 +13,13 @@ interface ILikeC4VisualizationLifecycleHookTelemetry
 
 	[Info]
 	void PublishMode();
+
+	[Info]
+	void ResourceStateChanged(string resourceName, string newState);
+
+	[Info]
+	void RegeneratingDiagramDueToStateChange();
+
+	[Warning]
+	void StateWatcherFailed(string error);
 }

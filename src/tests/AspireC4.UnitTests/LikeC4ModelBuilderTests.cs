@@ -293,6 +293,74 @@ public sealed class LikeC4ModelBuilderTests
 		await Assert.That(model.Relationships[0].TargetName).IsEqualTo("redis");
 	}
 
+	[Test]
+	public async Task Build_WithResourceStates_ElementsReflectStates()
+	{
+		var api = CreateProjectResource("api");
+		var db = CreateContainerResource("db");
+		var states = new Dictionary<string, LikeC4ResourceState>(StringComparer.OrdinalIgnoreCase)
+		{
+			["api"] = LikeC4ResourceState.Running,
+			["db"] = LikeC4ResourceState.Error,
+		};
+
+		var model = LikeC4ModelBuilder.Build([api, db], states);
+
+		var apiElement = model.Elements.Single(e => e.Name == "api");
+		var dbElement = model.Elements.Single(e => e.Name == "db");
+		await Assert.That(apiElement.State).IsEqualTo(LikeC4ResourceState.Running);
+		await Assert.That(dbElement.State).IsEqualTo(LikeC4ResourceState.Error);
+	}
+
+	[Test]
+	public async Task Build_WithNoResourceStates_ElementsDefaultToUnknown()
+	{
+		var api = CreateProjectResource("api");
+
+		var model = LikeC4ModelBuilder.Build([api]);
+
+		await Assert.That(model.Elements[0].State).IsEqualTo(LikeC4ResourceState.Unknown);
+	}
+
+	[Test]
+	public async Task Build_WithPartialResourceStates_UnknownForMissingEntries()
+	{
+		var api = CreateProjectResource("api");
+		var db = CreateContainerResource("db");
+		var states = new Dictionary<string, LikeC4ResourceState>(StringComparer.OrdinalIgnoreCase)
+		{
+			["api"] = LikeC4ResourceState.Starting,
+		};
+
+		var model = LikeC4ModelBuilder.Build([api, db], states);
+
+		var dbElement = model.Elements.Single(e => e.Name == "db");
+		await Assert.That(dbElement.State).IsEqualTo(LikeC4ResourceState.Unknown);
+	}
+
+	[Test]
+	public async Task GetVisibleResourceNames_ExcludesHiddenAndAnnotatedResources()
+	{
+		var visible = CreateProjectResource("api");
+
+		var hidden = new TestSystemResource("infra");
+		hidden.Annotations.Add(new ResourceSnapshotAnnotation(new CustomResourceSnapshot
+		{
+			ResourceType = "Internal",
+			Properties = [],
+			IsHidden = true,
+		}));
+
+		var excluded = CreateContainerResource("excluded");
+		excluded.Annotations.Add(new ExcludeFromLikeC4Annotation());
+
+		var names = LikeC4ModelBuilder.GetVisibleResourceNames([visible, hidden, excluded]);
+
+		await Assert.That(names).Contains("api");
+		await Assert.That(names).DoesNotContain("infra");
+		await Assert.That(names).DoesNotContain("excluded");
+	}
+
 	// --- Helpers ---
 
 	static ProjectResource CreateProjectResource(string name)

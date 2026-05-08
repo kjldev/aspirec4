@@ -12,7 +12,14 @@ public static class LikeC4ModelBuilder
 	const string WaitForRelationshipType = "WaitFor";
 
 	/// <summary>Builds a <see cref="LikeC4Model"/> from a list of Aspire resources.</summary>
-	public static LikeC4Model Build(IReadOnlyList<IResource> resources)
+	/// <param name="resources">All resources in the Aspire app model.</param>
+	/// <param name="resourceStates">
+	/// Optional mapping of resource name → current <see cref="LikeC4ResourceState"/>.
+	/// When provided, the corresponding diagram element is coloured to reflect the live state.
+	/// </param>
+	public static LikeC4Model Build(
+		IReadOnlyList<IResource> resources,
+		IReadOnlyDictionary<string, LikeC4ResourceState>? resourceStates = null)
 	{
 		ArgumentNullException.ThrowIfNull(resources);
 
@@ -34,7 +41,11 @@ public static class LikeC4ModelBuilder
 
 		foreach (var resource in visibleResources)
 		{
-			elements.Add(BuildElement(resource));
+			var state = resourceStates is not null && resourceStates.TryGetValue(resource.Name, out var s)
+				? s
+				: LikeC4ResourceState.Unknown;
+
+			elements.Add(BuildElement(resource, state));
 			CollectRelationships(resource, visibleResources, visibleByName, relationships, visitedRelationships);
 		}
 
@@ -43,6 +54,20 @@ public static class LikeC4ModelBuilder
 			Elements = elements,
 			Relationships = relationships,
 		};
+	}
+
+	/// <summary>
+	/// Returns the names of all resources that would be included in the diagram
+	/// (i.e. not excluded or hidden). Useful for filtering state-change notifications
+	/// to only relevant resources.
+	/// </summary>
+	public static IReadOnlySet<string> GetVisibleResourceNames(IReadOnlyList<IResource> resources)
+	{
+		ArgumentNullException.ThrowIfNull(resources);
+
+		return BuildVisibleSet(resources)
+			.Select(r => r.Name)
+			.ToHashSet(StringComparer.OrdinalIgnoreCase);
 	}
 
 	static HashSet<IResource> BuildVisibleSet(IReadOnlyList<IResource> resources)
@@ -75,7 +100,7 @@ public static class LikeC4ModelBuilder
 		return snapshot?.InitialSnapshot.IsHidden == true;
 	}
 
-	static LikeC4Element BuildElement(IResource resource)
+	static LikeC4Element BuildElement(IResource resource, LikeC4ResourceState state)
 	{
 		var details = resource.Annotations.OfType<LikeC4NodeDetailsAnnotation>().LastOrDefault();
 
@@ -93,6 +118,7 @@ public static class LikeC4ModelBuilder
 			Technology = technology,
 			Description = description,
 			ParentName = parentName,
+			State = state,
 		};
 	}
 

@@ -86,8 +86,10 @@ public static class LikeC4DslGenerator
 		var hasTechnology = !string.IsNullOrWhiteSpace(element.Technology);
 		var hasDescription = !string.IsNullOrWhiteSpace(element.Description);
 		var hasChildren = children?.Count > 0;
+		var color = GetStateColor(element.State);
+		var hasColor = color is not null;
 
-		if (!hasTechnology && !hasDescription && !hasChildren)
+		if (!hasTechnology && !hasDescription && !hasChildren && !hasColor)
 		{
 			sb.AppendLine();
 			return;
@@ -105,6 +107,11 @@ public static class LikeC4DslGenerator
 			sb.Append(indent).Append("  description '").Append(EscapeQuote(element.Description!)).AppendLine("'");
 		}
 
+		if (hasColor)
+		{
+			sb.Append(indent).Append("  color ").AppendLine(color);
+		}
+
 		if (hasChildren)
 		{
 			foreach (var child in children!)
@@ -115,6 +122,21 @@ public static class LikeC4DslGenerator
 
 		sb.Append(indent).AppendLine("}");
 	}
+
+	/// <summary>
+	/// Maps a <see cref="LikeC4ResourceState"/> to a LikeC4 named color theme.
+	/// Returns <see langword="null"/> for states that should use the default color.
+	/// </summary>
+	static string? GetStateColor(LikeC4ResourceState state) => state switch
+	{
+		LikeC4ResourceState.Starting => "sky",
+		LikeC4ResourceState.Running => "green",
+		LikeC4ResourceState.Stopping => "slate",
+		LikeC4ResourceState.Exited => "muted",
+		LikeC4ResourceState.Failed => "amber",
+		LikeC4ResourceState.Error => "red",
+		_ => null,
+	};
 
 	static void WriteViews(StringBuilder sb, LikeC4Model model, LikeC4DiagramOptions options)
 	{

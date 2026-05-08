@@ -20,4 +20,7 @@ public sealed record LikeC4Element
 
     /// <summary>Name of the parent resource when this element is nested (via <see cref="IResourceWithParent"/>).</summary>
     public string? ParentName { get; init; }
+
+    /// <summary>Current runtime state of the resource — controls the diagram colour.</summary>
+    public LikeC4ResourceState State { get; init; } = LikeC4ResourceState.Unknown;
 }
