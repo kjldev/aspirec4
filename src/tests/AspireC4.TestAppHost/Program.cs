@@ -3,9 +3,16 @@ var builder = DistributedApplication.CreateBuilder(args);
 var redis = builder.AddAzureManagedRedis("redis").RunAsContainer();
 var postgres = builder.AddAzurePostgresFlexibleServer("posgres").RunAsContainer();
 
-var nodeApp = builder.AddNodeApp("node-app", "../../../samples/node-app", "index.js").WithPnpm();
+builder
+    .AddNodeApp("node-app", "../../../samples/node-app", "index.js")
+    .WithPnpm()
+    .WithHttpEndpoint(env: "PORT")
+    .WithReference(redis)
+    .WaitFor(redis)
+    .WithReference(postgres)
+    .WaitFor(postgres);
 
-nodeApp.WithReference(redis).WithReference(postgres);
+builder.AddLikeC4Visualization();
 
 var app = builder.Build();
 
