@@ -299,7 +299,15 @@ public sealed class LikeC4DslGeneratorTests
 		}
 		else
 		{
+			// Color overrides must appear inside a style rule in the views section.
+			await Assert.That(dsl).Contains($"style api {{");
 			await Assert.That(dsl).Contains($"color {expectedColor}");
+			// Must NOT appear inside the model element block.
+			var modelIdx = dsl.IndexOf("model {", StringComparison.Ordinal);
+			var viewsIdx = dsl.IndexOf("views {", StringComparison.Ordinal);
+			var colorIdx = dsl.IndexOf($"color {expectedColor}", StringComparison.Ordinal);
+			await Assert.That(colorIdx).IsGreaterThan(viewsIdx);
+			_ = modelIdx; // suppress unused warning
 		}
 	}
 
@@ -315,7 +323,7 @@ public sealed class LikeC4DslGeneratorTests
 	}
 
 	[Test]
-	public async Task Generate_ElementWithStateAndTechnology_RendersColorAndTechnology()
+	public async Task Generate_ElementWithStateAndTechnology_RendersColorInViewsNotModel()
 	{
 		var model = new LikeC4Model
 		{
@@ -335,15 +343,23 @@ public sealed class LikeC4DslGeneratorTests
 
 		var dsl = LikeC4DslGenerator.Generate(model, DefaultOptions);
 
+		// Technology stays in model block.
 		await Assert.That(dsl).Contains("technology '.NET'");
-		await Assert.That(dsl).Contains("color red");
+
+		// Color must be in views section only.
+		var viewsIdx = dsl.IndexOf("views {", StringComparison.Ordinal);
+		var colorIdx = dsl.IndexOf("color red", StringComparison.Ordinal);
+		await Assert.That(colorIdx).IsGreaterThan(viewsIdx);
+
+		// model block must NOT contain color.
+		var modelSection = dsl[..viewsIdx];
+		await Assert.That(modelSection).DoesNotContain("color");
 	}
 
 	[Test]
-	public async Task Generate_ElementWithUnknownState_NoBlockRendered()
+	public async Task Generate_ElementWithUnknownState_NoStyleRuleRendered()
 	{
-		// An element with no technology/description/children and Unknown state
-		// should produce a single-line entry (no braces).
+		// An element with Unknown state should produce no style block in views.
 		var model = new LikeC4Model
 		{
 			Elements =
@@ -361,8 +377,31 @@ public sealed class LikeC4DslGeneratorTests
 
 		var dsl = LikeC4DslGenerator.Generate(model, DefaultOptions);
 
-		// Should be a single-line entry with no opening brace — no block.
-		await Assert.That(dsl).DoesNotContain("api = component 'API' {");
+		await Assert.That(dsl).DoesNotContain("style api");
 		await Assert.That(dsl).DoesNotContain("color");
+	}
+
+	[Test]
+	public async Task Generate_MultipleElementsWithDifferentStates_StylesGroupedByColor()
+	{
+		var model = new LikeC4Model
+		{
+			Elements =
+			[
+				new LikeC4Element { Name = "api", Label = "API", Kind = LikeC4ElementKind.Component, State = LikeC4ResourceState.Running },
+				new LikeC4Element { Name = "db", Label = "DB", Kind = LikeC4ElementKind.Database, State = LikeC4ResourceState.Running },
+				new LikeC4Element { Name = "cache", Label = "Cache", Kind = LikeC4ElementKind.Container, State = LikeC4ResourceState.Error },
+			],
+			Relationships = [],
+		};
+
+		var dsl = LikeC4DslGenerator.Generate(model, DefaultOptions);
+
+		// api and db both Running→green should be grouped.
+		await Assert.That(dsl).Contains("style api, db {");
+		await Assert.That(dsl).Contains("color green");
+		// cache Error→red should be separate.
+		await Assert.That(dsl).Contains("style cache {");
+		await Assert.That(dsl).Contains("color red");
 	}
 }

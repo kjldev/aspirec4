@@ -86,10 +86,8 @@ public static class LikeC4DslGenerator
 		var hasTechnology = !string.IsNullOrWhiteSpace(element.Technology);
 		var hasDescription = !string.IsNullOrWhiteSpace(element.Description);
 		var hasChildren = children?.Count > 0;
-		var color = GetStateColor(element.State);
-		var hasColor = color is not null;
 
-		if (!hasTechnology && !hasDescription && !hasChildren && !hasColor)
+		if (!hasTechnology && !hasDescription && !hasChildren)
 		{
 			sb.AppendLine();
 			return;
@@ -105,11 +103,6 @@ public static class LikeC4DslGenerator
 		if (hasDescription)
 		{
 			sb.Append(indent).Append("  description '").Append(EscapeQuote(element.Description!)).AppendLine("'");
-		}
-
-		if (hasColor)
-		{
-			sb.Append(indent).Append("  color ").AppendLine(color);
 		}
 
 		if (hasChildren)
@@ -151,6 +144,22 @@ public static class LikeC4DslGenerator
 		else
 		{
 			sb.AppendLine("    include *");
+
+			// Emit style overrides grouped by color for elements with a non-default state.
+			// In LikeC4, element colors must be set via view-level style rules, not in the
+			// model block.
+			var byColor = model.Elements
+				.Select(e => (Element: e, Color: GetStateColor(e.State)))
+				.Where(t => t.Color is not null)
+				.GroupBy(t => t.Color!, t => t.Element);
+
+			foreach (var group in byColor)
+			{
+				var names = string.Join(", ", group.Select(e => Sanitize(e.Name)));
+				sb.Append("    style ").Append(names).AppendLine(" {");
+				sb.Append("      color ").AppendLine(group.Key);
+				sb.AppendLine("    }");
+			}
 		}
 
 		sb.AppendLine("  }");

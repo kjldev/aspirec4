@@ -1,0 +1,36 @@
+specification {
+  element container
+  element executable
+}
+
+model {
+  redis = container 'Redis' {
+    technology 'Azure Redis'
+    description 'A managed Redis instance for testing'
+    color green
+  }
+  posgres = container 'Postgres' {
+    technology 'Azure Postgres'
+    description 'A managed Postgres instance for testing'
+    color green
+  }
+  node_app = executable 'Node App' {
+    technology 'Node.js'
+    description 'A sample Node.js application that connects to Redis and Postgres'
+    color green
+  }
+  node_app_installer = executable 'node-app-installer' {
+    color muted
+  }
+
+  node_app -> redis
+  node_app -> posgres
+  node_app_installer -> node_app 'Parent'
+}
+
+views {
+  view index {
+    title 'Architecture'
+    include *
+  }
+}
