@@ -14,19 +14,20 @@ public sealed class LikeC4VisualizationHostTests : IAsyncDisposable
     private DistributedApplication? _app;
     private string? _outputDir;
 
-    private static bool IsNodeAvailable()
+    private static bool IsDockerAvailable()
     {
         try
         {
             using var p = System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
             {
-                FileName = "node",
-                Arguments = "--version",
+                FileName = "docker",
+                Arguments = "info",
                 RedirectStandardOutput = true,
+                RedirectStandardError = true,
                 UseShellExecute = false,
                 CreateNoWindow = true,
             });
-            p?.WaitForExit(3_000);
+            p?.WaitForExit(5_000);
             return p?.ExitCode == 0;
         }
         catch
@@ -103,24 +104,44 @@ public sealed class LikeC4VisualizationHostTests : IAsyncDisposable
     }
 
     [Test]
-    [Skip("Requires Node.js and npx likec4 to be installed; run manually.")]
     public async Task LikeC4ServerResource_ReachesRunningState()
     {
+        if (!IsDockerAvailable())
+            return; // Skip without fail when Docker is not available.
+
         await _app!.ResourceNotifications.WaitForResourceAsync("likec4-server", KnownResourceStates.Running)
-            .WaitAsync(TimeSpan.FromSeconds(60));
+            .WaitAsync(TimeSpan.FromSeconds(120));
     }
 
     [Test]
-    [Skip("Requires Node.js and npx likec4 to be installed; run manually.")]
     public async Task LikeC4ServerEndpoint_ReturnsSuccess()
     {
+        if (!IsDockerAvailable())
+            return; // Skip without fail when Docker is not available.
+
         await _app!.ResourceNotifications.WaitForResourceAsync("likec4-server", KnownResourceStates.Running)
-            .WaitAsync(TimeSpan.FromSeconds(60));
+            .WaitAsync(TimeSpan.FromSeconds(120));
 
         using var client = _app!.CreateHttpClient("likec4-server", LikeC4ServerResource.HttpEndpointName);
-        var response = await client.GetAsync("/");
 
-        await Assert.That((int)response.StatusCode).IsLessThan(500);
+        // The LikeC4 Vite dev server may take a few seconds to fully initialize after the
+        // container reaches Running state; retry with back-off.
+        HttpResponseMessage? response = null;
+        for (var attempt = 0; attempt < 10; attempt++)
+        {
+            try
+            {
+                response = await client.GetAsync("/");
+                break;
+            }
+            catch (HttpRequestException) when (attempt < 9)
+            {
+                await Task.Delay(TimeSpan.FromSeconds(3));
+            }
+        }
+
+        await Assert.That(response).IsNotNull();
+        await Assert.That((int)response!.StatusCode).IsLessThan(500);
     }
 
     public async ValueTask DisposeAsync()

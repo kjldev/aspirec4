@@ -50,5 +50,6 @@ public sealed class LikeC4DiagramOptionsTests
         await Assert.That(opts.Title).IsEqualTo("Architecture");
         await Assert.That(opts.OutputDirectory).IsEqualTo("./likec4");
         await Assert.That(opts.FileName).IsEqualTo("model");
+        await Assert.That(opts.ContainerImageTag).IsNull();
     }
 }

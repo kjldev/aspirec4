@@ -10,17 +10,18 @@ namespace Aspire.Hosting;
 /// </summary>
 public static class LikeC4VisualizationExtensions
 {
-    private const string ServerResourceName = "likec4-server";
+    internal const string ServerResourceName = "likec4-server";
 
     /// <summary>
     /// Adds a LikeC4 live architecture diagram to the Aspire application.
     /// </summary>
     /// <remarks>
     /// This registers a lifecycle hook that generates a <c>.c4</c> model file from the Aspire
-    /// resource graph, and starts a <c>npx likec4 serve</c> sidecar that renders an interactive,
-    /// hot-reloading diagram in the browser.
+    /// resource graph, and starts the official <c>ghcr.io/likec4/likec4</c> container as a
+    /// sidecar that renders an interactive, hot-reloading diagram in the browser.
     /// <para>
-    /// <b>Prerequisite:</b> Node.js must be installed and <c>node</c> must be on the PATH.
+    /// <b>Prerequisite:</b> Docker must be available (standard Aspire requirement). To use a
+    /// local Node.js CLI instead, call <c>.WithLocalCli()</c> on the returned builder.
     /// </para>
     /// </remarks>
     /// <param name="builder">The distributed application builder.</param>
@@ -37,22 +38,28 @@ public static class LikeC4VisualizationExtensions
 
         builder.Services.AddEventingSubscriber<LikeC4VisualizationLifecycleHook>();
 
-        // Resolve the output directory from options at build time so the server resource
-        // working directory matches where the lifecycle hook writes the .c4 file.
+        // Resolve options at build time so the bind mount and lifecycle hook use the same path.
         var opts = new LikeC4DiagramOptions();
         configure?.Invoke(opts);
 
         var outputDir = Path.GetFullPath(opts.OutputDirectory);
-        var serverResource = new LikeC4ServerResource(ServerResourceName, outputDir);
+        var imageTag = opts.ContainerImageTag ?? LikeC4ServerResource.DefaultTag;
+
+        var serverResource = new LikeC4ServerResource(ServerResourceName);
 
         var serverBuilder = builder.AddResource(serverResource)
-            .WithArgs("--", "npx", "likec4", "serve", ".", "--port", LikeC4ServerResource.DefaultPort.ToString())
-            .WithHttpEndpoint(name: LikeC4ServerResource.HttpEndpointName, targetPort: LikeC4ServerResource.DefaultPort)
+            .WithImage(LikeC4ServerResource.DefaultImage, imageTag)
+            .WithImageRegistry(LikeC4ServerResource.DefaultRegistry)
+            .WithArgs("serve", ".", "--port", LikeC4ServerResource.DefaultContainerPort.ToString())
+            .WithBindMount(outputDir, LikeC4ServerResource.WorkspacePath)
+            .WithHttpEndpoint(
+                name: LikeC4ServerResource.HttpEndpointName,
+                targetPort: LikeC4ServerResource.DefaultContainerPort)
             .WithExternalHttpEndpoints()
             // Exclude the sidecar from the architecture diagram — it is tooling, not a system element.
             .WithAnnotation(new ExcludeFromLikeC4Annotation(), ResourceAnnotationMutationBehavior.Replace);
 
-        return new LikeC4VisualizationBuilder(builder, serverBuilder);
+        return new LikeC4VisualizationBuilder(builder, serverBuilder, outputDir);
     }
 
     /// <summary>

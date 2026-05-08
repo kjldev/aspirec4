@@ -17,4 +17,14 @@ public sealed class LikeC4DiagramOptions
     /// Defaults to "model".
     /// </summary>
     public string FileName { get; set; } = "model";
+
+    /// <summary>
+    /// The tag of the <c>ghcr.io/likec4/likec4</c> container image to use for the live server.
+    /// Defaults to <c>null</c>, which resolves to <c>"latest"</c>.
+    /// Set this to a specific version (e.g. <c>"1.56"</c>) to pin the LikeC4 server version.
+    /// </summary>
+    /// <remarks>
+    /// Ignored when <see cref="ILikeC4VisualizationBuilder.WithLocalCli"/> is used.
+    /// </remarks>
+    public string? ContainerImageTag { get; set; }
 }

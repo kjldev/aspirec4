@@ -14,4 +14,8 @@
 		<ProjectReference Include="..\AspireC4.LikeC4\AspireC4.LikeC4.csproj" />
 	</ItemGroup>
 
+	<ItemGroup>
+		<InternalsVisibleTo Include="AspireC4.LikeC4.UnitTests" />
+	</ItemGroup>
+
 </Project>

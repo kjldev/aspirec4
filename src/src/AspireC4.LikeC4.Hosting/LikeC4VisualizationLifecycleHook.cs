@@ -1,4 +1,3 @@
-using System.Diagnostics;
 using Aspire.Hosting.ApplicationModel;
 using Aspire.Hosting.Eventing;
 using Aspire.Hosting.LikeC4;
@@ -10,7 +9,7 @@ namespace Aspire.Hosting;
 
 /// <summary>
 /// Aspire eventing subscriber that generates the LikeC4 <c>.c4</c> model file before the
-/// application starts. In publish mode it skips the Node.js validation.
+/// application starts.
 /// </summary>
 internal sealed class LikeC4VisualizationLifecycleHook(
     IOptions<LikeC4DiagramOptions> options,
@@ -34,11 +33,6 @@ internal sealed class LikeC4VisualizationLifecycleHook(
     {
         var opts = options.Value;
 
-        if (!executionContext.IsPublishMode)
-        {
-            ValidateNodeJs();
-        }
-
         logger.LogInformation("Generating LikeC4 model for {ResourceCount} resources", appModel.Resources.Count);
 
         var model = LikeC4ModelBuilder.Build([.. appModel.Resources]);
@@ -58,36 +52,5 @@ internal sealed class LikeC4VisualizationLifecycleHook(
         }
 
         return Task.CompletedTask;
-    }
-
-    private void ValidateNodeJs()
-    {
-        try
-        {
-            using var process = Process.Start(new ProcessStartInfo
-            {
-                FileName = "node",
-                Arguments = "--version",
-                RedirectStandardOutput = true,
-                RedirectStandardError = true,
-                UseShellExecute = false,
-                CreateNoWindow = true,
-            });
-
-            process?.WaitForExit(3000);
-
-            if (process?.ExitCode != 0)
-            {
-                logger.LogWarning(
-                    "Node.js check returned a non-zero exit code. " +
-                    "The LikeC4 live server may not start correctly.");
-            }
-        }
-        catch (Exception ex)
-        {
-            logger.LogWarning(ex,
-                "Node.js was not found on PATH. The LikeC4 live server will not be available. " +
-                "Install Node.js from https://nodejs.org/ and ensure 'node' is accessible.");
-        }
     }
 }
