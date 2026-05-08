@@ -1,0 +1,11 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+	<PropertyGroup>
+		<DisableGenerateAssemblyInfoClass>true</DisableGenerateAssemblyInfoClass>
+	</PropertyGroup>
+
+	<!-- TUnit, NSubstitute, Bogus, Microsoft.Testing.Platform.MSBuild are auto-added by
+	     .dotnet/Directory.Build.props. ProjectReference to AspireC4.LikeC4 is auto-resolved
+	     from the project name convention (AspireC4.LikeC4.UnitTests → AspireC4.LikeC4). -->
+
+</Project>

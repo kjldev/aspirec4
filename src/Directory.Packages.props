@@ -13,5 +13,13 @@
     <PackageVersion Include="TUnit" Version="$(TUnitVersion)" />
     <PackageVersion Include="TUnit.Core" Version="$(TUnitVersion)" />
     <PackageVersion Include="TUnit.Aspire" Version="$(TUnitVersion)" />
+    <!-- Aspire 13.3.0 -->
+    <PackageVersion Include="Aspire.Hosting" Version="13.3.0" />
+    <PackageVersion Include="Aspire.Hosting.AppHost" Version="13.3.0" />
+    <PackageVersion Include="Aspire.Hosting.Testing" Version="13.3.0" />
+    <PackageVersion Include="Aspire.Hosting.JavaScript" Version="13.3.0" />
+    <!-- Telemetry (auto-referenced by .dotnet/Directory.Build.props for non-test projects) -->
+    <PackageVersion Include="Purview.Telemetry.SourceGenerator" Version="1.0.0" />
+    <PackageVersion Include="Microsoft.Extensions.Telemetry.Abstractions" Version="10.5.0" />
   </ItemGroup>
 </Project>
