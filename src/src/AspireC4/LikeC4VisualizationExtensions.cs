@@ -56,7 +56,8 @@ public static class LikeC4VisualizationExtensions
 		var serverBuilder = builder.AddResource(serverResource)
 			.WithImage(LikeC4ServerResource.DefaultImage, imageTag)
 			.WithImageRegistry(LikeC4ServerResource.DefaultRegistry)
-			.WithArgs("serve", ".", "--port", LikeC4ServerResource.DefaultContainerPort.ToString())
+			// "serve",
+			.WithArgs("start", ".", "--port", LikeC4ServerResource.DefaultContainerServePort)
 			.WithBindMount(outputDir, LikeC4ServerResource.WorkspacePath)
 			// Required on Windows/Docker Desktop: inotify events do not propagate from the host
 			// filesystem into the container, so chokidar must fall back to polling to detect
@@ -65,7 +66,13 @@ public static class LikeC4VisualizationExtensions
 			.WithEnvironment("CHOKIDAR_INTERVAL", "200")
 			.WithHttpEndpoint(
 				name: LikeC4ServerResource.HttpEndpointName,
-				targetPort: LikeC4ServerResource.DefaultContainerPort)
+				targetPort: LikeC4ServerResource.DefaultContainerServePort)
+			// HMR WebSocket: LikeC4's Vite client hardcodes ws://localhost:24678 — the host
+			// port must match the container port exactly or the browser connection fails.
+			.WithHttpEndpoint(
+				name: "http-updates",
+				port: LikeC4ServerResource.DefaultContainerUpdatePort,
+				targetPort: LikeC4ServerResource.DefaultContainerUpdatePort)
 			.WithExternalHttpEndpoints()
 			// Exclude the sidecar from the architecture diagram — it is tooling, not a system element.
 			.WithAnnotation(new ExcludeFromLikeC4Annotation(), ResourceAnnotationMutationBehavior.Replace);
