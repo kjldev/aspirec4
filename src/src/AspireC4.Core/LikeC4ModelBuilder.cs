@@ -18,6 +18,16 @@ public static class LikeC4ModelBuilder
 
 		var visibleResources = BuildVisibleSet(resources);
 
+		// Build a name → resource lookup so we can resolve "surrogate" resources.
+		// When an Azure resource (e.g. AzureRedisCacheResource) is replaced by a local
+		// container via RunAsContainer(), the original Azure resource is hidden and a
+		// ContainerResource with the same name becomes the visible counterpart.
+		// WithReference() still annotates with the hidden Azure resource, so we need
+		// this lookup to resolve the visible surrogate by name.
+		var visibleByName = visibleResources
+			.GroupBy(r => r.Name, StringComparer.OrdinalIgnoreCase)
+			.ToDictionary(g => g.Key, g => g.First(), StringComparer.OrdinalIgnoreCase);
+
 		var elements = new List<LikeC4Element>(visibleResources.Count);
 		var relationships = new List<LikeC4Relationship>();
 		var visitedRelationships = new HashSet<(string Source, string Target)>();
@@ -25,7 +35,7 @@ public static class LikeC4ModelBuilder
 		foreach (var resource in visibleResources)
 		{
 			elements.Add(BuildElement(resource));
-			CollectRelationships(resource, visibleResources, relationships, visitedRelationships);
+			CollectRelationships(resource, visibleResources, visibleByName, relationships, visitedRelationships);
 		}
 
 		return new LikeC4Model
@@ -107,6 +117,7 @@ public static class LikeC4ModelBuilder
 	static void CollectRelationships(
 		IResource resource,
 		HashSet<IResource> visibleResources,
+		Dictionary<string, IResource> visibleByName,
 		List<LikeC4Relationship> relationships,
 		HashSet<(string, string)> visited)
 	{
@@ -118,13 +129,21 @@ public static class LikeC4ModelBuilder
 				continue;
 			}
 
-			// Skip if the target is hidden/excluded.
-			if (!visibleResources.Contains(annotation.Resource))
+			// Resolve the effective target: use the annotated resource directly if it is
+			// visible, otherwise look for a visible surrogate with the same name.
+			// The surrogate pattern arises with Azure resources run via RunAsContainer():
+			// the original Azure resource is hidden and replaced by a ContainerResource
+			// with the same name, but WithReference() still annotates with the Azure resource.
+			var effectiveTarget = visibleResources.Contains(annotation.Resource)
+				? annotation.Resource
+				: visibleByName.GetValueOrDefault(annotation.Resource.Name);
+
+			if (effectiveTarget is null)
 			{
 				continue;
 			}
 
-			var key = (resource.Name, annotation.Resource.Name);
+			var key = (resource.Name, effectiveTarget.Name);
 			if (!visited.Add(key))
 			{
 				continue;
@@ -133,7 +152,7 @@ public static class LikeC4ModelBuilder
 			relationships.Add(new LikeC4Relationship
 			{
 				SourceName = resource.Name,
-				TargetName = annotation.Resource.Name,
+				TargetName = effectiveTarget.Name,
 				Label = annotation.Type is not ("Reference" or WaitForRelationshipType)
 					? annotation.Type
 					: null,

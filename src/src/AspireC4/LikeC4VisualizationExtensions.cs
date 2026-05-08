@@ -11,7 +11,7 @@ namespace Aspire.Hosting;
 /// </summary>
 public static class LikeC4VisualizationExtensions
 {
-	internal const string ServerResourceName = "likec4-server";
+	internal const string ServerResourceName = "likec4-visualization";
 
 	/// <summary>
 	/// Adds a LikeC4 live architecture diagram to the Aspire application.
@@ -26,13 +26,17 @@ public static class LikeC4VisualizationExtensions
 	/// </para>
 	/// </remarks>
 	/// <param name="builder">The distributed application builder.</param>
+	/// <param name="name">The name of the LikeC4 visualization resource (used for the server container and diagram file).</param>
 	/// <param name="configure">Optional callback to configure <see cref="LikeC4DiagramOptions"/>.</param>
 	/// <returns>An <see cref="ILikeC4VisualizationBuilder"/> for further configuration.</returns>
 	public static ILikeC4VisualizationBuilder AddLikeC4Visualization(
 		this IDistributedApplicationBuilder builder,
+		[ResourceName]
+		string name = ServerResourceName,
 		Action<LikeC4DiagramOptions>? configure = null)
 	{
 		ArgumentNullException.ThrowIfNull(builder);
+		ArgumentNullException.ThrowIfNull(name);
 
 		builder.Services.AddOptions<LikeC4DiagramOptions>()
 			.Configure(opts => configure?.Invoke(opts));

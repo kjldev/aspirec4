@@ -198,6 +198,101 @@ public sealed class LikeC4ModelBuilderTests
 		await Assert.That(model.Relationships[0].Label).IsEqualTo("Publishes");
 	}
 
+	[Test]
+	public async Task Build_ReferenceToHiddenResourceWithVisibleSurrogate_ResolvesViaSurrogateName()
+	{
+		// Simulates AddAzureManagedRedis("redis").RunAsContainer():
+		// - The original Azure resource is hidden (IsHidden = true)
+		// - A container surrogate with the same name "redis" is visible
+		// - The node-app's WithReference points to the hidden Azure resource
+		var hiddenAzureRedis = new TestSystemResource("redis");
+		hiddenAzureRedis.Annotations.Add(new ResourceSnapshotAnnotation(new CustomResourceSnapshot
+		{
+			ResourceType = "Azure.Redis",
+			Properties = [],
+			IsHidden = true,
+		}));
+
+		var visibleContainerRedis = CreateContainerResource("redis");
+
+		var nodeApp = new ExecutableResource("node-app", "node", ".");
+		nodeApp.Annotations.Add(new ResourceRelationshipAnnotation(hiddenAzureRedis, "Reference"));
+
+		var model = LikeC4ModelBuilder.Build([hiddenAzureRedis, visibleContainerRedis, nodeApp]);
+
+		await Assert.That(model.Relationships).Count().IsEqualTo(1);
+		await Assert.That(model.Relationships[0].SourceName).IsEqualTo("node-app");
+		await Assert.That(model.Relationships[0].TargetName).IsEqualTo("redis");
+	}
+
+	[Test]
+	public async Task Build_WaitForToHiddenSurrogate_IsSkipped()
+	{
+		// WaitFor relationships to a hidden Azure resource should still be skipped,
+		// not accidentally resolved and included via the surrogate.
+		var hiddenAzureRedis = new TestSystemResource("redis");
+		hiddenAzureRedis.Annotations.Add(new ResourceSnapshotAnnotation(new CustomResourceSnapshot
+		{
+			ResourceType = "Azure.Redis",
+			Properties = [],
+			IsHidden = true,
+		}));
+		var visibleContainerRedis = CreateContainerResource("redis");
+
+		var nodeApp = new ExecutableResource("node-app", "node", ".");
+		nodeApp.Annotations.Add(new ResourceRelationshipAnnotation(hiddenAzureRedis, "WaitFor"));
+
+		var model = LikeC4ModelBuilder.Build([hiddenAzureRedis, visibleContainerRedis, nodeApp]);
+
+		await Assert.That(model.Relationships).IsEmpty();
+	}
+
+	[Test]
+	public async Task Build_ReferenceToHiddenResourceWithNoSurrogate_IsSkipped()
+	{
+		// If the Azure resource is hidden and there is no visible surrogate with the same
+		// name, the relationship should be dropped entirely (not produce a broken edge).
+		var hiddenResource = new TestSystemResource("orphaned-azure-resource");
+		hiddenResource.Annotations.Add(new ResourceSnapshotAnnotation(new CustomResourceSnapshot
+		{
+			ResourceType = "Azure.Something",
+			Properties = [],
+			IsHidden = true,
+		}));
+
+		var nodeApp = new ExecutableResource("node-app", "node", ".");
+		nodeApp.Annotations.Add(new ResourceRelationshipAnnotation(hiddenResource, "Reference"));
+
+		var model = LikeC4ModelBuilder.Build([hiddenResource, nodeApp]);
+
+		await Assert.That(model.Relationships).IsEmpty();
+	}
+
+	[Test]
+	public async Task Build_MultipleReferencesToSurrogateSameName_DeduplicatesRelationship()
+	{
+		// Both a WaitFor (hidden) and a Reference (hidden) to the same Azure resource should
+		// produce exactly one relationship to the surrogate (WaitFor is filtered; Reference resolves).
+		var hiddenAzureRedis = new TestSystemResource("redis");
+		hiddenAzureRedis.Annotations.Add(new ResourceSnapshotAnnotation(new CustomResourceSnapshot
+		{
+			ResourceType = "Azure.Redis",
+			Properties = [],
+			IsHidden = true,
+		}));
+		var visibleContainerRedis = CreateContainerResource("redis");
+
+		var nodeApp = new ExecutableResource("node-app", "node", ".");
+		nodeApp.Annotations.Add(new ResourceRelationshipAnnotation(hiddenAzureRedis, "Reference"));
+		nodeApp.Annotations.Add(new ResourceRelationshipAnnotation(hiddenAzureRedis, "WaitFor"));
+
+		var model = LikeC4ModelBuilder.Build([hiddenAzureRedis, visibleContainerRedis, nodeApp]);
+
+		await Assert.That(model.Relationships).Count().IsEqualTo(1);
+		await Assert.That(model.Relationships[0].SourceName).IsEqualTo("node-app");
+		await Assert.That(model.Relationships[0].TargetName).IsEqualTo("redis");
+	}
+
 	// --- Helpers ---
 
 	static ProjectResource CreateProjectResource(string name)

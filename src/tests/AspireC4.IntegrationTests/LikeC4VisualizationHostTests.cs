@@ -47,7 +47,7 @@ public sealed class LikeC4VisualizationHostTests : IAsyncDisposable
 
 		var appBuilder = await DistributedApplicationTestingBuilder.CreateAsync<TestAppHostProgram>(cancellationToken);
 
-		appBuilder.AddLikeC4Visualization(opts =>
+		appBuilder.AddLikeC4Visualization(configure: opts =>
 		{
 			opts.Title = "Integration Test Architecture";
 			opts.OutputDirectory = _outputDir;

@@ -17,7 +17,7 @@ public sealed class LikeC4PublishModeTests
 		{
 			var appBuilder = await DistributedApplicationTestingBuilder.CreateAsync<TestAppHostProgram>(cancellationToken);
 
-			appBuilder.AddLikeC4Visualization(opts =>
+			appBuilder.AddLikeC4Visualization(configure: opts =>
 			{
 				opts.Title = "Publish Mode Test";
 				opts.OutputDirectory = outputDir;

@@ -4,13 +4,13 @@ var redis = builder.AddAzureManagedRedis("redis").RunAsContainer();
 var postgres = builder.AddAzurePostgresFlexibleServer("posgres").RunAsContainer();
 
 builder
-    .AddNodeApp("node-app", "../../../samples/node-app", "index.js")
-    .WithPnpm()
-    .WithHttpEndpoint(env: "PORT")
-    .WithReference(redis)
-    .WaitFor(redis)
-    .WithReference(postgres)
-    .WaitFor(postgres);
+	.AddNodeApp("node-app", "../../../samples/node-app", "index.js")
+	.WithPnpm()
+	.WithHttpEndpoint(env: "PORT")
+	.WithReference(redis)
+	.WaitFor(redis)
+	.WithReference(postgres)
+	.WaitFor(postgres);
 
 builder.AddLikeC4Visualization();
 
