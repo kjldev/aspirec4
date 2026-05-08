@@ -5,6 +5,8 @@
     <TUnitVersion>1.43.11</TUnitVersion>
   </PropertyGroup>
   <ItemGroup>
+    <PackageVersion Include="Aspire.Hosting.Azure.PostgreSQL" Version="13.3.0" />
+    <PackageVersion Include="Aspire.Hosting.Azure.Redis" Version="13.3.0" />
     <PackageVersion Include="Microsoft.SourceLink.GitHub" Version="10.0.203" />
     <PackageVersion Include="Bogus" Version="35.6.5" />
     <PackageVersion Include="Microsoft.Testing.Platform.MSBuild" Version="2.2.2" />
@@ -19,7 +21,7 @@
     <PackageVersion Include="Aspire.Hosting.Testing" Version="13.3.0" />
     <PackageVersion Include="Aspire.Hosting.JavaScript" Version="13.3.0" />
     <!-- Telemetry (auto-referenced by .dotnet/Directory.Build.props for non-test projects) -->
-    <PackageVersion Include="Purview.Telemetry.SourceGenerator" Version="1.0.0" />
+    <PackageVersion Include="Purview.Telemetry.SourceGenerator" Version="4.1.0" />
     <PackageVersion Include="Microsoft.Extensions.Telemetry.Abstractions" Version="10.5.0" />
   </ItemGroup>
 </Project>

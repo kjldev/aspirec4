@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+	<PropertyGroup>
+		<AssemblyTitle>AspireC4 LikeC4 Hosting</AssemblyTitle>
+		<Description>Aspire 13 hosting extensions for the AspireC4 LikeC4 plugin: builder API, lifecycle hook, and server resource.</Description>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<PackageReference Include="Aspire.Hosting" />
+		<PackageReference Include="Aspire.Hosting.JavaScript" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<ProjectReference Include="..\AspireC4.Core\AspireC4.Core.csproj" />
+	</ItemGroup>
+
+</Project>

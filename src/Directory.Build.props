@@ -1,6 +1,6 @@
 <Project>
 	<PropertyGroup>
-		<NamespacePrefix>Aspire.Hosting</NamespacePrefix>
+	<NamespacePrefix>Aspire.Hosting</NamespacePrefix>
 	</PropertyGroup>
 	<Import Project="../.dotnet/Directory.Build.props" />
 </Project>
