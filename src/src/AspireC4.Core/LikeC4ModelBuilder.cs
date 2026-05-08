@@ -19,7 +19,8 @@ public static class LikeC4ModelBuilder
 	/// </param>
 	public static LikeC4Model Build(
 		IReadOnlyList<IResource> resources,
-		IReadOnlyDictionary<string, LikeC4ResourceState>? resourceStates = null)
+		IReadOnlyDictionary<string, LikeC4ResourceState>? resourceStates = null,
+		bool autoIconsEnabled = true)
 	{
 		ArgumentNullException.ThrowIfNull(resources);
 
@@ -45,7 +46,7 @@ public static class LikeC4ModelBuilder
 				? s
 				: LikeC4ResourceState.Unknown;
 
-			elements.Add(BuildElement(resource, state));
+			elements.Add(BuildElement(resource, state, autoIconsEnabled));
 			CollectRelationships(resource, visibleResources, visibleByName, relationships, visitedRelationships);
 		}
 
@@ -100,13 +101,15 @@ public static class LikeC4ModelBuilder
 		return snapshot?.InitialSnapshot.IsHidden == true;
 	}
 
-	static LikeC4Element BuildElement(IResource resource, LikeC4ResourceState state)
+	static LikeC4Element BuildElement(IResource resource, LikeC4ResourceState state, bool autoIconsEnabled)
 	{
 		var details = resource.Annotations.OfType<LikeC4NodeDetailsAnnotation>().LastOrDefault();
+		var inferredTechnology = InferTechnology(resource);
 
 		var label = details?.Label ?? resource.Name;
-		var technology = details?.Technology ?? InferTechnology(resource);
+		var technology = details?.Technology ?? inferredTechnology;
 		var description = details?.Description;
+		var icon = ResolveIcon(resource, details, inferredTechnology, autoIconsEnabled);
 		var kind = InferKind(resource);
 		var parentName = (resource as IResourceWithParent)?.Parent?.Name;
 
@@ -117,6 +120,7 @@ public static class LikeC4ModelBuilder
 			Kind = kind,
 			Technology = technology,
 			Description = description,
+			Icon = icon,
 			ParentName = parentName,
 			State = state,
 		};
@@ -139,6 +143,241 @@ public static class LikeC4ModelBuilder
 			.LastOrDefault()?.Image,
 		_ => null,
 	};
+
+	static string? ResolveIcon(
+		IResource resource,
+		LikeC4NodeDetailsAnnotation? details,
+		string? inferredTechnology,
+		bool autoIconsEnabled)
+	{
+		if (!string.IsNullOrWhiteSpace(details?.Icon))
+		{
+			return details.Icon;
+		}
+
+		if (!(details?.AutoIconEnabled ?? autoIconsEnabled))
+		{
+			return null;
+		}
+
+		var azureIcon = TryInferAzureIcon(resource);
+		if (azureIcon is not null)
+		{
+			return azureIcon;
+		}
+
+		string?[] candidates =
+		[
+			details?.Technology,
+			inferredTechnology,
+			resource.Annotations.OfType<ResourceSnapshotAnnotation>().LastOrDefault()?.InitialSnapshot.ResourceType,
+			resource.GetType().Name,
+		];
+
+		foreach (var candidate in candidates)
+		{
+			var icon = TryInferGenericIcon(candidate);
+			if (icon is not null)
+			{
+				return icon;
+			}
+		}
+
+		return null;
+	}
+
+	static string? TryInferAzureIcon(IResource resource)
+	{
+		string?[] candidates =
+		[
+			resource.Annotations.OfType<ResourceSnapshotAnnotation>().LastOrDefault()?.InitialSnapshot.ResourceType,
+			resource.GetType().FullName,
+			resource.GetType().Name,
+		];
+
+		foreach (var candidate in candidates)
+		{
+			var normalized = NormalizeForIconLookup(candidate);
+			if (string.IsNullOrEmpty(normalized) || !normalized.Contains("azure", StringComparison.Ordinal))
+			{
+				continue;
+			}
+
+			if (ContainsAll(normalized, "azure", "managed", "redis") || ContainsAll(normalized, "azure", "redis"))
+			{
+				return "azure:azure-managed-redis";
+			}
+
+			if (ContainsAll(normalized, "azure", "postgre") || ContainsAll(normalized, "azure", "postgres"))
+			{
+				return "azure:azure-database-postgre-sql-server";
+			}
+
+			if (ContainsAll(normalized, "azure", "cosmos"))
+			{
+				return "azure:azure-cosmos-db";
+			}
+
+			if (ContainsAll(normalized, "azure", "service", "bus"))
+			{
+				return "azure:azure-service-bus";
+			}
+
+			if (ContainsAll(normalized, "azure", "key", "vault"))
+			{
+				return "azure:key-vaults";
+			}
+
+			if (ContainsAll(normalized, "azure", "container", "app"))
+			{
+				return "azure:container-apps-environments";
+			}
+
+			if (ContainsAll(normalized, "azure", "app", "service") || ContainsAll(normalized, "azure", "web", "app"))
+			{
+				return "azure:app-services";
+			}
+
+			if (ContainsAll(normalized, "azure", "function"))
+			{
+				return "azure:azure-network-function-manager-functions";
+			}
+
+			if (ContainsAll(normalized, "azure", "storage"))
+			{
+				return "azure:storage-accounts";
+			}
+
+			if (ContainsAll(normalized, "azure", "sql", "managed", "instance"))
+			{
+				return "azure:sql-managed-instance";
+			}
+
+			if (ContainsAll(normalized, "azure", "sql", "database"))
+			{
+				return "azure:sql-database";
+			}
+
+			if (ContainsAll(normalized, "azure", "sql", "server"))
+			{
+				return "azure:sql-server";
+			}
+
+			if (ContainsAll(normalized, "azure", "sql"))
+			{
+				return "azure:azure-sql";
+			}
+		}
+
+		return null;
+	}
+
+	static string? TryInferGenericIcon(string? candidate)
+	{
+		var normalized = NormalizeForIconLookup(candidate);
+		if (string.IsNullOrEmpty(normalized))
+		{
+			return null;
+		}
+
+		if (ContainsAny(normalized, "postgresql", "postgres"))
+		{
+			return "tech:postgresql";
+		}
+
+		if (normalized == "net" || ContainsAny(normalized, "dotnet", "dot net", "asp net"))
+		{
+			return "tech:dotnet";
+		}
+
+		if (ContainsAny(normalized, "nodejs", "node js", "node"))
+		{
+			return "tech:nodejs";
+		}
+
+		if (ContainsAll(normalized, "mongo", "db") || ContainsAll(normalized, "mongodb"))
+		{
+			return "tech:mongodb";
+		}
+
+		if (ContainsAll(normalized, "rabbitmq"))
+		{
+			return "tech:rabbitmq";
+		}
+
+		if (ContainsAll(normalized, "mysql"))
+		{
+			return "tech:mysql";
+		}
+
+		if (ContainsAll(normalized, "nginx"))
+		{
+			return "tech:nginx";
+		}
+
+		if (ContainsAll(normalized, "python"))
+		{
+			return "tech:python";
+		}
+
+		if (ContainsAll(normalized, "docker"))
+		{
+			return "tech:docker";
+		}
+
+		if (ContainsAll(normalized, "redis"))
+		{
+			return "tech:redis";
+		}
+
+		return null;
+	}
+
+	static string NormalizeForIconLookup(string? value)
+	{
+		if (string.IsNullOrWhiteSpace(value))
+		{
+			return string.Empty;
+		}
+
+		var sb = new System.Text.StringBuilder(value.Length * 2);
+		var previousWasSeparator = true;
+
+		for (var i = 0; i < value.Length; i++)
+		{
+			var current = value[i];
+
+			if (i > 0 &&
+				char.IsUpper(current) &&
+				(char.IsLower(value[i - 1]) || char.IsDigit(value[i - 1])) &&
+				!previousWasSeparator)
+			{
+				sb.Append(' ');
+				previousWasSeparator = true;
+			}
+
+			if (char.IsLetterOrDigit(current))
+			{
+				sb.Append(char.ToLowerInvariant(current));
+				previousWasSeparator = false;
+				continue;
+			}
+
+			if (!previousWasSeparator)
+			{
+				sb.Append(' ');
+				previousWasSeparator = true;
+			}
+		}
+
+		return sb.ToString().Trim();
+	}
+
+	static bool ContainsAll(string value, params string[] terms) =>
+		terms.All(term => value.Contains(term, StringComparison.Ordinal));
+
+	static bool ContainsAny(string value, params string[] terms) =>
+		terms.Any(term => value.Contains(term, StringComparison.Ordinal));
 
 	static void CollectRelationships(
 		IResource resource,

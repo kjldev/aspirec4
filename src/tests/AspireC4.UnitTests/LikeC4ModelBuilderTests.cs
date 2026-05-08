@@ -101,7 +101,7 @@ public sealed class LikeC4ModelBuilderTests
 	public async Task Build_ResourceWithNodeDetailsAnnotation_UsesAnnotationValues()
 	{
 		var resource = CreateProjectResource("api");
-		resource.Annotations.Add(new LikeC4NodeDetailsAnnotation("API Service", "ASP.NET Core", "Handles HTTP requests"));
+		resource.Annotations.Add(new LikeC4NodeDetailsAnnotation("API Service", "ASP.NET Core", "Handles HTTP requests", "bootstrap:gear"));
 
 		var model = LikeC4ModelBuilder.Build([resource]);
 
@@ -109,6 +109,7 @@ public sealed class LikeC4ModelBuilderTests
 		await Assert.That(element.Label).IsEqualTo("API Service");
 		await Assert.That(element.Technology).IsEqualTo("ASP.NET Core");
 		await Assert.That(element.Description).IsEqualTo("Handles HTTP requests");
+		await Assert.That(element.Icon).IsEqualTo("bootstrap:gear");
 	}
 
 	[Test]
@@ -119,6 +120,85 @@ public sealed class LikeC4ModelBuilderTests
 		var model = LikeC4ModelBuilder.Build([resource]);
 
 		await Assert.That(model.Elements[0].Label).IsEqualTo("my-api");
+	}
+
+	[Test]
+	public async Task Build_ProjectResource_InfersDotnetIcon()
+	{
+		var resource = CreateProjectResource("api");
+
+		var model = LikeC4ModelBuilder.Build([resource]);
+
+		await Assert.That(model.Elements[0].Icon).IsEqualTo("tech:dotnet");
+	}
+
+	[Test]
+	public async Task Build_AzureResource_InfersBundledAzureIcon()
+	{
+		var resource = new TestSystemResource("redis");
+		resource.Annotations.Add(new ResourceSnapshotAnnotation(new CustomResourceSnapshot
+		{
+			ResourceType = "Azure.Redis",
+			Properties = [],
+		}));
+
+		var model = LikeC4ModelBuilder.Build([resource]);
+
+		await Assert.That(model.Elements[0].Icon).IsEqualTo("azure:azure-managed-redis");
+	}
+
+	[Test]
+	public async Task Build_NonAzureResourceWithAzureTechnology_DoesNotPreferAzureIcon()
+	{
+		var resource = CreateContainerResource("postgres");
+		resource.Annotations.Add(new LikeC4NodeDetailsAnnotation("Postgres", "Azure Postgres", "Managed PostgreSQL"));
+
+		var model = LikeC4ModelBuilder.Build([resource]);
+
+		await Assert.That(model.Elements[0].Icon).IsEqualTo("tech:postgresql");
+	}
+
+	[Test]
+	public async Task Build_WithProjectAutoIconsDisabled_DoesNotInferIcon()
+	{
+		var resource = CreateProjectResource("api");
+
+		var model = LikeC4ModelBuilder.Build([resource], autoIconsEnabled: false);
+
+		await Assert.That(model.Elements[0].Icon).IsNull();
+	}
+
+	[Test]
+	public async Task Build_WithPerResourceAutoIconDisabled_DoesNotInferIcon()
+	{
+		var resource = CreateProjectResource("api");
+		resource.Annotations.Add(new LikeC4NodeDetailsAnnotation("API", ".NET", "HTTP API", icon: null, autoIconEnabled: false));
+
+		var model = LikeC4ModelBuilder.Build([resource]);
+
+		await Assert.That(model.Elements[0].Icon).IsNull();
+	}
+
+	[Test]
+	public async Task Build_WithPerResourceAutoIconEnabled_OverridesProjectSetting()
+	{
+		var resource = CreateProjectResource("api");
+		resource.Annotations.Add(new LikeC4NodeDetailsAnnotation("API", ".NET", "HTTP API", icon: null, autoIconEnabled: true));
+
+		var model = LikeC4ModelBuilder.Build([resource], autoIconsEnabled: false);
+
+		await Assert.That(model.Elements[0].Icon).IsEqualTo("tech:dotnet");
+	}
+
+	[Test]
+	public async Task Build_ExplicitIcon_IsUsedWhenAutoIconsDisabled()
+	{
+		var resource = CreateProjectResource("api");
+		resource.Annotations.Add(new LikeC4NodeDetailsAnnotation("API", ".NET", "HTTP API", "bootstrap:gear", autoIconEnabled: false));
+
+		var model = LikeC4ModelBuilder.Build([resource], autoIconsEnabled: false);
+
+		await Assert.That(model.Elements[0].Icon).IsEqualTo("bootstrap:gear");
 	}
 
 	[Test]

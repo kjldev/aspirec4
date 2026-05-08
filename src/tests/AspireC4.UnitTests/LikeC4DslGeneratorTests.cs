@@ -124,6 +124,29 @@ public sealed class LikeC4DslGeneratorTests
 	}
 
 	[Test]
+	public async Task Generate_ElementWithIcon_IncludesIconLine()
+	{
+		var model = new LikeC4Model
+		{
+			Elements =
+			[
+				new LikeC4Element
+				{
+					Name = "db",
+					Label = "DB",
+					Kind = LikeC4ElementKind.Database,
+					Icon = "tech:postgresql",
+				},
+			],
+			Relationships = [],
+		};
+
+		var dsl = LikeC4DslGenerator.Generate(model, DefaultOptions);
+
+		await Assert.That(dsl).Contains("icon tech:postgresql");
+	}
+
+	[Test]
 	public async Task Generate_LabelWithSingleQuote_IsEscaped()
 	{
 		var model = new LikeC4Model
@@ -354,6 +377,35 @@ public sealed class LikeC4DslGeneratorTests
 		// model block must NOT contain color.
 		var modelSection = dsl[..viewsIdx];
 		await Assert.That(modelSection).DoesNotContain("color");
+	}
+
+	[Test]
+	public async Task Generate_ElementWithIconAndState_RendersIconInModelAndColorInViews()
+	{
+		var model = new LikeC4Model
+		{
+			Elements =
+			[
+				new LikeC4Element
+				{
+					Name = "api",
+					Label = "API",
+					Kind = LikeC4ElementKind.Component,
+					Icon = "tech:dotnet",
+					State = LikeC4ResourceState.Running,
+				},
+			],
+			Relationships = [],
+		};
+
+		var dsl = LikeC4DslGenerator.Generate(model, DefaultOptions);
+
+		var viewsIdx = dsl.IndexOf("views {", StringComparison.Ordinal);
+		var iconIdx = dsl.IndexOf("icon tech:dotnet", StringComparison.Ordinal);
+		var colorIdx = dsl.IndexOf("color green", StringComparison.Ordinal);
+
+		await Assert.That(iconIdx).IsLessThan(viewsIdx);
+		await Assert.That(colorIdx).IsGreaterThan(viewsIdx);
 	}
 
 	[Test]

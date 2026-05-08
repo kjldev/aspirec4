@@ -18,6 +18,9 @@ public sealed record LikeC4Element
     /// <summary>Optional longer description shown in element details.</summary>
     public string? Description { get; init; }
 
+    /// <summary>Optional LikeC4 icon token or image reference shown on the element.</summary>
+    public string? Icon { get; init; }
+
     /// <summary>Name of the parent resource when this element is nested (via <see cref="IResourceWithParent"/>).</summary>
     public string? ParentName { get; init; }
 

@@ -88,12 +88,54 @@ public static class LikeC4VisualizationExtensions
 		string? label = null,
 		string? technology = null,
 		string? description = null) where T : IResource
+		=> WithLikeC4DetailsCore(builder, label, technology, description, icon: null, autoIconEnabled: null);
+
+	/// <summary>
+	/// Customises how a resource appears in the generated LikeC4 diagram, including an explicit icon.
+	/// </summary>
+	public static IResourceBuilder<T> WithLikeC4Details<T>(
+		this IResourceBuilder<T> builder,
+		string? label,
+		string? technology,
+		string? description,
+		string? icon) where T : IResource
+		=> WithLikeC4DetailsCore(builder, label, technology, description, icon, autoIconEnabled: null);
+
+	/// <summary>
+	/// Customises how a resource appears in the generated LikeC4 diagram using fluent options.
+	/// </summary>
+	public static IResourceBuilder<T> WithLikeC4Details<T>(
+		this IResourceBuilder<T> builder,
+		Action<LikeC4DetailsOptions> configure) where T : IResource
+	{
+		ArgumentNullException.ThrowIfNull(builder);
+		ArgumentNullException.ThrowIfNull(configure);
+
+		var options = new LikeC4DetailsOptions();
+		configure(options);
+
+		return WithLikeC4DetailsCore(
+			builder,
+			options.Label,
+			options.Technology,
+			options.Description,
+			options.Icon,
+			options.AutoIconEnabled);
+	}
+
+	static IResourceBuilder<T> WithLikeC4DetailsCore<T>(
+		IResourceBuilder<T> builder,
+		string? label,
+		string? technology,
+		string? description,
+		string? icon,
+		bool? autoIconEnabled) where T : IResource
 	{
 		ArgumentNullException.ThrowIfNull(builder);
 
 		var effectiveLabel = label ?? builder.Resource.Name;
 		return builder.WithAnnotation(
-			new LikeC4NodeDetailsAnnotation(effectiveLabel, technology, description),
+			new LikeC4NodeDetailsAnnotation(effectiveLabel, technology, description, icon, autoIconEnabled),
 			ResourceAnnotationMutationBehavior.Replace);
 	}
 

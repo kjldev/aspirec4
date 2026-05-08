@@ -1,7 +1,6 @@
 var builder = DistributedApplication.CreateBuilder(args);
 
-// Add LikeC4 visualization to the application.
-// This will automatically generate a C4 model of the application and serve as a visualization resource.
+// Add LikeC4 visualization to the application. This will allow us to visualize the components and their relationships in a C4 model.
 builder.AddLikeC4Visualization();
 
 var redis = builder.AddAzureManagedRedis("redis")
@@ -29,7 +28,8 @@ builder
 	.WithLikeC4Details(
 			label: "Node App",
 			technology: "Node.js",
-			description: "A sample Node.js application that connects to Redis and Postgres"
+			description: "A sample Node.js application that connects to Redis and Postgres",
+			icon: "tech:nodejs"
 	)
 	.WithPnpm(install: true)
 	.WithHttpEndpoint(env: "PORT")
@@ -42,8 +42,6 @@ builder
 var app = builder.Build();
 
 await app.RunAsync();
-
-
 
 // Marker class so integration tests can reference this assembly.
 sealed partial class TestAppHostProgram { }

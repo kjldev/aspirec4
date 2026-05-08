@@ -85,9 +85,10 @@ public static class LikeC4DslGenerator
 		var children = nested.GetValueOrDefault(element.Name);
 		var hasTechnology = !string.IsNullOrWhiteSpace(element.Technology);
 		var hasDescription = !string.IsNullOrWhiteSpace(element.Description);
+		var hasIcon = !string.IsNullOrWhiteSpace(element.Icon);
 		var hasChildren = children?.Count > 0;
 
-		if (!hasTechnology && !hasDescription && !hasChildren)
+		if (!hasTechnology && !hasDescription && !hasIcon && !hasChildren)
 		{
 			sb.AppendLine();
 			return;
@@ -103,6 +104,11 @@ public static class LikeC4DslGenerator
 		if (hasDescription)
 		{
 			sb.Append(indent).Append("  description '").Append(EscapeQuote(element.Description!)).AppendLine("'");
+		}
+
+		if (hasIcon)
+		{
+			sb.Append(indent).Append("  icon ").AppendLine(element.Icon!);
 		}
 
 		if (hasChildren)

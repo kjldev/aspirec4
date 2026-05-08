@@ -120,7 +120,7 @@ sealed class LikeC4VisualizationLifecycleHook(
 
 		telemetry.GeneratingLikeC4Model(appModel.Resources.Count);
 
-		var model = LikeC4ModelBuilder.Build([.. appModel.Resources], _resourceStates);
+		var model = LikeC4ModelBuilder.Build([.. appModel.Resources], _resourceStates, opts.AutoIconsEnabled);
 		var dsl = LikeC4DslGenerator.Generate(model, opts);
 
 		var outputDir = Path.GetFullPath(opts.OutputDirectory);

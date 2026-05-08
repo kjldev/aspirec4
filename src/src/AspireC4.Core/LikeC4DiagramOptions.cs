@@ -27,4 +27,10 @@ public sealed class LikeC4DiagramOptions
     /// Ignored when <see cref="ILikeC4VisualizationBuilder.WithLocalCli"/> is used.
     /// </remarks>
     public string? ContainerImageTag { get; set; }
+
+    /// <summary>
+    /// Enables automatic icon inference for known resource types and technologies.
+    /// Defaults to <see langword="true" />.
+    /// </summary>
+    public bool AutoIconsEnabled { get; set; } = true;
 }

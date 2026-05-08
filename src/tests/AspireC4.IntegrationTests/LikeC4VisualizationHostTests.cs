@@ -108,6 +108,18 @@ public sealed class LikeC4VisualizationHostTests : IAsyncDisposable
 	}
 
 	[Test]
+	public async Task C4FileContainsConfiguredAndKnownIcons(CancellationToken cancellationToken)
+	{
+		var path = Path.Combine(_outputDir!, "test-model.c4");
+		var content = await File.ReadAllTextAsync(path, cancellationToken);
+
+		await Assert.That(content).Contains("icon tech:dotnet");
+		await Assert.That(content).Contains("icon tech:nodejs");
+		await Assert.That(content).Contains("icon azure:azure-managed-redis");
+		await Assert.That(content).Contains("icon azure:azure-database-postgre-sql-server");
+	}
+
+	[Test]
 	public async Task LikeC4ServerResource_ReachesRunningState(CancellationToken cancellationToken)
 	{
 		await Assert.That(await IsDockerAvailableAsync(cancellationToken)).IsTrue();
