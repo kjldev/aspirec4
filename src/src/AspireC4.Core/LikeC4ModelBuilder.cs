@@ -105,6 +105,7 @@ public static class LikeC4ModelBuilder
 		var label = details?.Label ?? resource.Name;
 		var technology = details?.Technology ?? inferredTechnology;
 		var description = details?.Description;
+		var summary = details?.Summary;
 		var icon = ResolveIcon(resource, details, inferredTechnology, autoIconsEnabled);
 		var kind = InferKind(resource);
 		var parentName = (resource as IResourceWithParent)?.Parent?.Name;
@@ -116,6 +117,7 @@ public static class LikeC4ModelBuilder
 			Kind = kind,
 			Technology = technology,
 			Description = description,
+			Summary = summary,
 			Icon = icon,
 			ParentName = parentName,
 			State = state,
@@ -422,11 +424,12 @@ public static class LikeC4ModelBuilder
 
 			// Look for a LikeC4-specific override. Keyed by target name; also checks the resolved
 			// effective target for the Azure RunAsContainer() surrogate pattern.
-			var details = resource.Annotations
-				.OfType<LikeC4RelationshipDetailsAnnotation>()
+			var details = resource
+				.Annotations.OfType<LikeC4RelationshipDetailsAnnotation>()
 				.LastOrDefault(a =>
 					string.Equals(a.TargetName, annotation.Resource.Name, StringComparison.OrdinalIgnoreCase)
-					|| string.Equals(a.TargetName, effectiveTarget.Name, StringComparison.OrdinalIgnoreCase));
+					|| string.Equals(a.TargetName, effectiveTarget.Name, StringComparison.OrdinalIgnoreCase)
+				);
 
 			// Fall back to the Aspire relationship type as label when not a generic 'Reference'
 			// or infrastructure 'WaitFor' annotation and no explicit label was provided.
