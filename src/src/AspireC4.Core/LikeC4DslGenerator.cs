@@ -26,10 +26,7 @@ public static class LikeC4DslGenerator
 
 	static void WriteSpecification(StringBuilder sb, LikeC4Model model)
 	{
-		var kinds = model.Elements
-			.Select(e => e.Kind)
-			.Distinct()
-			.OrderBy(k => k);
+		var kinds = model.Elements.Select(e => e.Kind).Distinct().OrderBy(k => k);
 
 		sb.AppendLine("specification {");
 		foreach (var kind in kinds)
@@ -46,8 +43,8 @@ public static class LikeC4DslGenerator
 
 		// Top-level elements first, then nested.
 		var topLevel = model.Elements.Where(e => e.ParentName is null).ToList();
-		var nested = model.Elements
-			.Where(e => e.ParentName is not null)
+		var nested = model
+			.Elements.Where(e => e.ParentName is not null)
 			.GroupBy(e => e.ParentName!)
 			.ToDictionary(g => g.Key, g => g.ToList());
 
@@ -77,10 +74,16 @@ public static class LikeC4DslGenerator
 		StringBuilder sb,
 		LikeC4Element element,
 		string indent,
-		Dictionary<string, List<LikeC4Element>> nested)
+		Dictionary<string, List<LikeC4Element>> nested
+	)
 	{
-		sb.Append(indent).Append(Sanitize(element.Name)).Append(" = ").Append(element.Kind)
-		  .Append(" '").Append(EscapeQuote(element.Label)).Append('\'');
+		sb.Append(indent)
+			.Append(Sanitize(element.Name))
+			.Append(" = ")
+			.Append(element.Kind)
+			.Append(" '")
+			.Append(EscapeQuote(element.Label))
+			.Append('\'');
 
 		var children = nested.GetValueOrDefault(element.Name);
 		var hasTechnology = !string.IsNullOrWhiteSpace(element.Technology);
@@ -123,19 +126,32 @@ public static class LikeC4DslGenerator
 	}
 
 	/// <summary>
-	/// Maps a <see cref="LikeC4ResourceState"/> to a LikeC4 named color theme.
-	/// Returns <see langword="null"/> for states that should use the default color.
+	/// Style override (color and/or opacity) for a view-level style rule.
+	/// A <see langword="null"/> value means "use the default".
 	/// </summary>
-	static string? GetStateColor(LikeC4ResourceState state) => state switch
-	{
-		LikeC4ResourceState.Starting => "sky",
-		LikeC4ResourceState.Running => "green",
-		LikeC4ResourceState.Stopping => "slate",
-		LikeC4ResourceState.Exited => "muted",
-		LikeC4ResourceState.Failed => "amber",
-		LikeC4ResourceState.Error => "red",
-		_ => null,
-	};
+	readonly record struct LikeC4ElementStyleOverride(string? Color, int? Opacity);
+
+	/// <summary>
+	/// Maps a <see cref="LikeC4ResourceState"/> to a view-level style override.
+	/// <para>
+	/// Opacity is used to distinguish transitional from terminal states:
+	/// <list type="bullet">
+	///   <item><description><see cref="LikeC4ResourceState.Stopping"/> — 60 % opacity: visible but clearly winding down.</description></item>
+	///   <item><description><see cref="LikeC4ResourceState.Exited"/> — 30 % opacity: very faded, fully inactive.</description></item>
+	/// </list>
+	/// </para>
+	/// </summary>
+	static LikeC4ElementStyleOverride GetStateStyle(LikeC4ResourceState state) =>
+		state switch
+		{
+			LikeC4ResourceState.Starting => new("sky", null),
+			LikeC4ResourceState.Running => new("green", null),
+			LikeC4ResourceState.Stopping => new("slate", 60),
+			LikeC4ResourceState.Exited => new("muted", 30),
+			LikeC4ResourceState.Failed => new("amber", null),
+			LikeC4ResourceState.Error => new("red", null),
+			_ => new(null, null),
+		};
 
 	static void WriteViews(StringBuilder sb, LikeC4Model model, LikeC4DiagramOptions options)
 	{
@@ -151,19 +167,28 @@ public static class LikeC4DslGenerator
 		{
 			sb.AppendLine("    include *");
 
-			// Emit style overrides grouped by color for elements with a non-default state.
+			// Emit style overrides grouped by (color, opacity) for elements with a non-default state.
 			// In LikeC4, element colors must be set via view-level style rules, not in the
 			// model block.
-			var byColor = model.Elements
-				.Select(e => (Element: e, Color: GetStateColor(e.State)))
-				.Where(t => t.Color is not null)
-				.GroupBy(t => t.Color!, t => t.Element);
+			var byStyle = model
+				.Elements.Select(e => (Element: e, Style: GetStateStyle(e.State)))
+				.Where(t => t.Style.Color is not null || t.Style.Opacity is not null)
+				.GroupBy(t => t.Style, t => t.Element);
 
-			foreach (var group in byColor)
+			foreach (var group in byStyle)
 			{
 				var names = string.Join(", ", group.Select(e => Sanitize(e.Name)));
 				sb.Append("    style ").Append(names).AppendLine(" {");
-				sb.Append("      color ").AppendLine(group.Key);
+				if (group.Key.Color is not null)
+				{
+					sb.Append("      color ").AppendLine(group.Key.Color);
+				}
+
+				if (group.Key.Opacity is not null)
+				{
+					sb.Append("      opacity ").Append(group.Key.Opacity).AppendLine("%");
+				}
+
 				sb.AppendLine("    }");
 			}
 		}
@@ -174,13 +199,17 @@ public static class LikeC4DslGenerator
 
 	/// <summary>Replaces characters invalid in LikeC4 identifiers with underscores.</summary>
 	static string Sanitize(string name) =>
-		string.Create(name.Length, name, static (span, src) =>
-		{
-			for (var i = 0; i < src.Length; i++)
+		string.Create(
+			name.Length,
+			name,
+			static (span, src) =>
 			{
-				span[i] = char.IsLetterOrDigit(src[i]) || src[i] == '_' ? src[i] : '_';
+				for (var i = 0; i < src.Length; i++)
+				{
+					span[i] = char.IsLetterOrDigit(src[i]) || src[i] == '_' ? src[i] : '_';
+				}
 			}
-		});
+		);
 
 	/// <summary>Escapes single quotes in string values used inside LikeC4 quoted strings.</summary>
 	static string EscapeQuote(string value) => value.Replace("'", "\\'", StringComparison.Ordinal);

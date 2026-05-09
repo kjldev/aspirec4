@@ -295,9 +295,9 @@ public sealed class LikeC4DslGeneratorTests
 	}
 
 	[Test]
-	[MethodDataSource(nameof(StateColorMappings))]
-	public async Task Generate_ElementWithState_RendersExpectedColor(
-		LikeC4ResourceState state, string? expectedColor)
+	[MethodDataSource(nameof(StateStyleMappings))]
+	public async Task Generate_ElementWithState_RendersExpectedStyle(
+		LikeC4ResourceState state, string? expectedColor, int? expectedOpacity)
 	{
 		var model = new LikeC4Model
 		{
@@ -319,30 +319,52 @@ public sealed class LikeC4DslGeneratorTests
 		if (expectedColor is null)
 		{
 			await Assert.That(dsl).DoesNotContain("color ");
+			await Assert.That(dsl).DoesNotContain("opacity ");
 		}
 		else
 		{
 			// Color overrides must appear inside a style rule in the views section.
 			await Assert.That(dsl).Contains($"style api {{");
 			await Assert.That(dsl).Contains($"color {expectedColor}");
-			// Must NOT appear inside the model element block.
-			var modelIdx = dsl.IndexOf("model {", StringComparison.Ordinal);
+
 			var viewsIdx = dsl.IndexOf("views {", StringComparison.Ordinal);
 			var colorIdx = dsl.IndexOf($"color {expectedColor}", StringComparison.Ordinal);
 			await Assert.That(colorIdx).IsGreaterThan(viewsIdx);
-			_ = modelIdx; // suppress unused warning
+
+			// Opacity should be present for states that visually distinguish transitional
+			// from terminal: Stopping (60%) is more visible than Exited (30%).
+			if (expectedOpacity is not null)
+			{
+				await Assert.That(dsl).Contains($"opacity {expectedOpacity}%");
+				var opacityIdx = dsl.IndexOf($"opacity {expectedOpacity}%", StringComparison.Ordinal);
+				await Assert.That(opacityIdx).IsGreaterThan(viewsIdx);
+			}
+			else
+			{
+				await Assert.That(dsl).DoesNotContain("opacity ");
+			}
 		}
 	}
 
-	public static IEnumerable<(LikeC4ResourceState State, string? Color)> StateColorMappings()
+	/// <summary>
+	/// State → (color, opacity) style mappings.
+	/// <para>
+	/// Opacity differentiates transitional from terminal states:
+	/// <list type="bullet">
+	///   <item><description>Stopping: 60 % — transitional, winding down but still visible.</description></item>
+	///   <item><description>Exited: 30 % — terminal, clearly faded/inactive.</description></item>
+	/// </list>
+	/// </para>
+	/// </summary>
+	public static IEnumerable<(LikeC4ResourceState State, string? Color, int? Opacity)> StateStyleMappings()
 	{
-		yield return (LikeC4ResourceState.Unknown, null);
-		yield return (LikeC4ResourceState.Starting, "sky");
-		yield return (LikeC4ResourceState.Running, "green");
-		yield return (LikeC4ResourceState.Stopping, "slate");
-		yield return (LikeC4ResourceState.Exited, "muted");
-		yield return (LikeC4ResourceState.Failed, "amber");
-		yield return (LikeC4ResourceState.Error, "red");
+		yield return (LikeC4ResourceState.Unknown, null, null);
+		yield return (LikeC4ResourceState.Starting, "sky", null);
+		yield return (LikeC4ResourceState.Running, "green", null);
+		yield return (LikeC4ResourceState.Stopping, "slate", 60);
+		yield return (LikeC4ResourceState.Exited, "muted", 30);
+		yield return (LikeC4ResourceState.Failed, "amber", null);
+		yield return (LikeC4ResourceState.Error, "red", null);
 	}
 
 	[Test]

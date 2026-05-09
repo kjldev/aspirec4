@@ -7,19 +7,22 @@ model {
   redis = container 'Redis' {
     technology 'Azure Redis'
     description 'A managed Redis instance for testing'
+    icon azure:azure-managed-redis
   }
-  posgres = container 'Postgres' {
-    technology 'Azure Postgres'
+  postgres = container 'Postgres' {
+    technology 'library/postgres'
     description 'A managed Postgres instance for testing'
+    icon azure:azure-database-postgre-sql-server
   }
   node_app = executable 'Node App' {
     technology 'Node.js'
     description 'A sample Node.js application that connects to Redis and Postgres'
+    icon tech:nodejs
   }
   node_app_installer = executable 'node-app-installer'
 
   node_app -> redis
-  node_app -> posgres
+  node_app -> postgres
   node_app_installer -> node_app 'Parent'
 }
 
@@ -27,11 +30,12 @@ views {
   view index {
     title 'Architecture'
     include *
-    style redis, posgres, node_app {
+    style redis, postgres, node_app {
       color green
     }
     style node_app_installer {
       color muted
+      opacity 30%
     }
   }
 }

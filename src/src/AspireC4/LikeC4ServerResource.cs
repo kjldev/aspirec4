@@ -16,6 +16,9 @@ public sealed class LikeC4ServerResource : ContainerResource
 	/// <summary>The name of the HTTP endpoint exposed by the LikeC4 server.</summary>
 	public const string HttpEndpointName = "http";
 
+	/// <summary>The name of the HTTP endpoint used by LikeC4's Vite HMR channel.</summary>
+	public const string HmrEndpointName = "http-updates";
+
 	/// <summary>The container registry hosting the LikeC4 image.</summary>
 	internal const string DefaultRegistry = "ghcr.io";
 
@@ -28,10 +31,15 @@ public sealed class LikeC4ServerResource : ContainerResource
 	/// <summary>The container port exposed by <c>likec4 serve</c>.</summary>
 	internal const int DefaultContainerServePort = 5173;
 
+	/// <summary>The container port used by LikeC4's Vite HMR channel.</summary>
 	internal const int DefaultContainerUpdatePort = 24678;
 
 	/// <summary>The path inside the container where <c>.c4</c> source files are mounted.</summary>
 	internal const string WorkspacePath = "/data";
 
-	internal LikeC4ServerResource(string name) : base(name) { }
+	internal static string GetImageReference(string imageTag) =>
+		$"{DefaultRegistry}/{DefaultImage}:{imageTag}";
+
+	internal LikeC4ServerResource(string name)
+		: base(name) { }
 }

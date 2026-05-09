@@ -21,5 +21,8 @@ interface ILikeC4VisualizationLifecycleHookTelemetry
 	void RegeneratingDiagramDueToStateChange();
 
 	[Warning]
+	void HmrPortUnavailable(int port, string error);
+
+	[Warning]
 	void StateWatcherFailed(string error);
 }

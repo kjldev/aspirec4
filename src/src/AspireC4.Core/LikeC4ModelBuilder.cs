@@ -20,7 +20,8 @@ public static class LikeC4ModelBuilder
 	public static LikeC4Model Build(
 		IReadOnlyList<IResource> resources,
 		IReadOnlyDictionary<string, LikeC4ResourceState>? resourceStates = null,
-		bool autoIconsEnabled = true)
+		bool autoIconsEnabled = true
+	)
 	{
 		ArgumentNullException.ThrowIfNull(resources);
 
@@ -42,19 +43,16 @@ public static class LikeC4ModelBuilder
 
 		foreach (var resource in visibleResources)
 		{
-			var state = resourceStates is not null && resourceStates.TryGetValue(resource.Name, out var s)
-				? s
-				: LikeC4ResourceState.Unknown;
+			var state =
+				resourceStates is not null && resourceStates.TryGetValue(resource.Name, out var s)
+					? s
+					: LikeC4ResourceState.Unknown;
 
 			elements.Add(BuildElement(resource, state, autoIconsEnabled));
 			CollectRelationships(resource, visibleResources, visibleByName, relationships, visitedRelationships);
 		}
 
-		return new LikeC4Model
-		{
-			Elements = elements,
-			Relationships = relationships,
-		};
+		return new LikeC4Model { Elements = elements, Relationships = relationships };
 	}
 
 	/// <summary>
@@ -66,9 +64,7 @@ public static class LikeC4ModelBuilder
 	{
 		ArgumentNullException.ThrowIfNull(resources);
 
-		return BuildVisibleSet(resources)
-			.Select(r => r.Name)
-			.ToHashSet(StringComparer.OrdinalIgnoreCase);
+		return BuildVisibleSet(resources).Select(r => r.Name).ToHashSet(StringComparer.OrdinalIgnoreCase);
 	}
 
 	static HashSet<IResource> BuildVisibleSet(IReadOnlyList<IResource> resources)
@@ -126,29 +122,34 @@ public static class LikeC4ModelBuilder
 		};
 	}
 
-	static string InferKind(IResource resource) => resource switch
-	{
-		ProjectResource => LikeC4ElementKind.Component,
-		ContainerResource => LikeC4ElementKind.Container,
-		// IResourceWithConnectionString before ExecutableResource to catch DB-like resources
-		IResourceWithConnectionString => LikeC4ElementKind.Database,
-		ExecutableResource => LikeC4ElementKind.Executable,
-		_ => LikeC4ElementKind.System,
-	};
+	static string InferKind(IResource resource) =>
+		resource switch
+		{
+			ProjectResource => LikeC4ElementKind.Component,
+			ContainerResource => LikeC4ElementKind.Container,
+			// IResourceWithConnectionString before ExecutableResource to catch DB-like resources
+			IResourceWithConnectionString => LikeC4ElementKind.Database,
+			ExecutableResource => LikeC4ElementKind.Executable,
+			_ => LikeC4ElementKind.System,
+		};
 
-	static string? InferTechnology(IResource resource) => resource switch
-	{
-		ProjectResource => ".NET",
-		ContainerResource container => container.Annotations.OfType<ContainerImageAnnotation>()
-			.LastOrDefault()?.Image,
-		_ => null,
-	};
+	static string? InferTechnology(IResource resource) =>
+		resource switch
+		{
+			ProjectResource => ".NET",
+			ContainerResource container => container
+				.Annotations.OfType<ContainerImageAnnotation>()
+				.LastOrDefault()
+				?.Image,
+			_ => null,
+		};
 
 	static string? ResolveIcon(
 		IResource resource,
 		LikeC4NodeDetailsAnnotation? details,
 		string? inferredTechnology,
-		bool autoIconsEnabled)
+		bool autoIconsEnabled
+	)
 	{
 		if (!string.IsNullOrWhiteSpace(details?.Icon))
 		{
@@ -282,7 +283,7 @@ public static class LikeC4ModelBuilder
 
 		if (ContainsAny(normalized, "postgresql", "postgres"))
 		{
-			return "tech:postgresql";
+			return "azure:azure-database-postgre-sql-server";
 		}
 
 		if (normalized == "net" || ContainsAny(normalized, "dotnet", "dot net", "asp net"))
@@ -327,7 +328,7 @@ public static class LikeC4ModelBuilder
 
 		if (ContainsAll(normalized, "redis"))
 		{
-			return "tech:redis";
+			return "azure:azure-managed-redis";
 		}
 
 		return null;
@@ -347,10 +348,12 @@ public static class LikeC4ModelBuilder
 		{
 			var current = value[i];
 
-			if (i > 0 &&
-				char.IsUpper(current) &&
-				(char.IsLower(value[i - 1]) || char.IsDigit(value[i - 1])) &&
-				!previousWasSeparator)
+			if (
+				i > 0
+				&& char.IsUpper(current)
+				&& (char.IsLower(value[i - 1]) || char.IsDigit(value[i - 1]))
+				&& !previousWasSeparator
+			)
 			{
 				sb.Append(' ');
 				previousWasSeparator = true;
@@ -384,7 +387,8 @@ public static class LikeC4ModelBuilder
 		HashSet<IResource> visibleResources,
 		Dictionary<string, IResource> visibleByName,
 		List<LikeC4Relationship> relationships,
-		HashSet<(string, string)> visited)
+		HashSet<(string, string)> visited
+	)
 	{
 		foreach (var annotation in resource.Annotations.OfType<ResourceRelationshipAnnotation>())
 		{
@@ -414,14 +418,14 @@ public static class LikeC4ModelBuilder
 				continue;
 			}
 
-			relationships.Add(new LikeC4Relationship
-			{
-				SourceName = resource.Name,
-				TargetName = effectiveTarget.Name,
-				Label = annotation.Type is not ("Reference" or WaitForRelationshipType)
-					? annotation.Type
-					: null,
-			});
+			relationships.Add(
+				new LikeC4Relationship
+				{
+					SourceName = resource.Name,
+					TargetName = effectiveTarget.Name,
+					Label = annotation.Type is not ("Reference" or WaitForRelationshipType) ? annotation.Type : null,
+				}
+			);
 		}
 	}
 }

@@ -1,9 +1,12 @@
+using System.Security.Cryptography;
+using System.Text;
 using Aspire.Hosting.ApplicationModel;
 using Aspire.Hosting.Lifecycle;
 using Microsoft.Extensions.DependencyInjection;
 
 #pragma warning disable IDE0130 // Namespace does not match folder structure
 namespace Aspire.Hosting;
+
 #pragma warning restore IDE0130 // Namespace does not match folder structure
 
 /// <summary>
@@ -31,34 +34,56 @@ public static class LikeC4VisualizationExtensions
 	/// <returns>An <see cref="ILikeC4VisualizationBuilder"/> for further configuration.</returns>
 	public static ILikeC4VisualizationBuilder AddLikeC4Visualization(
 		this IDistributedApplicationBuilder builder,
-		[ResourceName]
-		string name = ServerResourceName,
-		Action<LikeC4DiagramOptions>? configure = null)
+		[ResourceName] string name = ServerResourceName,
+		Action<LikeC4DiagramOptions>? configure = null
+	)
 	{
 		ArgumentNullException.ThrowIfNull(builder);
 		ArgumentNullException.ThrowIfNull(name);
 
-		builder.Services.AddOptions<LikeC4DiagramOptions>()
-			.Configure(opts => configure?.Invoke(opts));
-
-		builder.Services.AddEventingSubscriber<LikeC4VisualizationLifecycleHook>();
-		builder.Services.AddLikeC4VisualizationLifecycleHookTelemetry();
+		builder.Services.AddOptions<LikeC4DiagramOptions>().Configure(opts =>
+		{
+			configure?.Invoke(opts);
+			opts.OutputDirectory = ResolveOutputDirectory(builder.AppHostDirectory, opts.OutputDirectory);
+		});
 
 		// Resolve options at build time so the bind mount and lifecycle hook use the same path.
 		var opts = new LikeC4DiagramOptions();
 		configure?.Invoke(opts);
 
-		var outputDir = Path.GetFullPath(opts.OutputDirectory);
+		var outputDir = ResolveOutputDirectory(builder.AppHostDirectory, opts.OutputDirectory);
+		Directory.CreateDirectory(outputDir);
 		var imageTag = opts.ContainerImageTag ?? LikeC4ServerResource.DefaultTag;
+		var imageReference = LikeC4ServerResource.GetImageReference(imageTag);
+		var hmrPortMode = LikeC4HmrPortCompatibility.Resolve(imageTag);
+		// Use the relay on Windows even in Configurable mode: Docker Desktop may fail to publish
+		// the well-known port (24678) reliably due to Hyper-V port reservations or port-cleanup
+		// races between container restarts. The relay owns port 24678 on the host side and
+		// bridges incoming HMR connections to whatever dynamic port Docker happened to allocate.
+		var useHmrRelay = hmrPortMode == LikeC4HmrPortMode.FixedPort || OperatingSystem.IsWindows();
+		var workspaceVolumeName = ResolveWorkspaceVolumeName(builder.AppHostDirectory, ServerResourceName);
+
+		builder.Services.AddOptions<LikeC4ContainerWorkspaceOptions>().Configure(runtime =>
+		{
+			runtime.VolumeName = workspaceVolumeName;
+			runtime.ContainerImageReference = imageReference;
+			runtime.ContainerRuntimeExecutable = ResolveContainerRuntimeExecutable();
+			runtime.HmrPortMode = hmrPortMode;
+			runtime.UseHmrRelay = useHmrRelay;
+		});
+
+		builder.Services.AddEventingSubscriber<LikeC4VisualizationLifecycleHook>();
+		builder.Services.AddLikeC4VisualizationLifecycleHookTelemetry();
 
 		var serverResource = new LikeC4ServerResource(ServerResourceName);
 
-		var serverBuilder = builder.AddResource(serverResource)
+		var serverBuilder = builder
+			.AddResource(serverResource)
 			.WithImage(LikeC4ServerResource.DefaultImage, imageTag)
 			.WithImageRegistry(LikeC4ServerResource.DefaultRegistry)
 			// "serve",
 			.WithArgs("start", ".", "--port", LikeC4ServerResource.DefaultContainerServePort)
-			.WithBindMount(outputDir, LikeC4ServerResource.WorkspacePath)
+			.WithVolume(workspaceVolumeName, LikeC4ServerResource.WorkspacePath)
 			// Required on Windows/Docker Desktop: inotify events do not propagate from the host
 			// filesystem into the container, so chokidar must fall back to polling to detect
 			// changes to the generated .c4 file.
@@ -66,18 +91,66 @@ public static class LikeC4VisualizationExtensions
 			.WithEnvironment("CHOKIDAR_INTERVAL", "200")
 			.WithHttpEndpoint(
 				name: LikeC4ServerResource.HttpEndpointName,
-				targetPort: LikeC4ServerResource.DefaultContainerServePort)
-			// HMR WebSocket: LikeC4's Vite client hardcodes ws://localhost:24678 — the host
-			// port must match the container port exactly or the browser connection fails.
+				targetPort: LikeC4ServerResource.DefaultContainerServePort
+			)
 			.WithHttpEndpoint(
-				name: "http-updates",
-				port: LikeC4ServerResource.DefaultContainerUpdatePort,
-				targetPort: LikeC4ServerResource.DefaultContainerUpdatePort)
+				targetPort: LikeC4ServerResource.DefaultContainerUpdatePort,
+				// When using the relay, omit a fixed host port so Docker allocates a dynamic one.
+				// The relay owns port 24678 on the host and bridges connections to the dynamic port.
+				// Direct fixed-port mapping is only safe on non-Windows Configurable-mode images.
+				port: useHmrRelay ? null : LikeC4ServerResource.DefaultContainerUpdatePort,
+				name: LikeC4ServerResource.HmrEndpointName
+			)
 			.WithExternalHttpEndpoints()
 			// Exclude the sidecar from the architecture diagram — it is tooling, not a system element.
 			.WithAnnotation(new ExcludeFromLikeC4Annotation(), ResourceAnnotationMutationBehavior.Replace);
 
 		return new LikeC4VisualizationBuilder(builder, serverBuilder, outputDir);
+	}
+
+	internal static string ResolveOutputDirectory(string appHostDirectory, string outputDirectory)
+	{
+		ArgumentException.ThrowIfNullOrWhiteSpace(appHostDirectory);
+		ArgumentException.ThrowIfNullOrWhiteSpace(outputDirectory);
+
+		return Path.GetFullPath(
+			Path.IsPathRooted(outputDirectory)
+				? outputDirectory
+				: Path.Combine(appHostDirectory, outputDirectory)
+		);
+	}
+
+	internal static string ResolveWorkspaceVolumeName(string appHostDirectory, string resourceName)
+	{
+		ArgumentException.ThrowIfNullOrWhiteSpace(appHostDirectory);
+		ArgumentException.ThrowIfNullOrWhiteSpace(resourceName);
+
+		var normalizedResourceName = NormalizeContainerNameSegment(resourceName);
+		var normalizedAppHostDirectory = Path.GetFullPath(appHostDirectory)
+			.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+		var hashBytes = SHA256.HashData(Encoding.UTF8.GetBytes(normalizedAppHostDirectory));
+		var hash = Convert.ToHexString(hashBytes)[..12].ToLowerInvariant();
+
+		return $"likec4-{normalizedResourceName}-{hash}";
+	}
+
+	internal static string ResolveContainerRuntimeExecutable() =>
+		Environment.GetEnvironmentVariable("ASPIRE_CONTAINER_RUNTIME") switch
+		{
+			{ Length: > 0 } runtime => runtime,
+			_ => "docker",
+		};
+
+	static string NormalizeContainerNameSegment(string value)
+	{
+		var builder = new StringBuilder(value.Length);
+		foreach (var ch in value)
+		{
+			builder.Append(char.IsAsciiLetterOrDigit(ch) ? char.ToLowerInvariant(ch) : '-');
+		}
+
+		var normalized = builder.ToString().Trim('-');
+		return normalized.Length == 0 ? "workspace" : normalized;
 	}
 
 	/// <summary>
@@ -87,8 +160,10 @@ public static class LikeC4VisualizationExtensions
 		this IResourceBuilder<T> builder,
 		string? label = null,
 		string? technology = null,
-		string? description = null) where T : IResource
-		=> WithLikeC4DetailsCore(builder, label, technology, description, icon: null, autoIconEnabled: null);
+		string? description = null
+	)
+		where T : IResource =>
+		WithLikeC4DetailsCore(builder, label, technology, description, icon: null, autoIconEnabled: null);
 
 	/// <summary>
 	/// Customises how a resource appears in the generated LikeC4 diagram, including an explicit icon.
@@ -98,15 +173,19 @@ public static class LikeC4VisualizationExtensions
 		string? label,
 		string? technology,
 		string? description,
-		string? icon) where T : IResource
-		=> WithLikeC4DetailsCore(builder, label, technology, description, icon, autoIconEnabled: null);
+		string? icon
+	)
+		where T : IResource =>
+		WithLikeC4DetailsCore(builder, label, technology, description, icon, autoIconEnabled: null);
 
 	/// <summary>
 	/// Customises how a resource appears in the generated LikeC4 diagram using fluent options.
 	/// </summary>
 	public static IResourceBuilder<T> WithLikeC4Details<T>(
 		this IResourceBuilder<T> builder,
-		Action<LikeC4DetailsOptions> configure) where T : IResource
+		Action<LikeC4DetailsOptions> configure
+	)
+		where T : IResource
 	{
 		ArgumentNullException.ThrowIfNull(builder);
 		ArgumentNullException.ThrowIfNull(configure);
@@ -120,7 +199,8 @@ public static class LikeC4VisualizationExtensions
 			options.Technology,
 			options.Description,
 			options.Icon,
-			options.AutoIconEnabled);
+			options.AutoIconEnabled
+		);
 	}
 
 	static IResourceBuilder<T> WithLikeC4DetailsCore<T>(
@@ -129,26 +209,27 @@ public static class LikeC4VisualizationExtensions
 		string? technology,
 		string? description,
 		string? icon,
-		bool? autoIconEnabled) where T : IResource
+		bool? autoIconEnabled
+	)
+		where T : IResource
 	{
 		ArgumentNullException.ThrowIfNull(builder);
 
 		var effectiveLabel = label ?? builder.Resource.Name;
 		return builder.WithAnnotation(
 			new LikeC4NodeDetailsAnnotation(effectiveLabel, technology, description, icon, autoIconEnabled),
-			ResourceAnnotationMutationBehavior.Replace);
+			ResourceAnnotationMutationBehavior.Replace
+		);
 	}
 
 	/// <summary>
 	/// Excludes a resource from the generated LikeC4 diagram.
 	/// </summary>
-	public static IResourceBuilder<T> ExcludeFromLikeC4<T>(
-		this IResourceBuilder<T> builder) where T : IResource
+	public static IResourceBuilder<T> ExcludeFromLikeC4<T>(this IResourceBuilder<T> builder)
+		where T : IResource
 	{
 		ArgumentNullException.ThrowIfNull(builder);
 
-		return builder.WithAnnotation(
-			new ExcludeFromLikeC4Annotation(),
-			ResourceAnnotationMutationBehavior.Replace);
+		return builder.WithAnnotation(new ExcludeFromLikeC4Annotation(), ResourceAnnotationMutationBehavior.Replace);
 	}
 }

@@ -1,35 +1,51 @@
 var builder = DistributedApplication.CreateBuilder(args);
 
 // Add LikeC4 visualization to the application. This will allow us to visualize the components and their relationships in a C4 model.
-builder.AddLikeC4Visualization();
+builder.AddLikeC4Visualization(configure: opts =>
+{
+	var title = builder.Configuration["LikeC4:Title"];
+	if (!string.IsNullOrWhiteSpace(title))
+	{
+		opts.Title = title;
+	}
 
-var redis = builder.AddAzureManagedRedis("redis")
+	var outputDirectory = builder.Configuration["LikeC4:OutputDirectory"];
+	if (!string.IsNullOrWhiteSpace(outputDirectory))
+	{
+		opts.OutputDirectory = outputDirectory;
+	}
+
+	var fileName = builder.Configuration["LikeC4:FileName"];
+	if (!string.IsNullOrWhiteSpace(fileName))
+	{
+		opts.FileName = fileName;
+	}
+});
+
+var redis = builder
+	.AddAzureManagedRedis("redis")
 	// Run as container when local
 	.RunAsContainer()
 	// Add LikeC4 details to the component for better visualization in the C4 model.
-	.WithLikeC4Details(
-		label: "Redis",
-		technology: "Azure Redis",
-		description: "A managed Redis instance for testing"
-);
-var postgres = builder.AddAzurePostgresFlexibleServer("posgres")
+	.WithLikeC4Details(label: "Redis", technology: "Azure Redis", description: "A managed Redis instance for testing");
+
+var postgres = builder
+	.AddAzurePostgresFlexibleServer("postgres")
 	// Run as container when local
 	.RunAsContainer()
 	// Add LikeC4 details to the component for better visualization in the C4 model.
-	.WithLikeC4Details(
-		label: "Postgres",
-		technology: "Azure Postgres",
-		description: "A managed Postgres instance for testing"
-);
+	.WithLikeC4Details(static c4 =>
+		c4.WithLabel("Postgres").WithDescription("A managed Postgres instance for testing")
+	);
 
 builder
 	.AddNodeApp("node-app", "../../../samples/node-app", "index.js")
 	// Add LikeC4 details to the component for better visualization in the C4 model.
 	.WithLikeC4Details(
-			label: "Node App",
-			technology: "Node.js",
-			description: "A sample Node.js application that connects to Redis and Postgres",
-			icon: "tech:nodejs"
+		label: "Node App",
+		technology: "Node.js",
+		description: "A sample Node.js application that connects to Redis and Postgres",
+		icon: "tech:nodejs"
 	)
 	.WithPnpm(install: true)
 	.WithHttpEndpoint(env: "PORT")

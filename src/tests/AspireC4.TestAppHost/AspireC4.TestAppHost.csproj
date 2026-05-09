@@ -11,11 +11,9 @@
 	</ItemGroup>
 
 	<ItemGroup>
-		<ProjectReference Include="..\..\src\AspireC4\AspireC4.csproj" IsAspireProjectResource="false" />
+		<ProjectReference
+			Include="..\..\src\AspireC4\AspireC4.csproj"
+			IsAspireProjectResource="false"
+		/>
 	</ItemGroup>
-
-	<ItemGroup>
-	  <Folder Include="likec4\" />
-	</ItemGroup>
-
 </Project>

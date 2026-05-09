@@ -1,4 +1,7 @@
 using System.Collections.Concurrent;
+using System.Diagnostics;
+using System.Net;
+using System.Net.Sockets;
 using Aspire.Hosting.ApplicationModel;
 using Aspire.Hosting.Eventing;
 using Aspire.Hosting.Lifecycle;
@@ -12,42 +15,64 @@ namespace Aspire.Hosting.AspireC4;
 /// </summary>
 sealed class LikeC4VisualizationLifecycleHook(
 	IOptions<LikeC4DiagramOptions> options,
+	IOptions<LikeC4ContainerWorkspaceOptions> workspaceOptions,
 	ResourceNotificationService resourceNotificationService,
-	ILikeC4VisualizationLifecycleHookTelemetry telemetry) : IDistributedApplicationEventingSubscriber, IDisposable
+	ILikeC4VisualizationLifecycleHookTelemetry telemetry
+) : IDistributedApplicationEventingSubscriber, IDisposable
 {
-	readonly ConcurrentDictionary<string, LikeC4ResourceState> _resourceStates =
-		new(StringComparer.OrdinalIgnoreCase);
+	readonly ConcurrentDictionary<string, LikeC4ResourceState> _resourceStates = new(StringComparer.OrdinalIgnoreCase);
 
 	// Debounce: cancels any pending delayed write when a new state change arrives.
 	CancellationTokenSource? _debounceCts;
 	readonly Lock _debounceLock = new();
+	CancellationTokenSource? _hmrRelayCts;
+	TcpListener? _hmrRelayListener;
+	readonly Lock _hmrRelayLock = new();
 
 	public Task SubscribeAsync(
 		IDistributedApplicationEventing eventing,
 		DistributedApplicationExecutionContext executionContext,
-		CancellationToken cancellationToken)
+		CancellationToken cancellationToken
+	)
 	{
-		eventing.Subscribe<BeforeStartEvent>(async (evt, ct) =>
-		{
-			await WriteC4FileAsync(evt.Model, ct);
-
-			if (executionContext.IsPublishMode)
+		eventing.Subscribe<BeforeStartEvent>(
+			async (evt, ct) =>
 			{
-				telemetry.PublishMode();
-				return;
-			}
+				var syncContainerWorkspace = evt.Model.Resources
+					.OfType<LikeC4ServerResource>()
+					.Any(resource => resource.Name == LikeC4VisualizationExtensions.ServerResourceName);
 
-			// Fire-and-forget: watch for resource state changes and regenerate the file.
-			// The ct is the application lifetime token; it is cancelled on shutdown.
-			_ = WatchResourceStatesAsync(evt.Model, ct);
-		});
+				if (executionContext.IsPublishMode)
+				{
+					await WriteC4FileAsync(evt.Model, syncContainerWorkspace, resetContainerWorkspace: false, ct);
+					telemetry.PublishMode();
+					return;
+				}
+
+				if (syncContainerWorkspace)
+				{
+					EnsureLegacyHostHmrPortAvailable();
+					StartLegacyHmrRelay(evt.Model, ct);
+				}
+
+				await WriteC4FileAsync(evt.Model, syncContainerWorkspace, resetContainerWorkspace: true, ct);
+
+				// Fire-and-forget: watch for resource state changes and regenerate the file.
+				// The ct is the application lifetime token; it is cancelled on shutdown.
+				_ = WatchResourceStatesAsync(evt.Model, syncContainerWorkspace, ct);
+			}
+		);
 
 		return Task.CompletedTask;
 	}
 
 	// ── Background watcher ────────────────────────────────────────────────────
 
-	async Task WatchResourceStatesAsync(DistributedApplicationModel appModel, CancellationToken cancellationToken)
+	async Task WatchResourceStatesAsync(
+		DistributedApplicationModel appModel,
+		bool syncContainerWorkspace,
+		CancellationToken cancellationToken
+	)
 	{
 		try
 		{
@@ -63,8 +88,7 @@ sealed class LikeC4VisualizationLifecycleHook(
 
 				var newState = MapAspireState(notification.Snapshot);
 
-				if (_resourceStates.TryGetValue(notification.Resource.Name, out var current)
-					&& current == newState)
+				if (_resourceStates.TryGetValue(notification.Resource.Name, out var current) && current == newState)
 				{
 					continue;
 				}
@@ -72,7 +96,7 @@ sealed class LikeC4VisualizationLifecycleHook(
 				_resourceStates[notification.Resource.Name] = newState;
 				telemetry.ResourceStateChanged(notification.Resource.Name, newState.ToString());
 
-				ScheduleRegeneration(appModel, cancellationToken);
+				ScheduleRegeneration(appModel, syncContainerWorkspace, cancellationToken);
 			}
 		}
 		catch (OperationCanceledException)
@@ -87,7 +111,11 @@ sealed class LikeC4VisualizationLifecycleHook(
 #pragma warning restore CA1031
 	}
 
-	void ScheduleRegeneration(DistributedApplicationModel appModel, CancellationToken cancellationToken)
+	void ScheduleRegeneration(
+		DistributedApplicationModel appModel,
+		bool syncContainerWorkspace,
+		CancellationToken cancellationToken
+	)
 	{
 		CancellationTokenSource newCts;
 		lock (_debounceLock)
@@ -97,24 +125,32 @@ sealed class LikeC4VisualizationLifecycleHook(
 			newCts = _debounceCts = new CancellationTokenSource();
 		}
 
-		_ = Task.Run(async () =>
-		{
-			try
+		_ = Task.Run(
+			async () =>
 			{
-				await Task.Delay(TimeSpan.FromMilliseconds(300), newCts.Token);
-				telemetry.RegeneratingDiagramDueToStateChange();
-				await WriteC4FileAsync(appModel, cancellationToken);
-			}
-			catch (OperationCanceledException)
-			{
-				// Debounced — a newer state change superseded this one.
-			}
-		}, CancellationToken.None);
+				try
+				{
+					await Task.Delay(TimeSpan.FromMilliseconds(300), newCts.Token);
+					telemetry.RegeneratingDiagramDueToStateChange();
+					await WriteC4FileAsync(appModel, syncContainerWorkspace, resetContainerWorkspace: false, cancellationToken);
+				}
+				catch (OperationCanceledException)
+				{
+					// Debounced — a newer state change superseded this one.
+				}
+			},
+			CancellationToken.None
+		);
 	}
 
 	// ── File generation ───────────────────────────────────────────────────────
 
-	async Task WriteC4FileAsync(DistributedApplicationModel appModel, CancellationToken cancellationToken)
+	async Task WriteC4FileAsync(
+		DistributedApplicationModel appModel,
+		bool syncContainerWorkspace,
+		bool resetContainerWorkspace,
+		CancellationToken cancellationToken
+	)
 	{
 		var opts = options.Value;
 
@@ -129,13 +165,280 @@ sealed class LikeC4VisualizationLifecycleHook(
 		var outputPath = Path.Combine(outputDir, opts.FileName + ".c4");
 		await File.WriteAllTextAsync(outputPath, dsl, cancellationToken);
 
+		if (syncContainerWorkspace)
+		{
+			await WriteContainerWorkspaceFileAsync(opts.FileName, dsl, resetContainerWorkspace, cancellationToken);
+		}
+
 		telemetry.LikeC4ModelWritten(outputPath);
+	}
+
+	async Task WriteContainerWorkspaceFileAsync(
+		string fileName,
+		string dsl,
+		bool resetContainerWorkspace,
+		CancellationToken cancellationToken
+	)
+	{
+		var workspace = workspaceOptions.Value;
+		var containerFilePath = $"{LikeC4ServerResource.WorkspacePath}/{fileName}.c4";
+		var syncScript = resetContainerWorkspace
+			? "const fs=require('node:fs'); const path=require('node:path'); for (const entry of fs.readdirSync('/data')) { if (entry.endsWith('.c4')) fs.rmSync(path.join('/data', entry), { force: true }); } fs.writeFileSync(process.argv[1], fs.readFileSync(0));"
+			: "const fs=require('node:fs');fs.writeFileSync(process.argv[1], fs.readFileSync(0));";
+
+		var startInfo = new ProcessStartInfo
+		{
+			FileName = workspace.ContainerRuntimeExecutable,
+			RedirectStandardError = true,
+			RedirectStandardInput = true,
+			RedirectStandardOutput = true,
+			UseShellExecute = false,
+			CreateNoWindow = true,
+		};
+
+		startInfo.ArgumentList.Add("run");
+		startInfo.ArgumentList.Add("--rm");
+		startInfo.ArgumentList.Add("-i");
+		startInfo.ArgumentList.Add("-v");
+		startInfo.ArgumentList.Add($"{workspace.VolumeName}:{LikeC4ServerResource.WorkspacePath}");
+		startInfo.ArgumentList.Add("--entrypoint");
+		startInfo.ArgumentList.Add("node");
+		startInfo.ArgumentList.Add(workspace.ContainerImageReference);
+		startInfo.ArgumentList.Add("-e");
+		startInfo.ArgumentList.Add(syncScript);
+		startInfo.ArgumentList.Add(containerFilePath);
+
+		using var process = Process.Start(startInfo)
+			?? throw new DistributedApplicationException(
+				$"Failed to start '{workspace.ContainerRuntimeExecutable}' to sync the LikeC4 workspace volume."
+			);
+
+		try
+		{
+			await process.StandardInput.WriteAsync(dsl.AsMemory(), cancellationToken);
+			await process.StandardInput.FlushAsync(cancellationToken);
+			process.StandardInput.Close();
+
+			var stdoutTask = process.StandardOutput.ReadToEndAsync(cancellationToken);
+			var stderrTask = process.StandardError.ReadToEndAsync(cancellationToken);
+
+			await process.WaitForExitAsync(cancellationToken);
+
+			var stdout = await stdoutTask;
+			var stderr = await stderrTask;
+
+			if (process.ExitCode != 0)
+			{
+				var message = string.IsNullOrWhiteSpace(stderr) ? stdout : stderr;
+				throw new DistributedApplicationException(
+					$"Failed to sync the LikeC4 workspace volume '{workspace.VolumeName}': {message.Trim()}"
+				);
+			}
+		}
+		catch (OperationCanceledException)
+		{
+			if (!process.HasExited)
+			{
+				process.Kill(entireProcessTree: true);
+			}
+
+			throw;
+		}
+	}
+
+	void EnsureLegacyHostHmrPortAvailable()
+	{
+		if (!workspaceOptions.Value.UseHmrRelay)
+		{
+			return;
+		}
+
+		for (var attempt = 0; attempt < 15; attempt++)
+		{
+			Socket? socket = null;
+
+			try
+			{
+				socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
+				socket.Bind(new IPEndPoint(IPAddress.Loopback, LikeC4ServerResource.DefaultContainerUpdatePort));
+				return;
+			}
+			catch (SocketException) when (attempt < 14)
+			{
+				Thread.Sleep(TimeSpan.FromSeconds(1));
+			}
+			catch (SocketException ex)
+			{
+				telemetry.HmrPortUnavailable(LikeC4ServerResource.DefaultContainerUpdatePort, ex.Message);
+				throw new DistributedApplicationException(
+					$"LikeC4 live updates require host port {LikeC4ServerResource.DefaultContainerUpdatePort} to be free so the Vite HMR endpoint can be published. Stop the process using that port, or remove the LikeC4 visualization sidecar before starting the app."
+				);
+			}
+			finally
+			{
+				socket?.Dispose();
+			}
+		}
+	}
+
+	void StartLegacyHmrRelay(DistributedApplicationModel appModel, CancellationToken cancellationToken)
+	{
+		if (!workspaceOptions.Value.UseHmrRelay)
+		{
+			return;
+		}
+
+		lock (_hmrRelayLock)
+		{
+			if (_hmrRelayListener is not null)
+			{
+				return;
+			}
+
+			_hmrRelayCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+			// On Windows, bind to all IPv4 interfaces (0.0.0.0) so the relay accepts
+			// connections regardless of how the OS resolves "localhost" in the browser.
+			var listenerAddress = OperatingSystem.IsWindows() ? IPAddress.Any : IPAddress.Loopback;
+			_hmrRelayListener = new TcpListener(listenerAddress, LikeC4ServerResource.DefaultContainerUpdatePort);
+			_hmrRelayListener.Start();
+
+			_ = RunHmrRelayAsync(appModel, _hmrRelayListener, _hmrRelayCts.Token);
+		}
+	}
+
+	static async Task RunHmrRelayAsync(
+		DistributedApplicationModel appModel,
+		TcpListener listener,
+		CancellationToken cancellationToken
+	)
+	{
+		try
+		{
+			while (!cancellationToken.IsCancellationRequested)
+			{
+				TcpClient inbound;
+				try
+				{
+					inbound = await listener.AcceptTcpClientAsync(cancellationToken);
+				}
+				catch (OperationCanceledException)
+				{
+					break;
+				}
+				catch (ObjectDisposedException) when (cancellationToken.IsCancellationRequested)
+				{
+					break;
+				}
+
+				_ = RelayHmrConnectionAsync(appModel, inbound, cancellationToken);
+			}
+		}
+		catch (OperationCanceledException)
+		{
+			// Normal on application shutdown.
+		}
+	}
+
+	static async Task RelayHmrConnectionAsync(
+		DistributedApplicationModel appModel,
+		TcpClient inbound,
+		CancellationToken cancellationToken
+	)
+	{
+		using var inboundConnection = inbound;
+		var target = await WaitForAllocatedHmrEndpointAsync(appModel, cancellationToken);
+
+		using var outboundConnection = new TcpClient();
+		await outboundConnection.ConnectAsync(target.Address, target.Port, cancellationToken);
+
+		await using var inboundStream = inboundConnection.GetStream();
+		await using var outboundStream = outboundConnection.GetStream();
+
+#pragma warning disable CA2025 // Both relay tasks are awaited before the streams are disposed.
+		Task PumpToTargetAsync() => PumpAsync(inboundStream, outboundStream, cancellationToken);
+		Task PumpFromTargetAsync() => PumpAsync(outboundStream, inboundStream, cancellationToken);
+#pragma warning restore CA2025
+
+		var toTarget = PumpToTargetAsync();
+		var fromTarget = PumpFromTargetAsync();
+
+		try
+		{
+			await Task.WhenAny(toTarget, fromTarget);
+			inboundConnection.Close();
+			outboundConnection.Close();
+			await Task.WhenAll(toTarget, fromTarget);
+		}
+		catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+		{
+			// Expected when either side closes the socket.
+		}
+		catch (IOException)
+		{
+			// Expected when the browser or the upstream HMR endpoint disconnects.
+		}
+		catch (SocketException)
+		{
+			// Expected when the browser or the upstream HMR endpoint disconnects.
+		}
+		catch (ObjectDisposedException)
+		{
+			// Expected during shutdown or connection teardown.
+		}
+	}
+
+	static async Task PumpAsync(Stream source, Stream destination, CancellationToken cancellationToken)
+	{
+		await source.CopyToAsync(destination, cancellationToken);
+		await destination.FlushAsync(cancellationToken);
+	}
+
+	static async Task<(string Address, int Port)> WaitForAllocatedHmrEndpointAsync(
+		DistributedApplicationModel appModel,
+		CancellationToken cancellationToken
+	)
+	{
+		for (var attempt = 0; attempt < 300; attempt++)
+		{
+			var endpoint = appModel.Resources
+				.OfType<LikeC4ServerResource>()
+				.Where(resource => resource.Name == LikeC4VisualizationExtensions.ServerResourceName)
+				.SelectMany(resource => resource.Annotations.OfType<EndpointAnnotation>())
+				.FirstOrDefault(annotation => annotation.Name == LikeC4ServerResource.HmrEndpointName)?
+				.AllocatedEndpoint;
+
+			if (endpoint is { Address.Length: > 0, Port: > 0 })
+			{
+				var address = endpoint.Address switch
+				{
+					"0.0.0.0" => IPAddress.Loopback.ToString(),
+					_ => endpoint.Address,
+				};
+
+				if (!(address == IPAddress.Loopback.ToString() && endpoint.Port == LikeC4ServerResource.DefaultContainerUpdatePort))
+				{
+					return (address, endpoint.Port);
+				}
+			}
+
+			await Task.Delay(TimeSpan.FromMilliseconds(100), cancellationToken);
+		}
+
+		throw new DistributedApplicationException("The LikeC4 HMR endpoint was not allocated before the browser connected.");
 	}
 
 	// ── IDisposable ───────────────────────────────────────────────────────────
 
 	public void Dispose()
 	{
+		lock (_hmrRelayLock)
+		{
+			_hmrRelayListener?.Dispose();
+			_hmrRelayCts?.Dispose();
+			_hmrRelayCts = null;
+			_hmrRelayListener = null;
+		}
+
 		lock (_debounceLock)
 		{
 			_debounceCts?.Cancel();
@@ -169,7 +472,9 @@ sealed class LikeC4VisualizationLifecycleHook(
 			"Starting" or "Waiting" => LikeC4ResourceState.Starting,
 			"Stopping" => LikeC4ResourceState.Stopping,
 			"FailedToStart" or "RuntimeUnhealthy" => LikeC4ResourceState.Error,
-			"Exited" => string.Equals(style, "success", StringComparison.OrdinalIgnoreCase)
+			// Use ExitCode to distinguish a clean stop (0 / unknown) from a crash (non-zero).
+			// This handles cases where Aspire does not set the "success" style reliably.
+			"Exited" => snapshot.ExitCode is null or 0
 				? LikeC4ResourceState.Exited
 				: LikeC4ResourceState.Failed,
 			"Finished" => LikeC4ResourceState.Exited,

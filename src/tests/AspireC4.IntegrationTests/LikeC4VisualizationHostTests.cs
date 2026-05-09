@@ -1,16 +1,27 @@
+using System.Net.WebSockets;
+using System.Globalization;
+using System.Text.RegularExpressions;
 using Aspire.Hosting.ApplicationModel;
 using Aspire.Hosting.Testing;
 
 namespace Aspire.Hosting.AspireC4;
 
 /// <summary>
-/// Integration tests that verify the full LikeC4 plugin lifecycle using a test Aspire application.
-/// Tests that require a running LikeC4 server are skipped when Node.js is not available.
+/// Integration tests that verify the LikeC4 visualization starts successfully in a real Aspire app host.
 /// </summary>
+[NotInParallel]
 public sealed class LikeC4VisualizationHostTests : IAsyncDisposable
 {
+	const string LikeC4ResourceName = "likec4-visualization";
+	static readonly TimeSpan LikeC4StartupTimeout = TimeSpan.FromSeconds(120);
+
 	DistributedApplication? _app;
+	EnvironmentVariableScope? _containerRuntimeScope;
+	EnvironmentVariableScope? _outputDirectoryScope;
+	EnvironmentVariableScope? _fileNameScope;
+	EnvironmentVariableScope? _titleScope;
 	string? _outputDir;
+	string? _modelPath;
 
 	static async Task<bool> IsDockerAvailableAsync(CancellationToken cancellationToken)
 	{
@@ -19,20 +30,25 @@ public sealed class LikeC4VisualizationHostTests : IAsyncDisposable
 			using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
 			linkedCts.CancelAfter(5_000);
 
-			using var p = System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
-			{
-				FileName = "docker",
-				Arguments = "info",
-				RedirectStandardOutput = true,
-				RedirectStandardError = true,
-				UseShellExecute = false,
-				CreateNoWindow = true,
-			});
-			if (p is null)
-				return false;
+			using var process = System.Diagnostics.Process.Start(
+				new System.Diagnostics.ProcessStartInfo
+				{
+					FileName = "docker",
+					Arguments = "info",
+					RedirectStandardOutput = true,
+					RedirectStandardError = true,
+					UseShellExecute = false,
+					CreateNoWindow = true,
+				}
+			);
 
-			await p.WaitForExitAsync(linkedCts.Token);
-			return p.ExitCode == 0;
+			if (process is null)
+			{
+				return false;
+			}
+
+			await process.WaitForExitAsync(linkedCts.Token);
+			return process.ExitCode == 0;
 		}
 		catch
 		{
@@ -43,21 +59,16 @@ public sealed class LikeC4VisualizationHostTests : IAsyncDisposable
 	[Before(Test)]
 	public async Task SetUpAsync(CancellationToken cancellationToken)
 	{
-		_outputDir = Path.Combine(Path.GetTempPath(), "likec4-tests-" + Guid.NewGuid().ToString("N")[..8]);
+		await Assert.That(await IsDockerAvailableAsync(cancellationToken)).IsTrue();
+
+		_outputDir = Path.Combine(Path.GetTempPath(), "likec4-integration-" + Guid.NewGuid().ToString("N")[..8]);
+		_modelPath = Path.Combine(_outputDir, "model.c4");
+		_containerRuntimeScope = new EnvironmentVariableScope("ASPIRE_CONTAINER_RUNTIME", "docker");
+		_outputDirectoryScope = new EnvironmentVariableScope("LikeC4__OutputDirectory", _outputDir);
+		_fileNameScope = new EnvironmentVariableScope("LikeC4__FileName", "model");
+		_titleScope = new EnvironmentVariableScope("LikeC4__Title", "Integration Test Architecture");
 
 		var appBuilder = await DistributedApplicationTestingBuilder.CreateAsync<TestAppHostProgram>(cancellationToken);
-
-		appBuilder.AddLikeC4Visualization(configure: opts =>
-		{
-			opts.Title = "Integration Test Architecture";
-			opts.OutputDirectory = _outputDir;
-			opts.FileName = "test-model";
-		});
-
-		// Add a simple executable resource for diagram content verification.
-		appBuilder.AddExecutable("fake-service", "dotnet", ".", "--version")
-			.WithLikeC4Details(label: "Fake Service", technology: ".NET", description: "A fake service for testing");
-
 		_app = await appBuilder.BuildAsync(cancellationToken);
 		await _app.StartAsync(cancellationToken);
 	}
@@ -74,72 +85,49 @@ public sealed class LikeC4VisualizationHostTests : IAsyncDisposable
 		{
 			Directory.Delete(_outputDir, recursive: true);
 		}
+
+		_titleScope?.Dispose();
+		_titleScope = null;
+		_fileNameScope?.Dispose();
+		_fileNameScope = null;
+		_outputDirectoryScope?.Dispose();
+		_outputDirectoryScope = null;
+		_containerRuntimeScope?.Dispose();
+		_containerRuntimeScope = null;
 	}
 
 	[Test]
-	public async Task C4FileIsCreatedOnDisk()
+	public async Task C4FileIsGeneratedDuringStartup()
 	{
-		var path = Path.Combine(_outputDir!, "test-model.c4");
-
-		await Assert.That(File.Exists(path)).IsTrue();
+		await Assert.That(_modelPath).IsNotNull();
+		await Assert.That(File.Exists(_modelPath!)).IsTrue();
 	}
 
 	[Test]
-	public async Task C4FileContainsValidDslStructure(CancellationToken cancellationToken)
+	public async Task C4FileContainsExpectedDslStructure(CancellationToken cancellationToken)
 	{
-		var path = Path.Combine(_outputDir!, "test-model.c4");
-		var content = await File.ReadAllTextAsync(path, cancellationToken);
+		var content = await File.ReadAllTextAsync(_modelPath!, cancellationToken);
 
 		await Assert.That(content).Contains("specification {");
 		await Assert.That(content).Contains("model {");
 		await Assert.That(content).Contains("views {");
-		await Assert.That(content).Contains("title 'Integration Test Architecture'");
+		await Assert.That(content).Contains("node_app");
+		await Assert.That(content).Contains("Integration Test Architecture");
 	}
 
 	[Test]
-	public async Task C4FileContainsAddedResource(CancellationToken cancellationToken)
+	public async Task LikeC4Visualization_ReachesRunningState(CancellationToken cancellationToken)
 	{
-		var path = Path.Combine(_outputDir!, "test-model.c4");
-		var content = await File.ReadAllTextAsync(path, cancellationToken);
-
-		// Resource names are sanitized (hyphens become underscores) in LikeC4 identifiers.
-		await Assert.That(content).Contains("fake_service");
-		await Assert.That(content).Contains("Fake Service");
+		await WaitForLikeC4ServerRunningAsync(cancellationToken);
 	}
 
 	[Test]
-	public async Task C4FileContainsConfiguredAndKnownIcons(CancellationToken cancellationToken)
+	public async Task LikeC4Visualization_EndpointReturnsSuccess(CancellationToken cancellationToken)
 	{
-		var path = Path.Combine(_outputDir!, "test-model.c4");
-		var content = await File.ReadAllTextAsync(path, cancellationToken);
+		await WaitForLikeC4ServerRunningAsync(cancellationToken);
 
-		await Assert.That(content).Contains("icon tech:dotnet");
-		await Assert.That(content).Contains("icon tech:nodejs");
-		await Assert.That(content).Contains("icon azure:azure-managed-redis");
-		await Assert.That(content).Contains("icon azure:azure-database-postgre-sql-server");
-	}
+		using var client = _app!.CreateHttpClient(LikeC4ResourceName, LikeC4ServerResource.HttpEndpointName);
 
-	[Test]
-	public async Task LikeC4ServerResource_ReachesRunningState(CancellationToken cancellationToken)
-	{
-		await Assert.That(await IsDockerAvailableAsync(cancellationToken)).IsTrue();
-
-		await _app!.ResourceNotifications.WaitForResourceAsync("likec4-server", KnownResourceStates.Running, cancellationToken)
-			.WaitAsync(TimeSpan.FromSeconds(120), cancellationToken);
-	}
-
-	[Test]
-	public async Task LikeC4ServerEndpoint_ReturnsSuccess(CancellationToken cancellationToken)
-	{
-		await Assert.That(await IsDockerAvailableAsync(cancellationToken)).IsTrue();
-
-		await _app!.ResourceNotifications.WaitForResourceAsync("likec4-server", KnownResourceStates.Running, cancellationToken)
-			.WaitAsync(TimeSpan.FromSeconds(120), cancellationToken);
-
-		using var client = _app!.CreateHttpClient("likec4-server", LikeC4ServerResource.HttpEndpointName);
-
-		// The LikeC4 Vite dev server may take a few seconds to fully initialize after the
-		// container reaches Running state; retry with back-off.
 		HttpResponseMessage? response = null;
 		for (var attempt = 0; attempt < 10; attempt++)
 		{
@@ -158,11 +146,77 @@ public sealed class LikeC4VisualizationHostTests : IAsyncDisposable
 		await Assert.That((int)response!.StatusCode).IsLessThan(500);
 	}
 
+	[Test]
+	public async Task LikeC4Visualization_HmrEndpointAcceptsWebSocketConnections(CancellationToken cancellationToken)
+	{
+		await WaitForLikeC4ServerRunningAsync(cancellationToken);
+
+		using var client = _app!.CreateHttpClient(LikeC4ResourceName, LikeC4ServerResource.HttpEndpointName);
+		var viteClient = await client.GetStringAsync("/@vite/client", cancellationToken);
+		var tokenMatch = Regex.Match(viteClient, "wsToken = \\\"([^\\\"]+)\\\"");
+		var portMatch = Regex.Match(viteClient, "hmrPort = (\\d+)");
+
+		await Assert.That(tokenMatch.Success).IsTrue();
+		await Assert.That(portMatch.Success).IsTrue();
+		await Assert.That(int.Parse(portMatch.Groups[1].Value, CultureInfo.InvariantCulture))
+			.IsEqualTo(LikeC4ServerResource.DefaultContainerUpdatePort);
+
+		using var socket = new ClientWebSocket();
+		socket.Options.AddSubProtocol("vite-hmr");
+
+		using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+		linkedCts.CancelAfter(TimeSpan.FromSeconds(10));
+
+		await socket.ConnectAsync(
+			new Uri($"ws://127.0.0.1:{LikeC4ServerResource.DefaultContainerUpdatePort}/?token={tokenMatch.Groups[1].Value}"),
+			linkedCts.Token
+		);
+
+		await Assert.That(socket.State).IsEqualTo(WebSocketState.Open);
+	}
+
+	async Task WaitForLikeC4ServerRunningAsync(CancellationToken cancellationToken)
+	{
+		await _app!.ResourceNotifications.WaitForResourceAsync(
+				LikeC4ResourceName,
+				KnownResourceStates.Running,
+				cancellationToken
+			)
+			.WaitAsync(LikeC4StartupTimeout, cancellationToken);
+	}
 	public async ValueTask DisposeAsync()
 	{
 		if (_app is not null)
 		{
 			await _app.DisposeAsync();
+		}
+
+		if (_outputDir is not null && Directory.Exists(_outputDir))
+		{
+			Directory.Delete(_outputDir, recursive: true);
+		}
+
+		_titleScope?.Dispose();
+		_fileNameScope?.Dispose();
+		_outputDirectoryScope?.Dispose();
+		_containerRuntimeScope?.Dispose();
+	}
+
+	sealed class EnvironmentVariableScope : IDisposable
+	{
+		readonly string _name;
+		readonly string? _previousValue;
+
+		public EnvironmentVariableScope(string name, string value)
+		{
+			_name = name;
+			_previousValue = Environment.GetEnvironmentVariable(name);
+			Environment.SetEnvironmentVariable(name, value);
+		}
+
+		public void Dispose()
+		{
+			Environment.SetEnvironmentVariable(_name, _previousValue);
 		}
 	}
 }

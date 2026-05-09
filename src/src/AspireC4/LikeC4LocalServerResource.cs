@@ -9,13 +9,11 @@ namespace Aspire.Hosting.AspireC4;
 /// </summary>
 public sealed class LikeC4LocalServerResource : ExecutableResource
 {
-    /// <summary>The name of the HTTP endpoint exposed by the LikeC4 server.</summary>
-    public const string HttpEndpointName = "http";
+	/// <summary>The name of the HTTP endpoint exposed by the LikeC4 server.</summary>
+	public const string HttpEndpointName = "http";
 
-    internal const int DefaultPort = 5173;
+	internal const int DefaultPort = 5173;
 
-    internal LikeC4LocalServerResource(string name, string command, string workingDirectory)
-        : base(name, command, workingDirectory)
-    {
-    }
+	internal LikeC4LocalServerResource(string name, string command, string workingDirectory)
+		: base(name, command, workingDirectory) { }
 }
