@@ -531,6 +531,40 @@ public sealed class LikeC4ModelBuilderTests
 		await Assert.That(names).DoesNotContain("excluded");
 	}
 
+	[Test]
+	public async Task Build_DiagramOnlyRelationship_IsEmittedWithoutResourceRelationshipAnnotation()
+	{
+		// Simulates postgres.WithLikeC4Reference(azurePostgres, opts => ...) where no
+		// WithReference was called — a purely diagram-level relationship.
+		var local = CreateContainerResource("postgres");
+		var azure = CreateContainerResource("azure-postgres");
+		local.Annotations.Add(new LikeC4RelationshipDetailsAnnotation("azure-postgres", label: "syncs with", technology: "PostgreSQL / JDBC", description: null));
+
+		var model = LikeC4ModelBuilder.Build([local, azure]);
+
+		await Assert.That(model.Relationships).Count().IsEqualTo(1);
+		var rel = model.Relationships[0];
+		await Assert.That(rel.SourceName).IsEqualTo("postgres");
+		await Assert.That(rel.TargetName).IsEqualTo("azure-postgres");
+		await Assert.That(rel.Label).IsEqualTo("syncs with");
+		await Assert.That(rel.Technology).IsEqualTo("PostgreSQL / JDBC");
+	}
+
+	[Test]
+	public async Task Build_DiagramOnlyRelationship_IsDeduplicatedWhenResourceRelationshipAlsoPresent()
+	{
+		// If WithReference AND WithLikeC4Reference are both called, only one edge should appear.
+		var api = CreateProjectResource("api");
+		var db = CreateContainerResource("db");
+		api.Annotations.Add(new ResourceRelationshipAnnotation(db, "Reference"));
+		api.Annotations.Add(new LikeC4RelationshipDetailsAnnotation("db", label: "Queries", technology: "SQL", description: null));
+
+		var model = LikeC4ModelBuilder.Build([api, db]);
+
+		await Assert.That(model.Relationships).Count().IsEqualTo(1);
+		await Assert.That(model.Relationships[0].Label).IsEqualTo("Queries");
+	}
+
 	// --- Helpers ---
 
 	static ProjectResource CreateProjectResource(string name)

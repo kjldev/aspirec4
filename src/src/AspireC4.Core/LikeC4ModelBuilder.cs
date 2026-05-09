@@ -448,5 +448,34 @@ public static class LikeC4ModelBuilder
 				}
 			);
 		}
+
+		// Second pass: emit diagram-only relationships declared with WithLikeC4Reference that are
+		// not backed by a ResourceRelationshipAnnotation (i.e. no WithReference was called).
+		// The visited set from the first pass ensures we never duplicate a relationship.
+		foreach (var details in resource.Annotations.OfType<LikeC4RelationshipDetailsAnnotation>())
+		{
+			var effectiveTarget = visibleByName.GetValueOrDefault(details.TargetName);
+			if (effectiveTarget is null)
+			{
+				continue;
+			}
+
+			var key = (resource.Name, effectiveTarget.Name);
+			if (!visited.Add(key))
+			{
+				continue;
+			}
+
+			relationships.Add(
+				new LikeC4Relationship
+				{
+					SourceName = resource.Name,
+					TargetName = effectiveTarget.Name,
+					Label = details.Label,
+					Technology = details.Technology,
+					Description = details.Description,
+				}
+			);
+		}
 	}
 }
