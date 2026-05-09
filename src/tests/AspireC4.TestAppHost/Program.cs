@@ -22,15 +22,15 @@ builder.AddLikeC4Visualization(configure: opts =>
 	}
 });
 
-var redis = builder
-	.AddAzureManagedRedis("redis")
+var azureManagerRedis = builder
+	.AddAzureManagedRedis("azure-redis")
 	// Run as container when local
 	.RunAsContainer()
 	// Add LikeC4 details to the component for better visualization in the C4 model.
 	.WithLikeC4Details(label: "Redis", technology: "Azure Redis", description: "A managed Redis instance for testing");
 
-var postgres = builder
-	.AddAzurePostgresFlexibleServer("postgres")
+var azurePostgres = builder
+	.AddAzurePostgresFlexibleServer("azure-postgres")
 	// Run as container when local
 	.RunAsContainer()
 	// Add LikeC4 details to the component for better visualization in the C4 model.
@@ -38,28 +38,27 @@ var postgres = builder
 		c4.WithLabel("Postgres").WithDescription("A managed Postgres instance for testing")
 	);
 
+var redis = builder.AddRedis("redis").WithLikeC4Details(description: "For testing Azure Redis vs. local Redis");
+var postgres = builder
+	.AddPostgres("postgres")
+	.WithLikeC4Details(description: "For testing Azure Postgres vs. local Postgres");
+
 builder
 	.AddNodeApp("node-app", "../../../samples/node-app", "index.js")
 	// Add LikeC4 details to the component for better visualization in the C4 model.
 	.WithLikeC4Details(
 		label: "Node App",
 		technology: "Node.js",
-		description: "A sample Node.js application that connects to Redis and Postgres",
+		description: "A sample Node.js application that connects to Azure Redis and Azure Postgres",
 		icon: "tech:nodejs"
 	)
 	.WithPnpm(install: true)
 	.WithHttpEndpoint(env: "PORT")
 	// These references will be used to generate the connections in the C4 model and also ensure that the application waits for these dependencies to be ready before starting.
-	.WithReference(redis)
-	.WaitFor(redis)
-	.WithLikeC4Reference(redis, opts => opts
-		.WithLabel("Caches sessions")
-		.WithTechnology("Redis Protocol"))
-	.WithReference(postgres)
-	.WaitFor(postgres)
-	.WithLikeC4Reference(postgres, opts => opts
-		.WithLabel("Persists data")
-		.WithTechnology("PostgreSQL / JDBC"));
+	.WithLikeC4Reference(azureManagerRedis, opts => opts.WithLabel("Caches sessions").WithTechnology("Redis Protocol"), withAspireReference: true)
+	.WaitFor(azureManagerRedis)
+	.WithLikeC4Reference(azurePostgres, opts => opts.WithLabel("Persists data").WithTechnology("PostgreSQL / JDBC"), withAspireReference: true)
+	.WaitFor(azurePostgres);
 
 var app = builder.Build();
 

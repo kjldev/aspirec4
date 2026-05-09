@@ -41,11 +41,13 @@ public static class LikeC4VisualizationExtensions
 		ArgumentNullException.ThrowIfNull(builder);
 		ArgumentNullException.ThrowIfNull(name);
 
-		builder.Services.AddOptions<LikeC4DiagramOptions>().Configure(opts =>
-		{
-			configure?.Invoke(opts);
-			opts.OutputDirectory = ResolveOutputDirectory(builder.AppHostDirectory, opts.OutputDirectory);
-		});
+		builder
+			.Services.AddOptions<LikeC4DiagramOptions>()
+			.Configure(opts =>
+			{
+				configure?.Invoke(opts);
+				opts.OutputDirectory = ResolveOutputDirectory(builder.AppHostDirectory, opts.OutputDirectory);
+			});
 
 		// Resolve options at build time so the bind mount and lifecycle hook use the same path.
 		var opts = new LikeC4DiagramOptions();
@@ -63,14 +65,16 @@ public static class LikeC4VisualizationExtensions
 		var useHmrRelay = hmrPortMode == LikeC4HmrPortMode.FixedPort || OperatingSystem.IsWindows();
 		var workspaceVolumeName = ResolveWorkspaceVolumeName(builder.AppHostDirectory, ServerResourceName);
 
-		builder.Services.AddOptions<LikeC4ContainerWorkspaceOptions>().Configure(runtime =>
-		{
-			runtime.VolumeName = workspaceVolumeName;
-			runtime.ContainerImageReference = imageReference;
-			runtime.ContainerRuntimeExecutable = ResolveContainerRuntimeExecutable();
-			runtime.HmrPortMode = hmrPortMode;
-			runtime.UseHmrRelay = useHmrRelay;
-		});
+		builder
+			.Services.AddOptions<LikeC4ContainerWorkspaceOptions>()
+			.Configure(runtime =>
+			{
+				runtime.VolumeName = workspaceVolumeName;
+				runtime.ContainerImageReference = imageReference;
+				runtime.ContainerRuntimeExecutable = ResolveContainerRuntimeExecutable();
+				runtime.HmrPortMode = hmrPortMode;
+				runtime.UseHmrRelay = useHmrRelay;
+			});
 
 		builder.Services.AddEventingSubscriber<LikeC4VisualizationLifecycleHook>();
 		builder.Services.AddLikeC4VisualizationLifecycleHookTelemetry();
@@ -114,9 +118,7 @@ public static class LikeC4VisualizationExtensions
 		ArgumentException.ThrowIfNullOrWhiteSpace(outputDirectory);
 
 		return Path.GetFullPath(
-			Path.IsPathRooted(outputDirectory)
-				? outputDirectory
-				: Path.Combine(appHostDirectory, outputDirectory)
+			Path.IsPathRooted(outputDirectory) ? outputDirectory : Path.Combine(appHostDirectory, outputDirectory)
 		);
 	}
 
@@ -227,18 +229,9 @@ public static class LikeC4VisualizationExtensions
 	/// generated LikeC4 diagram.
 	/// </summary>
 	/// <remarks>
-	/// <para>
 	/// This method only adds the LikeC4 diagram annotation — it does <em>not</em> call
 	/// <c>WithReference</c>. Continue to use Aspire's <c>WithReference</c> to establish the actual
-	/// runtime dependency (connection strings, service discovery, etc.).
-	/// </para>
-	/// <para>Example:</para>
-	/// <code>
-	/// .WithReference(redis)
-	/// .WithLikeC4Reference(redis, opts =&gt; opts
-	///     .WithLabel("Caches sessions")
-	///     .WithTechnology("Redis Protocol"))
-	/// </code>
+	/// runtime dependency, or use the overload that accepts <c>withAspireReference: true</c>.
 	/// </remarks>
 	/// <param name="builder">The source resource builder.</param>
 	/// <param name="target">The target resource builder that the relationship points to.</param>
@@ -266,6 +259,48 @@ public static class LikeC4VisualizationExtensions
 				options.Description
 			)
 		);
+
+		return builder;
+	}
+
+	/// <summary>
+	/// Customises how the relationship from this resource to <paramref name="target"/> appears in the
+	/// generated LikeC4 diagram, and optionally also calls Aspire's <c>WithReference</c>.
+	/// </summary>
+	/// <remarks>
+	/// <para>
+	/// When <paramref name="withAspireReference"/> is <c>true</c>, this method calls
+	/// <c>WithReference</c> internally so you do not need to call it separately:
+	/// </para>
+	/// <code>
+	/// .WithLikeC4Reference(redis, opts =&gt; opts
+	///     .WithLabel("Caches sessions")
+	///     .WithTechnology("Redis Protocol"),
+	///     withAspireReference: true)
+	/// .WaitFor(redis)
+	/// </code>
+	/// </remarks>
+	/// <param name="builder">The source resource builder.</param>
+	/// <param name="target">The target resource builder that the relationship points to.</param>
+	/// <param name="configure">Optional action that configures the relationship appearance. Pass <c>null</c> for defaults.</param>
+	/// <param name="withAspireReference">When <c>true</c>, also calls <c>WithReference</c> on the target.</param>
+	public static IResourceBuilder<T> WithLikeC4Reference<T, TRef>(
+		this IResourceBuilder<T> builder,
+		IResourceBuilder<TRef> target,
+		Action<LikeC4RelationshipOptions>? configure,
+		bool withAspireReference
+	)
+		where T : IResourceWithEnvironment
+		where TRef : IResourceWithConnectionString
+	{
+		ArgumentNullException.ThrowIfNull(builder);
+		ArgumentNullException.ThrowIfNull(target);
+
+		if (withAspireReference)
+			builder.WithReference((IResourceBuilder<IResourceWithConnectionString>)target);
+
+		if (configure is not null)
+			builder.WithLikeC4Reference(target, configure);
 
 		return builder;
 	}
