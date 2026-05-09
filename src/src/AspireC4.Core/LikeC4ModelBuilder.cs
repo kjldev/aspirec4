@@ -283,7 +283,7 @@ public static class LikeC4ModelBuilder
 
 		if (ContainsAny(normalized, "postgresql", "postgres"))
 		{
-			return "azure:azure-database-postgre-sql-server";
+			return "tech:postgresql";
 		}
 
 		if (normalized == "net" || ContainsAny(normalized, "dotnet", "dot net", "asp net"))
@@ -328,7 +328,7 @@ public static class LikeC4ModelBuilder
 
 		if (ContainsAll(normalized, "redis"))
 		{
-			return "azure:azure-managed-redis";
+			return "tech:redis";
 		}
 
 		return null;

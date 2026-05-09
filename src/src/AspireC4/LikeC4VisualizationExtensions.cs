@@ -283,12 +283,13 @@ public static class LikeC4VisualizationExtensions
 	/// <param name="builder">The source resource builder.</param>
 	/// <param name="target">The target resource builder that the relationship points to.</param>
 	/// <param name="configure">Optional action that configures the relationship appearance. Pass <c>null</c> for defaults.</param>
-	/// <param name="withAspireReference">When <c>true</c>, also calls <c>WithReference</c> on the target.</param>
+	/// <param name="withAspireReference">When <c>true</c>, also calls <c>WithReference</c> on the target. Default is <c>true</c>.</param>
 	public static IResourceBuilder<T> WithLikeC4Reference<T, TRef>(
 		this IResourceBuilder<T> builder,
 		IResourceBuilder<TRef> target,
 		Action<LikeC4RelationshipOptions>? configure,
-		bool withAspireReference
+		bool withAspireReference = true,
+		bool withWaitFor = true
 	)
 		where T : IResourceWithEnvironment
 		where TRef : IResourceWithConnectionString

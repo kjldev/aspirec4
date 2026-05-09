@@ -148,14 +148,14 @@ public sealed class LikeC4ModelBuilderTests
 	}
 
 	[Test]
-	public async Task Build_PostgresResource_UsesAzureIcon()
+	public async Task Build_PostgresResource_UsesGenericTechIcon()
 	{
 		var resource = CreateContainerResource("postgres");
 		resource.Annotations.Add(new LikeC4NodeDetailsAnnotation("Postgres", "Azure Postgres", "Managed PostgreSQL"));
 
 		var model = LikeC4ModelBuilder.Build([resource]);
 
-		await Assert.That(model.Elements[0].Icon).IsEqualTo("azure:azure-database-postgre-sql-server");
+		await Assert.That(model.Elements[0].Icon).IsEqualTo("tech:postgresql");
 	}
 
 	[Test]

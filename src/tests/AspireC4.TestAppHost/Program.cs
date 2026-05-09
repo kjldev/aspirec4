@@ -55,10 +55,30 @@ builder
 	.WithPnpm(install: true)
 	.WithHttpEndpoint(env: "PORT")
 	// These references will be used to generate the connections in the C4 model and also ensure that the application waits for these dependencies to be ready before starting.
-	.WithLikeC4Reference(azureManagerRedis, opts => opts.WithLabel("Caches sessions").WithTechnology("Redis Protocol"), withAspireReference: true)
+	.WithLikeC4Reference(
+		azureManagerRedis,
+		opts => opts.WithLabel("Caches sessions").WithTechnology("Redis Protocol"),
+		withAspireReference: true
+	)
 	.WaitFor(azureManagerRedis)
-	.WithLikeC4Reference(azurePostgres, opts => opts.WithLabel("Persists data").WithTechnology("PostgreSQL / JDBC"), withAspireReference: true)
-	.WaitFor(azurePostgres);
+	.WithLikeC4Reference(
+		redis,
+		opts => opts.WithLabel("Caches  sessions (local)").WithTechnology("Redis Protocol"),
+		withAspireReference: true
+	)
+	.WaitFor(redis)
+	.WithLikeC4Reference(
+		azurePostgres,
+		opts => opts.WithLabel("Persists data").WithTechnology("PostgreSQL / JDBC"),
+		withAspireReference: true
+	)
+	.WaitFor(azurePostgres)
+	.WithLikeC4Reference(
+		postgres,
+		opts => opts.WithLabel("Persists data (local)").WithTechnology("PostgreSQL / JDBC"),
+		withAspireReference: true
+	)
+	.WaitFor(postgres);
 
 var app = builder.Build();
 
