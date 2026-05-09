@@ -14,6 +14,9 @@ public sealed class LikeC4DetailsOptions
 	/// <summary>The longer description shown for the resource.</summary>
 	public string? Description { get; private set; }
 
+	/// <summary>The summary shown for the resource.</summary>
+	public string? Summary { get; private set; }
+
 	/// <summary>The explicit LikeC4 icon token or image reference for the resource.</summary>
 	public string? Icon { get; private set; }
 
@@ -39,6 +42,12 @@ public sealed class LikeC4DetailsOptions
 	public LikeC4DetailsOptions WithDescription(string? description)
 	{
 		Description = description;
+		return this;
+	}
+
+	public LikeC4DetailsOptions WithSummary(string? summary)
+	{
+		Summary = summary;
 		return this;
 	}
 

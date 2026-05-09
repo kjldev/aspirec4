@@ -57,6 +57,11 @@ sealed class LikeC4VisualizationLifecycleHook(
 
 				await WriteC4FileAsync(evt.Model, syncContainerWorkspace, resetContainerWorkspace: true, ct);
 
+				if (options.Value.HideFromDashboard)
+				{
+					SetupDashboardIntegration(evt.Model, options.Value.DashboardLinkDisplayName, ct);
+				}
+
 				// Fire-and-forget: watch for resource state changes and regenerate the file.
 				// The ct is the application lifetime token; it is cancelled on shutdown.
 				_ = WatchResourceStatesAsync(evt.Model, syncContainerWorkspace, ct);
@@ -67,6 +72,182 @@ sealed class LikeC4VisualizationLifecycleHook(
 	}
 
 	// ── Background watcher ────────────────────────────────────────────────────
+
+	// ── Dashboard integration (hide & surface URL/command on project resources) ──
+
+	void SetupDashboardIntegration(DistributedApplicationModel appModel, string displayName, CancellationToken cancellationToken)
+	{
+		var serverResource = appModel.Resources
+			.FirstOrDefault(r => r.Name == LikeC4VisualizationExtensions.ServerResourceName);
+
+		if (serverResource is null)
+		{
+			return;
+		}
+
+		// Add a URL callback and command annotation to every project resource so the
+		// diagram link appears in the Aspire dashboard on those rows instead.
+		foreach (var projectResource in appModel.Resources.OfType<ProjectResource>())
+		{
+			// ResourceUrlsCallbackAnnotation: called once when the project resource's
+			// endpoints are first allocated. Adds the diagram URL if LikeC4 is already up.
+			projectResource.Annotations.Add(new ResourceUrlsCallbackAnnotation(ctx =>
+			{
+				var ep = serverResource.Annotations
+					.OfType<EndpointAnnotation>()
+					.FirstOrDefault(e => e.Name == LikeC4ServerResource.HttpEndpointName)
+					?.AllocatedEndpoint;
+
+				if (ep is { Port: > 0 })
+				{
+					var host = ep.Address is "0.0.0.0" ? "localhost" : ep.Address;
+					ctx.Urls.Add(new ResourceUrlAnnotation { Url = $"http://{host}:{ep.Port}", DisplayText = displayName });
+				}
+			}));
+
+			// ResourceCommandAnnotation: re-evaluated on every state update via UpdateCommands.
+			// The executeCommand callback returns a Markdown link that the dashboard renders
+			// as a clickable dialog (displayImmediately: true).
+			projectResource.Annotations.Add(new ResourceCommandAnnotation(
+				name: "likec4-architecture-diagram",
+				displayName: displayName,
+				updateState: _ =>
+				{
+					var ep = serverResource.Annotations
+						.OfType<EndpointAnnotation>()
+						.FirstOrDefault(e => e.Name == LikeC4ServerResource.HttpEndpointName)
+						?.AllocatedEndpoint;
+					return ep is { Port: > 0 } ? ResourceCommandState.Enabled : ResourceCommandState.Disabled;
+				},
+				executeCommand: _ =>
+				{
+					var ep = serverResource.Annotations
+						.OfType<EndpointAnnotation>()
+						.FirstOrDefault(e => e.Name == LikeC4ServerResource.HttpEndpointName)
+						?.AllocatedEndpoint;
+
+					if (ep is null or { Port: 0 })
+					{
+						return Task.FromResult(CommandResults.Failure("The architecture diagram is not yet available."));
+					}
+
+					var host = ep.Address is "0.0.0.0" ? "localhost" : ep.Address;
+					var url = $"http://{host}:{ep.Port}";
+					return Task.FromResult(CommandResults.Success(
+						$"[Open {displayName}]({url})",
+						new CommandResultData
+						{
+							Value = $"[Open {displayName}]({url})",
+							Format = CommandResultFormat.Markdown,
+							DisplayImmediately = true,
+						}
+					));
+				},
+				displayDescription: "View the live LikeC4 architecture diagram",
+				parameter: null,
+				confirmationMessage: null,
+				iconName: "PlugConnected",
+				iconVariant: IconVariant.Filled,
+				isHighlighted: false
+			));
+		}
+
+		// Fire-and-forget background tasks.
+		_ = KeepServerHiddenAsync(serverResource, cancellationToken);
+		_ = InjectDiagramUrlWhenLikeC4RunsAsync(appModel, serverResource, displayName, cancellationToken);
+	}
+
+	/// <summary>
+	/// Watches for the LikeC4 server resource to become Running, then directly injects
+	/// its URL into each project resource's snapshot so the link appears immediately —
+	/// even when the server starts after the project resource's endpoints are already allocated.
+	/// </summary>
+	async Task InjectDiagramUrlWhenLikeC4RunsAsync(
+		DistributedApplicationModel appModel,
+		IResource serverResource,
+		string displayName,
+		CancellationToken cancellationToken
+	)
+	{
+		try
+		{
+			await foreach (var notification in resourceNotificationService.WatchAsync(cancellationToken))
+			{
+				if (notification.Resource.Name != serverResource.Name) continue;
+				if (notification.Snapshot.State?.Text != KnownResourceStates.Running) continue;
+
+				var url = notification.Snapshot.Urls
+					.FirstOrDefault(u => u.Name == LikeC4ServerResource.HttpEndpointName && !u.IsInternal)?.Url;
+
+				if (url is null) continue;
+
+				var capturedUrl = url;
+				foreach (var resource in appModel.Resources.OfType<ProjectResource>())
+				{
+					await resourceNotificationService.PublishUpdateAsync(resource, s =>
+					{
+						// Avoid duplicates if the callback already injected this URL.
+						if (s.Urls.Any(u => u.Name == "architecture-diagram"))
+						{
+							return s;
+						}
+
+						return s with
+						{
+							Urls = s.Urls.Add(new UrlSnapshot(
+								Name: "architecture-diagram",
+								Url: capturedUrl,
+								IsInternal: false
+							)
+							{
+								DisplayProperties = new UrlDisplayPropertiesSnapshot(displayName),
+							})
+						};
+					});
+				}
+
+				break; // Only inject once — the URL persists in the snapshot.
+			}
+		}
+		catch (OperationCanceledException)
+		{
+			// Normal on shutdown.
+		}
+#pragma warning disable CA1031
+		catch (Exception ex)
+		{
+			telemetry.StateWatcherFailed(ex.Message);
+		}
+#pragma warning restore CA1031
+	}
+
+	/// <summary>
+	/// Continuously re-publishes <c>IsHidden = true</c> on the LikeC4 server resource
+	/// whenever DCP resets it to visible, ensuring it stays off the dashboard resource list.
+	/// </summary>
+	async Task KeepServerHiddenAsync(IResource serverResource, CancellationToken cancellationToken)
+	{
+		try
+		{
+			await foreach (var notification in resourceNotificationService.WatchAsync(cancellationToken))
+			{
+				if (notification.Resource.Name != serverResource.Name) continue;
+				if (notification.Snapshot.IsHidden) continue;
+
+				await resourceNotificationService.PublishUpdateAsync(serverResource, s => s with { IsHidden = true });
+			}
+		}
+		catch (OperationCanceledException)
+		{
+			// Normal on shutdown.
+		}
+#pragma warning disable CA1031
+		catch (Exception ex)
+		{
+			telemetry.StateWatcherFailed(ex.Message);
+		}
+#pragma warning restore CA1031
+	}
 
 	async Task WatchResourceStatesAsync(
 		DistributedApplicationModel appModel,

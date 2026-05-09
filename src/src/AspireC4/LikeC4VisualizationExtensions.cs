@@ -93,6 +93,15 @@ public static class LikeC4VisualizationExtensions
 			// changes to the generated .c4 file.
 			.WithEnvironment("CHOKIDAR_USEPOLLING", "1")
 			.WithEnvironment("CHOKIDAR_INTERVAL", "200")
+			.WithUrlForEndpoint(
+				"http",
+				opts =>
+				{
+					opts.DisplayText = "LikeC4 Diagram";
+					opts.DisplayOrder = 0;
+					opts.DisplayLocation = UrlDisplayLocation.SummaryAndDetails;
+				}
+			)
 			.WithHttpEndpoint(
 				name: LikeC4ServerResource.HttpEndpointName,
 				targetPort: LikeC4ServerResource.DefaultContainerServePort
@@ -162,23 +171,20 @@ public static class LikeC4VisualizationExtensions
 		this IResourceBuilder<T> builder,
 		string? label = null,
 		string? technology = null,
-		string? description = null
+		string? description = null,
+		string? summary = null,
+		string? icon = null
 	)
 		where T : IResource =>
-		WithLikeC4DetailsCore(builder, label, technology, description, icon: null, autoIconEnabled: null);
-
-	/// <summary>
-	/// Customises how a resource appears in the generated LikeC4 diagram, including an explicit icon.
-	/// </summary>
-	public static IResourceBuilder<T> WithLikeC4Details<T>(
-		this IResourceBuilder<T> builder,
-		string? label,
-		string? technology,
-		string? description,
-		string? icon
-	)
-		where T : IResource =>
-		WithLikeC4DetailsCore(builder, label, technology, description, icon, autoIconEnabled: null);
+		WithLikeC4DetailsCore(
+			builder,
+			label,
+			technology,
+			description,
+			summary: summary,
+			icon: icon,
+			autoIconEnabled: null
+		);
 
 	/// <summary>
 	/// Customises how a resource appears in the generated LikeC4 diagram using fluent options.
@@ -200,6 +206,7 @@ public static class LikeC4VisualizationExtensions
 			options.Label,
 			options.Technology,
 			options.Description,
+			options.Summary,
 			options.Icon,
 			options.AutoIconEnabled
 		);
@@ -210,6 +217,7 @@ public static class LikeC4VisualizationExtensions
 		string? label,
 		string? technology,
 		string? description,
+		string? summary,
 		string? icon,
 		bool? autoIconEnabled
 	)
@@ -219,7 +227,7 @@ public static class LikeC4VisualizationExtensions
 
 		var effectiveLabel = label ?? builder.Resource.Name;
 		return builder.WithAnnotation(
-			new LikeC4NodeDetailsAnnotation(effectiveLabel, technology, description, icon, autoIconEnabled),
+			new LikeC4NodeDetailsAnnotation(effectiveLabel, technology, description, summary, icon, autoIconEnabled),
 			ResourceAnnotationMutationBehavior.Replace
 		);
 	}

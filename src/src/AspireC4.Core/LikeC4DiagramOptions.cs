@@ -33,4 +33,18 @@ public sealed class LikeC4DiagramOptions
 	/// Defaults to <see langword="true" />.
 	/// </summary>
 	public bool AutoIconsEnabled { get; set; } = true;
+
+	/// <summary>
+	/// When <see langword="true"/>, hides the LikeC4 server resource from the Aspire dashboard
+	/// and instead surfaces the diagram URL as a link and command on all project resources.
+	/// Defaults to <see langword="false"/>.
+	/// </summary>
+	public bool HideFromDashboard { get; set; }
+
+	/// <summary>
+	/// Display name used for the architecture diagram link and command when
+	/// <see cref="HideFromDashboard"/> is <see langword="true"/>.
+	/// Defaults to <c>"Architecture Diagram"</c>.
+	/// </summary>
+	public string DashboardLinkDisplayName { get; set; } = "Architecture Diagram";
 }

@@ -8,15 +8,19 @@ namespace Aspire.Hosting.AspireC4;
 public sealed class LikeC4NodeDetailsAnnotation : IResourceAnnotation
 {
 	public LikeC4NodeDetailsAnnotation(string label, string? technology = null, string? description = null)
-		: this(label, technology, description, icon: null, autoIconEnabled: null) { }
+		: this(label, technology, description, summary: null, icon: null, autoIconEnabled: null) { }
 
 	public LikeC4NodeDetailsAnnotation(string label, string? technology, string? description, string? icon)
-		: this(label, technology, description, icon, autoIconEnabled: null) { }
+		: this(label, technology, description, summary: null, icon, autoIconEnabled: null) { }
+
+	public LikeC4NodeDetailsAnnotation(string label, string? technology, string? description, string? icon, bool? autoIconEnabled)
+		: this(label, technology, description, summary: null, icon, autoIconEnabled) { }
 
 	public LikeC4NodeDetailsAnnotation(
 		string label,
 		string? technology,
 		string? description,
+		string? summary,
 		string? icon,
 		bool? autoIconEnabled
 	)
@@ -31,6 +35,7 @@ public sealed class LikeC4NodeDetailsAnnotation : IResourceAnnotation
 		Label = label;
 		Technology = technology;
 		Description = description;
+		Summary = summary;
 		Icon = icon;
 		AutoIconEnabled = autoIconEnabled;
 	}
@@ -38,6 +43,7 @@ public sealed class LikeC4NodeDetailsAnnotation : IResourceAnnotation
 	public string Label { get; }
 	public string? Technology { get; }
 	public string? Description { get; }
+	public string? Summary { get; }
 	public string? Icon { get; }
 	public bool? AutoIconEnabled { get; }
 }

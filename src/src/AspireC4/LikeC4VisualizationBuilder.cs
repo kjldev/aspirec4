@@ -1,4 +1,5 @@
 using Aspire.Hosting.ApplicationModel;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Aspire.Hosting.AspireC4;
 
@@ -44,6 +45,19 @@ sealed class LikeC4VisualizationBuilder(
 			.WithAnnotation(new ExcludeFromLikeC4Annotation(), ResourceAnnotationMutationBehavior.Replace);
 
 		return new LikeC4VisualizationBuilder(ApplicationBuilder, localBuilder, OutputDirectory);
+	}
+
+	public ILikeC4VisualizationBuilder WithHideFromDashboard(string displayName = "Architecture Diagram")
+	{
+		ArgumentException.ThrowIfNullOrWhiteSpace(displayName);
+
+		ApplicationBuilder.Services.Configure<LikeC4DiagramOptions>(opts =>
+		{
+			opts.HideFromDashboard = true;
+			opts.DashboardLinkDisplayName = displayName;
+		});
+
+		return this;
 	}
 
 	static LikeC4LocalCliRuntime DetectRuntime()

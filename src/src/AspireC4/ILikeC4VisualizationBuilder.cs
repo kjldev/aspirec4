@@ -36,4 +36,19 @@ public interface ILikeC4VisualizationBuilder
 	/// </param>
 	/// <returns>An updated <see cref="ILikeC4VisualizationBuilder"/> with the local server resource.</returns>
 	ILikeC4VisualizationBuilder WithLocalCli(LikeC4LocalCliRuntime runtime = LikeC4LocalCliRuntime.Auto);
+
+	/// <summary>
+	/// Hides the LikeC4 server resource from the Aspire dashboard and instead surfaces
+	/// the diagram as a URL link and command button on every project resource row.
+	/// </summary>
+	/// <remarks>
+	/// When enabled, the <c>likec4-visualization</c> resource is removed from the dashboard
+	/// resource list. Once the server is running, each <see cref="ApplicationModel.ProjectResource"/>
+	/// gains a clickable link and a command button that opens the live diagram.
+	/// </remarks>
+	/// <param name="displayName">
+	/// The text shown for the link and command button. Defaults to <c>"Architecture Diagram"</c>.
+	/// </param>
+	/// <returns>The same <see cref="ILikeC4VisualizationBuilder"/> for further configuration.</returns>
+	ILikeC4VisualizationBuilder WithHideFromDashboard(string displayName = "Architecture Diagram");
 }

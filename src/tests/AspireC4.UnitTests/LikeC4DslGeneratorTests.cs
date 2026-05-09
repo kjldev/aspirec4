@@ -120,7 +120,8 @@ public sealed class LikeC4DslGeneratorTests
 
 		var dsl = LikeC4DslGenerator.Generate(model, DefaultOptions);
 
-		await Assert.That(dsl).Contains("description 'Handles HTTP requests'");
+		await Assert.That(dsl).Contains("description '''");
+		await Assert.That(dsl).Contains("Handles HTTP requests");
 	}
 
 	[Test]
@@ -265,7 +266,8 @@ public sealed class LikeC4DslGeneratorTests
 		var dsl = LikeC4DslGenerator.Generate(model, DefaultOptions);
 
 		await Assert.That(dsl).Contains("api -> db {");
-		await Assert.That(dsl).Contains("description 'Stores user data'");
+		await Assert.That(dsl).Contains("description '''");
+		await Assert.That(dsl).Contains("Stores user data");
 	}
 
 	[Test]

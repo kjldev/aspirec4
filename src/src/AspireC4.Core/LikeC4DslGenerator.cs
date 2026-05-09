@@ -78,7 +78,9 @@ public static class LikeC4DslGenerator
 
 				if (hasDescription)
 				{
-					sb.Append("    description '").Append(EscapeQuote(rel.Description!)).AppendLine("'");
+					sb.Append("    description '''").AppendLine();
+					sb.Append(EscapeQuote(rel.Description!)).AppendLine();
+					sb.AppendLine("'''");
 				}
 
 				sb.AppendLine("  }");
@@ -110,10 +112,11 @@ public static class LikeC4DslGenerator
 		var children = nested.GetValueOrDefault(element.Name);
 		var hasTechnology = !string.IsNullOrWhiteSpace(element.Technology);
 		var hasDescription = !string.IsNullOrWhiteSpace(element.Description);
+		var hasSummary = !string.IsNullOrWhiteSpace(element.Summary);
 		var hasIcon = !string.IsNullOrWhiteSpace(element.Icon);
 		var hasChildren = children?.Count > 0;
 
-		if (!hasTechnology && !hasDescription && !hasIcon && !hasChildren)
+		if (!hasTechnology && !hasDescription && !hasSummary && !hasIcon && !hasChildren)
 		{
 			sb.AppendLine();
 			return;
@@ -126,9 +129,19 @@ public static class LikeC4DslGenerator
 			sb.Append(indent).Append("  technology '").Append(EscapeQuote(element.Technology!)).AppendLine("'");
 		}
 
+		if (hasSummary)
+		{
+			sb.Append(indent).Append("  summary '").Append(EscapeQuote(element.Summary!)).AppendLine("'");
+		}
+
 		if (hasDescription)
 		{
-			sb.Append(indent).Append("  description '").Append(EscapeQuote(element.Description!)).AppendLine("'");
+			sb.Append(indent)
+				.Append("  description '''")
+				.AppendLine()
+				.Append(EscapeQuote(element.Description!))
+				.AppendLine()
+				.AppendLine("'''");
 		}
 
 		if (hasIcon)

@@ -18,6 +18,9 @@ public sealed record LikeC4Element
 	/// <summary>Optional longer description shown in element details.</summary>
 	public string? Description { get; init; }
 
+	/// <summary>Optional summary shown in element details.</summary>
+	public string? Summary { get; init; }
+
 	/// <summary>Optional LikeC4 icon token or image reference shown on the element.</summary>
 	public string? Icon { get; init; }
 
