@@ -223,6 +223,54 @@ public static class LikeC4VisualizationExtensions
 	}
 
 	/// <summary>
+	/// Customises how the relationship from this resource to <paramref name="target"/> appears in the
+	/// generated LikeC4 diagram.
+	/// </summary>
+	/// <remarks>
+	/// <para>
+	/// This method only adds the LikeC4 diagram annotation — it does <em>not</em> call
+	/// <c>WithReference</c>. Continue to use Aspire's <c>WithReference</c> to establish the actual
+	/// runtime dependency (connection strings, service discovery, etc.).
+	/// </para>
+	/// <para>Example:</para>
+	/// <code>
+	/// .WithReference(redis)
+	/// .WithLikeC4Reference(redis, opts =&gt; opts
+	///     .WithLabel("Caches sessions")
+	///     .WithTechnology("Redis Protocol"))
+	/// </code>
+	/// </remarks>
+	/// <param name="builder">The source resource builder.</param>
+	/// <param name="target">The target resource builder that the relationship points to.</param>
+	/// <param name="configure">Action that configures the relationship appearance.</param>
+	public static IResourceBuilder<T> WithLikeC4Reference<T, TRef>(
+		this IResourceBuilder<T> builder,
+		IResourceBuilder<TRef> target,
+		Action<LikeC4RelationshipOptions> configure
+	)
+		where T : IResource
+		where TRef : IResource
+	{
+		ArgumentNullException.ThrowIfNull(builder);
+		ArgumentNullException.ThrowIfNull(target);
+		ArgumentNullException.ThrowIfNull(configure);
+
+		var options = new LikeC4RelationshipOptions();
+		configure(options);
+
+		builder.Resource.Annotations.Add(
+			new LikeC4RelationshipDetailsAnnotation(
+				target.Resource.Name,
+				options.Label,
+				options.Technology,
+				options.Description
+			)
+		);
+
+		return builder;
+	}
+
+	/// <summary>
 	/// Excludes a resource from the generated LikeC4 diagram.
 	/// </summary>
 	public static IResourceBuilder<T> ExcludeFromLikeC4<T>(this IResourceBuilder<T> builder)

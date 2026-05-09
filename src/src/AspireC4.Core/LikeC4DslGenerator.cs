@@ -64,7 +64,29 @@ public static class LikeC4DslGenerator
 				sb.Append(" '").Append(EscapeQuote(rel.Label)).Append('\'');
 			}
 
-			sb.AppendLine();
+			var hasTechnology = !string.IsNullOrWhiteSpace(rel.Technology);
+			var hasDescription = !string.IsNullOrWhiteSpace(rel.Description);
+
+			if (hasTechnology || hasDescription)
+			{
+				sb.AppendLine(" {");
+
+				if (hasTechnology)
+				{
+					sb.Append("    technology '").Append(EscapeQuote(rel.Technology!)).AppendLine("'");
+				}
+
+				if (hasDescription)
+				{
+					sb.Append("    description '").Append(EscapeQuote(rel.Description!)).AppendLine("'");
+				}
+
+				sb.AppendLine("  }");
+			}
+			else
+			{
+				sb.AppendLine();
+			}
 		}
 
 		sb.AppendLine("}");

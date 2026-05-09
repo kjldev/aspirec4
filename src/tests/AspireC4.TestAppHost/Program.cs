@@ -52,8 +52,14 @@ builder
 	// These references will be used to generate the connections in the C4 model and also ensure that the application waits for these dependencies to be ready before starting.
 	.WithReference(redis)
 	.WaitFor(redis)
+	.WithLikeC4Reference(redis, opts => opts
+		.WithLabel("Caches sessions")
+		.WithTechnology("Redis Protocol"))
 	.WithReference(postgres)
-	.WaitFor(postgres);
+	.WaitFor(postgres)
+	.WithLikeC4Reference(postgres, opts => opts
+		.WithLabel("Persists data")
+		.WithTechnology("PostgreSQL / JDBC"));
 
 var app = builder.Build();
 

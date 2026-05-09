@@ -418,12 +418,28 @@ public static class LikeC4ModelBuilder
 				continue;
 			}
 
+			// Look for a LikeC4-specific override. Keyed by target name; also checks the resolved
+			// effective target for the Azure RunAsContainer() surrogate pattern.
+			var details = resource.Annotations
+				.OfType<LikeC4RelationshipDetailsAnnotation>()
+				.LastOrDefault(a =>
+					string.Equals(a.TargetName, annotation.Resource.Name, StringComparison.OrdinalIgnoreCase)
+					|| string.Equals(a.TargetName, effectiveTarget.Name, StringComparison.OrdinalIgnoreCase));
+
+			// Fall back to the Aspire relationship type as label when not a generic 'Reference'
+			// or infrastructure 'WaitFor' annotation and no explicit label was provided.
+			var inferredLabel = annotation.Type is not ("Reference" or WaitForRelationshipType)
+				? annotation.Type
+				: null;
+
 			relationships.Add(
 				new LikeC4Relationship
 				{
 					SourceName = resource.Name,
 					TargetName = effectiveTarget.Name,
-					Label = annotation.Type is not ("Reference" or WaitForRelationshipType) ? annotation.Type : null,
+					Label = details?.Label ?? inferredLabel,
+					Technology = details?.Technology,
+					Description = details?.Description,
 				}
 			);
 		}

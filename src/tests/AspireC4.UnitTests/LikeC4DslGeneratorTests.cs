@@ -220,6 +220,74 @@ public sealed class LikeC4DslGeneratorTests
 		var dsl = LikeC4DslGenerator.Generate(model, DefaultOptions);
 
 		await Assert.That(dsl).Contains("api -> queue 'Publishes'");
+		// label-only: the relationship line should NOT open a block
+		await Assert.That(dsl).DoesNotContain("api -> queue 'Publishes' {");
+	}
+
+	[Test]
+	public async Task Generate_RelationshipWithTechnology_EmitsBlock()
+	{
+		var model = new LikeC4Model
+		{
+			Elements =
+			[
+				new LikeC4Element { Name = "api", Label = "API", Kind = LikeC4ElementKind.Component },
+				new LikeC4Element { Name = "db", Label = "DB", Kind = LikeC4ElementKind.Database },
+			],
+			Relationships =
+			[
+				new LikeC4Relationship { SourceName = "api", TargetName = "db", Technology = "PostgreSQL" },
+			],
+		};
+
+		var dsl = LikeC4DslGenerator.Generate(model, DefaultOptions);
+
+		await Assert.That(dsl).Contains("api -> db {");
+		await Assert.That(dsl).Contains("technology 'PostgreSQL'");
+	}
+
+	[Test]
+	public async Task Generate_RelationshipWithDescription_EmitsBlock()
+	{
+		var model = new LikeC4Model
+		{
+			Elements =
+			[
+				new LikeC4Element { Name = "api", Label = "API", Kind = LikeC4ElementKind.Component },
+				new LikeC4Element { Name = "db", Label = "DB", Kind = LikeC4ElementKind.Database },
+			],
+			Relationships =
+			[
+				new LikeC4Relationship { SourceName = "api", TargetName = "db", Description = "Stores user data" },
+			],
+		};
+
+		var dsl = LikeC4DslGenerator.Generate(model, DefaultOptions);
+
+		await Assert.That(dsl).Contains("api -> db {");
+		await Assert.That(dsl).Contains("description 'Stores user data'");
+	}
+
+	[Test]
+	public async Task Generate_RelationshipWithLabelAndTechnology_EmitsBoth()
+	{
+		var model = new LikeC4Model
+		{
+			Elements =
+			[
+				new LikeC4Element { Name = "api", Label = "API", Kind = LikeC4ElementKind.Component },
+				new LikeC4Element { Name = "cache", Label = "Cache", Kind = LikeC4ElementKind.Container },
+			],
+			Relationships =
+			[
+				new LikeC4Relationship { SourceName = "api", TargetName = "cache", Label = "Caches data", Technology = "Redis Protocol" },
+			],
+		};
+
+		var dsl = LikeC4DslGenerator.Generate(model, DefaultOptions);
+
+		await Assert.That(dsl).Contains("api -> cache 'Caches data' {");
+		await Assert.That(dsl).Contains("technology 'Redis Protocol'");
 	}
 
 	[Test]

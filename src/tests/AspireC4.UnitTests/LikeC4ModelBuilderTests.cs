@@ -267,6 +267,75 @@ public sealed class LikeC4ModelBuilderTests
 	}
 
 	[Test]
+	public async Task Build_RelationshipDetailsAnnotation_OverridesLabel()
+	{
+		var api = CreateProjectResource("api");
+		var db = CreateContainerResource("db");
+		api.Annotations.Add(new ResourceRelationshipAnnotation(db, "Reference"));
+		api.Annotations.Add(new LikeC4RelationshipDetailsAnnotation("db", label: "Reads from", technology: null, description: null));
+
+		var model = LikeC4ModelBuilder.Build([api, db]);
+
+		await Assert.That(model.Relationships[0].Label).IsEqualTo("Reads from");
+	}
+
+	[Test]
+	public async Task Build_RelationshipDetailsAnnotation_SetsTechnologyAndDescription()
+	{
+		var api = CreateProjectResource("api");
+		var db = CreateContainerResource("db");
+		api.Annotations.Add(new ResourceRelationshipAnnotation(db, "Reference"));
+		api.Annotations.Add(new LikeC4RelationshipDetailsAnnotation("db", label: null, technology: "PostgreSQL", description: "Stores user records"));
+
+		var model = LikeC4ModelBuilder.Build([api, db]);
+
+		var rel = model.Relationships[0];
+		await Assert.That(rel.Technology).IsEqualTo("PostgreSQL");
+		await Assert.That(rel.Description).IsEqualTo("Stores user records");
+		await Assert.That(rel.Label).IsNull();
+	}
+
+	[Test]
+	public async Task Build_RelationshipDetailsAnnotation_MatchesSurrogateName()
+	{
+		// The WithLikeC4Reference target name is the hidden Azure resource name;
+		// the effective target is the surrogate container — both share the same name "redis".
+		var hiddenAzureRedis = new TestSystemResource("redis");
+		hiddenAzureRedis.Annotations.Add(new ResourceSnapshotAnnotation(new CustomResourceSnapshot
+		{
+			ResourceType = "Azure.Redis",
+			Properties = [],
+			IsHidden = true,
+		}));
+
+		var visibleContainerRedis = CreateContainerResource("redis");
+
+		var nodeApp = new ExecutableResource("node-app", "node", ".");
+		nodeApp.Annotations.Add(new ResourceRelationshipAnnotation(hiddenAzureRedis, "Reference"));
+		nodeApp.Annotations.Add(new LikeC4RelationshipDetailsAnnotation("redis", label: "Caches sessions", technology: "Redis Protocol", description: null));
+
+		var model = LikeC4ModelBuilder.Build([hiddenAzureRedis, visibleContainerRedis, nodeApp]);
+
+		var rel = model.Relationships[0];
+		await Assert.That(rel.Label).IsEqualTo("Caches sessions");
+		await Assert.That(rel.Technology).IsEqualTo("Redis Protocol");
+	}
+
+	[Test]
+	public async Task Build_RelationshipDetailsAnnotation_LastAnnotationWins()
+	{
+		var api = CreateProjectResource("api");
+		var db = CreateContainerResource("db");
+		api.Annotations.Add(new ResourceRelationshipAnnotation(db, "Reference"));
+		api.Annotations.Add(new LikeC4RelationshipDetailsAnnotation("db", label: "First", technology: null, description: null));
+		api.Annotations.Add(new LikeC4RelationshipDetailsAnnotation("db", label: "Last", technology: null, description: null));
+
+		var model = LikeC4ModelBuilder.Build([api, db]);
+
+		await Assert.That(model.Relationships[0].Label).IsEqualTo("Last");
+	}
+
+	[Test]
 	public async Task Build_NonReferenceRelationshipType_SetsLabel()
 	{
 		var api = CreateProjectResource("api");
