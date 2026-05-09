@@ -27,7 +27,12 @@ var azureManagerRedis = builder
 	// Run as container when local
 	.RunAsContainer()
 	// Add LikeC4 details to the component for better visualization in the C4 model.
-	.WithLikeC4Details(label: "Redis", technology: "Azure Redis", description: "A managed Redis instance for testing");
+	.WithLikeC4Details(
+		label: "Redis",
+		technology: "Azure Redis",
+		description: "A **Managed Azure** Redis instance for testing",
+		summary: "Azure Managed Redis"
+	);
 
 var azurePostgres = builder
 	.AddAzurePostgresFlexibleServer("azure-postgres")
@@ -35,13 +40,23 @@ var azurePostgres = builder
 	.RunAsContainer()
 	// Add LikeC4 details to the component for better visualization in the C4 model.
 	.WithLikeC4Details(static c4 =>
-		c4.WithLabel("Postgres").WithDescription("A managed Postgres instance for testing")
+		c4.WithLabel("Postgres")
+			.WithSummary("Azure Managed Postgres Flexible Server")
+			.WithDescription("An **Azure Managed** Postgres instance for testing")
 	);
 
-var redis = builder.AddRedis("redis").WithLikeC4Details(description: "For testing Azure Redis vs. local Redis");
+var redis = builder
+	.AddRedis("redis")
+	.WithLikeC4Details(
+		description: "For testing **locally**, uses Redis as a container",
+		summary: "Local redis for development"
+	);
 var postgres = builder
 	.AddPostgres("postgres")
-	.WithLikeC4Details(description: "For testing Azure Postgres vs. local Postgres");
+	.WithLikeC4Details(
+		description: "For testing Azure Postgres vs. local Postgres",
+		summary: "Local Postgres for development"
+	);
 
 builder
 	.AddNodeApp("node-app", "../../../samples/node-app", "index.js")
@@ -79,6 +94,9 @@ builder
 		withAspireReference: true
 	)
 	.WaitFor(postgres);
+
+postgres.WithLikeC4Reference(azurePostgres, opts => opts.WithLabel("syncs with").WithTechnology("PostgreSQL / JDBC"));
+redis.WithLikeC4Reference(azureManagerRedis, opts => opts.WithLabel("syncs with").WithTechnology("Redis Protocol"));
 
 var app = builder.Build();
 

@@ -16,109 +16,130 @@ public static class LikeC4VisualizationExtensions
 {
 	internal const string ServerResourceName = "likec4-visualization";
 
-	/// <summary>
-	/// Adds a LikeC4 live architecture diagram to the Aspire application.
-	/// </summary>
-	/// <remarks>
-	/// This registers a lifecycle hook that generates a <c>.c4</c> model file from the Aspire
-	/// resource graph, and starts the official <c>ghcr.io/likec4/likec4</c> container as a
-	/// sidecar that renders an interactive, hot-reloading diagram in the browser.
-	/// <para>
-	/// <b>Prerequisite:</b> Docker must be available (standard Aspire requirement). To use a
-	/// local Node.js CLI instead, call <c>.WithLocalCli()</c> on the returned builder.
-	/// </para>
-	/// </remarks>
-	/// <param name="builder">The distributed application builder.</param>
-	/// <param name="name">The name of the LikeC4 visualization resource (used for the server container and diagram file).</param>
-	/// <param name="configure">Optional callback to configure <see cref="LikeC4DiagramOptions"/>.</param>
-	/// <returns>An <see cref="ILikeC4VisualizationBuilder"/> for further configuration.</returns>
-	public static ILikeC4VisualizationBuilder AddLikeC4Visualization(
-		this IDistributedApplicationBuilder builder,
-		[ResourceName] string name = ServerResourceName,
-		Action<LikeC4DiagramOptions>? configure = null
-	)
+	extension(IDistributedApplicationBuilder builder)
 	{
-		ArgumentNullException.ThrowIfNull(builder);
-		ArgumentNullException.ThrowIfNull(name);
+		/// <summary>
+		/// Adds a LikeC4 live architecture diagram to the Aspire application.
+		/// </summary>
+		/// <remarks>
+		/// This registers a lifecycle hook that generates a <c>.c4</c> model file from the Aspire
+		/// resource graph, and starts the official <c>ghcr.io/likec4/likec4</c> container as a
+		/// sidecar that renders an interactive, hot-reloading diagram in the browser.
+		/// <para>
+		/// <b>Prerequisite:</b> Docker must be available (standard Aspire requirement). To use a
+		/// local Node.js CLI instead, call <c>.WithLocalCli()</c> on the returned builder.
+		/// </para>
+		/// </remarks>
+		/// <param name="builder">The distributed application builder.</param>
+		/// <param name="name">The name of the LikeC4 visualization resource (used for the server container and diagram file).</param>
+		/// <param name="port">Optional host port to bind the LikeC4 server's HTTP endpoint to. By default, no fixed host port is used and Docker assigns a dynamic port.</param>
+		/// <param name="configure">Optional callback to configure <see cref="LikeC4DiagramOptions"/>.</param>
+		/// <returns>An <see cref="ILikeC4VisualizationBuilder"/> for further configuration.</returns>
+		public ILikeC4VisualizationBuilder AddLikeC4Visualization(
+			[ResourceName] string name = ServerResourceName,
+			int? port = null,
+			Action<LikeC4DiagramOptions>? configure = null
+		)
+		{
+			ArgumentNullException.ThrowIfNull(builder);
+			ArgumentNullException.ThrowIfNull(name);
 
-		builder
-			.Services.AddOptions<LikeC4DiagramOptions>()
-			.Configure(opts =>
-			{
-				configure?.Invoke(opts);
-				opts.OutputDirectory = ResolveOutputDirectory(builder.AppHostDirectory, opts.OutputDirectory);
-			});
-
-		// Resolve options at build time so the bind mount and lifecycle hook use the same path.
-		var opts = new LikeC4DiagramOptions();
-		configure?.Invoke(opts);
-
-		var outputDir = ResolveOutputDirectory(builder.AppHostDirectory, opts.OutputDirectory);
-		Directory.CreateDirectory(outputDir);
-		var imageTag = opts.ContainerImageTag ?? LikeC4ServerResource.DefaultTag;
-		var imageReference = LikeC4ServerResource.GetImageReference(imageTag);
-		var hmrPortMode = LikeC4HmrPortCompatibility.Resolve(imageTag);
-		// Use the relay on Windows even in Configurable mode: Docker Desktop may fail to publish
-		// the well-known port (24678) reliably due to Hyper-V port reservations or port-cleanup
-		// races between container restarts. The relay owns port 24678 on the host side and
-		// bridges incoming HMR connections to whatever dynamic port Docker happened to allocate.
-		var useHmrRelay = hmrPortMode == LikeC4HmrPortMode.FixedPort || OperatingSystem.IsWindows();
-		var workspaceVolumeName = ResolveWorkspaceVolumeName(builder.AppHostDirectory, ServerResourceName);
-
-		builder
-			.Services.AddOptions<LikeC4ContainerWorkspaceOptions>()
-			.Configure(runtime =>
-			{
-				runtime.VolumeName = workspaceVolumeName;
-				runtime.ContainerImageReference = imageReference;
-				runtime.ContainerRuntimeExecutable = ResolveContainerRuntimeExecutable();
-				runtime.HmrPortMode = hmrPortMode;
-				runtime.UseHmrRelay = useHmrRelay;
-			});
-
-		builder.Services.AddEventingSubscriber<LikeC4VisualizationLifecycleHook>();
-		builder.Services.AddLikeC4VisualizationLifecycleHookTelemetry();
-
-		var serverResource = new LikeC4ServerResource(ServerResourceName);
-
-		var serverBuilder = builder
-			.AddResource(serverResource)
-			.WithImage(LikeC4ServerResource.DefaultImage, imageTag)
-			.WithImageRegistry(LikeC4ServerResource.DefaultRegistry)
-			// "serve",
-			.WithArgs("start", ".", "--port", LikeC4ServerResource.DefaultContainerServePort)
-			.WithVolume(workspaceVolumeName, LikeC4ServerResource.WorkspacePath)
-			// Required on Windows/Docker Desktop: inotify events do not propagate from the host
-			// filesystem into the container, so chokidar must fall back to polling to detect
-			// changes to the generated .c4 file.
-			.WithEnvironment("CHOKIDAR_USEPOLLING", "1")
-			.WithEnvironment("CHOKIDAR_INTERVAL", "200")
-			.WithUrlForEndpoint(
-				"http",
-				opts =>
+			builder
+				.Services.AddOptions<LikeC4DiagramOptions>()
+				.Configure(opts =>
 				{
-					opts.DisplayText = "LikeC4 Diagram";
-					opts.DisplayOrder = 0;
-					opts.DisplayLocation = UrlDisplayLocation.SummaryAndDetails;
-				}
-			)
-			.WithHttpEndpoint(
-				name: LikeC4ServerResource.HttpEndpointName,
-				targetPort: LikeC4ServerResource.DefaultContainerServePort
-			)
-			.WithHttpEndpoint(
-				targetPort: LikeC4ServerResource.DefaultContainerUpdatePort,
-				// When using the relay, omit a fixed host port so Docker allocates a dynamic one.
-				// The relay owns port 24678 on the host and bridges connections to the dynamic port.
-				// Direct fixed-port mapping is only safe on non-Windows Configurable-mode images.
-				port: useHmrRelay ? null : LikeC4ServerResource.DefaultContainerUpdatePort,
-				name: LikeC4ServerResource.HmrEndpointName
-			)
-			.WithExternalHttpEndpoints()
-			// Exclude the sidecar from the architecture diagram — it is tooling, not a system element.
-			.WithAnnotation(new ExcludeFromLikeC4Annotation(), ResourceAnnotationMutationBehavior.Replace);
+					configure?.Invoke(opts);
+					opts.OutputDirectory = ResolveOutputDirectory(builder.AppHostDirectory, opts.OutputDirectory);
+				});
 
-		return new LikeC4VisualizationBuilder(builder, serverBuilder, outputDir);
+			// Resolve options at build time so the bind mount and lifecycle hook use the same path.
+			LikeC4DiagramOptions opts = new();
+			configure?.Invoke(opts);
+
+			var outputDir = ResolveOutputDirectory(builder.AppHostDirectory, opts.OutputDirectory);
+			Directory.CreateDirectory(outputDir);
+			var imageTag = opts.ContainerImageTag ?? LikeC4ServerResource.DefaultTag;
+			var imageReference = LikeC4ServerResource.GetImageReference(imageTag);
+			var hmrPortMode = LikeC4HmrPortCompatibility.Resolve(imageTag);
+			// Use the relay on Windows even in Configurable mode: Docker Desktop may fail to publish
+			// the well-known port (24678) reliably due to Hyper-V port reservations or port-cleanup
+			// races between container restarts. The relay owns port 24678 on the host side and
+			// bridges incoming HMR connections to whatever dynamic port Docker happened to allocate.
+			var useHmrRelay = hmrPortMode == LikeC4HmrPortMode.FixedPort || OperatingSystem.IsWindows();
+			var workspaceVolumeName = ResolveWorkspaceVolumeName(builder.AppHostDirectory, ServerResourceName);
+
+			builder
+				.Services.AddOptions<LikeC4ContainerWorkspaceOptions>()
+				.Configure(runtime =>
+				{
+					runtime.VolumeName = workspaceVolumeName;
+					runtime.ContainerImageReference = imageReference;
+					runtime.ContainerRuntimeExecutable = ResolveContainerRuntimeExecutable();
+					runtime.HmrPortMode = hmrPortMode;
+					runtime.UseHmrRelay = useHmrRelay;
+				});
+
+			builder.Services.AddEventingSubscriber<LikeC4VisualizationLifecycleHook>();
+			builder.Services.AddLikeC4VisualizationLifecycleHookTelemetry();
+
+			LikeC4ServerResource serverResource = new(ServerResourceName);
+			builder.Eventing.Subscribe<BeforeStartEvent>(
+				(_, _) =>
+				{
+					var otlpExporterAnnotations = serverResource.Annotations.OfType<OtlpExporterAnnotation>().ToArray();
+					foreach (var annotation in otlpExporterAnnotations)
+						serverResource.Annotations.Remove(annotation);
+
+					return Task.CompletedTask;
+				}
+			);
+
+			var serverBuilder = builder
+				.AddResource(serverResource)
+				.WithImage(LikeC4ServerResource.DefaultImage)
+				.WithImageTag(imageTag)
+				.WithImageRegistry(LikeC4ServerResource.DefaultRegistry)
+				.WithArgs("start", ".", "--port", LikeC4ServerResource.DefaultContainerServePort)
+				.WithVolume(workspaceVolumeName, LikeC4ServerResource.WorkspacePath)
+				.WithHttpEndpoint(
+					port: port,
+					targetPort: LikeC4ServerResource.DefaultContainerServePort,
+					name: LikeC4ServerResource.HttpEndpointName
+				)
+				.WithUrlForEndpoint(
+					LikeC4ServerResource.HttpEndpointName,
+					opts =>
+					{
+						opts.DisplayText = "LikeC4 Diagram";
+						opts.DisplayOrder = 0;
+						opts.DisplayLocation = UrlDisplayLocation.SummaryAndDetails;
+						opts.Url = "/view/index";
+					}
+				)
+				.WithHttpEndpoint(
+					// When using the relay, omit a fixed host port so Docker allocates a dynamic one.
+					// The relay owns port 24678 on the host and bridges connections to the dynamic port.
+					// Direct fixed-port mapping is only safe on non-Windows Configurable-mode images.
+					port: useHmrRelay ? null : LikeC4ServerResource.DefaultContainerUpdatePort,
+					targetPort: LikeC4ServerResource.DefaultContainerUpdatePort,
+					name: LikeC4ServerResource.HmrEndpointName
+				)
+				//.WithExternalHttpEndpoints()
+				// Exclude the sidecar from the architecture diagram — it is tooling, not a system element.
+				.WithAnnotation(new ExcludeFromLikeC4Annotation(), ResourceAnnotationMutationBehavior.Replace);
+
+			if (OperatingSystem.IsWindows())
+			{
+				serverBuilder
+					// Required on Windows/Docker Desktop: inotify events do not propagate from the host
+					// filesystem into the container, so chokidar must fall back to polling to detect
+					// changes to the generated .c4 file.
+					.WithEnvironment("CHOKIDAR_USEPOLLING", "1")
+					.WithEnvironment("CHOKIDAR_INTERVAL", "200");
+			}
+
+			return new LikeC4VisualizationBuilder(builder, serverBuilder, outputDir);
+		}
 	}
 
 	internal static string ResolveOutputDirectory(string appHostDirectory, string outputDirectory)
@@ -131,6 +152,7 @@ public static class LikeC4VisualizationExtensions
 		);
 	}
 
+	[System.Diagnostics.CodeAnalysis.SuppressMessage("Globalization", "CA1308:Normalize strings to uppercase")]
 	internal static string ResolveWorkspaceVolumeName(string appHostDirectory, string resourceName)
 	{
 		ArgumentException.ThrowIfNullOrWhiteSpace(appHostDirectory);
@@ -176,15 +198,7 @@ public static class LikeC4VisualizationExtensions
 		string? icon = null
 	)
 		where T : IResource =>
-		WithLikeC4DetailsCore(
-			builder,
-			label,
-			technology,
-			description,
-			summary: summary,
-			icon: icon,
-			autoIconEnabled: null
-		);
+		WithLikeC4DetailsCore(builder, label, technology, description, summary, icon, autoIconEnabled: null);
 
 	/// <summary>
 	/// Customises how a resource appears in the generated LikeC4 diagram using fluent options.
@@ -198,7 +212,7 @@ public static class LikeC4VisualizationExtensions
 		ArgumentNullException.ThrowIfNull(builder);
 		ArgumentNullException.ThrowIfNull(configure);
 
-		var options = new LikeC4DetailsOptions();
+		LikeC4DetailsOptions options = new();
 		configure(options);
 
 		return WithLikeC4DetailsCore(
@@ -243,21 +257,21 @@ public static class LikeC4VisualizationExtensions
 	/// </remarks>
 	/// <param name="builder">The source resource builder.</param>
 	/// <param name="target">The target resource builder that the relationship points to.</param>
-	/// <param name="configure">Action that configures the relationship appearance.</param>
+	/// <param name="configure">Optional action that configures the relationship appearance.</param>
 	public static IResourceBuilder<T> WithLikeC4Reference<T, TRef>(
 		this IResourceBuilder<T> builder,
 		IResourceBuilder<TRef> target,
-		Action<LikeC4RelationshipOptions> configure
+		Action<LikeC4RelationshipOptions>? configure = null
 	)
 		where T : IResource
 		where TRef : IResource
 	{
 		ArgumentNullException.ThrowIfNull(builder);
 		ArgumentNullException.ThrowIfNull(target);
-		ArgumentNullException.ThrowIfNull(configure);
 
-		var options = new LikeC4RelationshipOptions();
-		configure(options);
+		LikeC4RelationshipOptions options = new();
+		if (configure is not null)
+			configure(options);
 
 		builder.Resource.Annotations.Add(
 			new LikeC4RelationshipDetailsAnnotation(
@@ -271,47 +285,48 @@ public static class LikeC4VisualizationExtensions
 		return builder;
 	}
 
-	/// <summary>
-	/// Customises how the relationship from this resource to <paramref name="target"/> appears in the
-	/// generated LikeC4 diagram, and optionally also calls Aspire's <c>WithReference</c>.
-	/// </summary>
-	/// <remarks>
-	/// <para>
-	/// When <paramref name="withAspireReference"/> is <c>true</c>, this method calls
-	/// <c>WithReference</c> internally so you do not need to call it separately:
-	/// </para>
-	/// <code>
-	/// .WithLikeC4Reference(redis, opts =&gt; opts
-	///     .WithLabel("Caches sessions")
-	///     .WithTechnology("Redis Protocol"),
-	///     withAspireReference: true)
-	/// .WaitFor(redis)
-	/// </code>
-	/// </remarks>
-	/// <param name="builder">The source resource builder.</param>
-	/// <param name="target">The target resource builder that the relationship points to.</param>
-	/// <param name="configure">Optional action that configures the relationship appearance. Pass <c>null</c> for defaults.</param>
-	/// <param name="withAspireReference">When <c>true</c>, also calls <c>WithReference</c> on the target. Default is <c>true</c>.</param>
-	public static IResourceBuilder<T> WithLikeC4Reference<T, TRef>(
-		this IResourceBuilder<T> builder,
-		IResourceBuilder<TRef> target,
-		Action<LikeC4RelationshipOptions>? configure,
-		bool withAspireReference = true,
-		bool withWaitFor = true
-	)
+	extension<T>(IResourceBuilder<T> builder)
 		where T : IResourceWithEnvironment
-		where TRef : IResourceWithConnectionString
 	{
-		ArgumentNullException.ThrowIfNull(builder);
-		ArgumentNullException.ThrowIfNull(target);
+		/// <summary>
+		/// Customises how the relationship from this resource to <paramref name="target"/> appears in the
+		/// generated LikeC4 diagram, and optionally also calls Aspire's <c>WithReference</c>.
+		/// </summary>
+		/// <remarks>
+		/// <para>
+		/// When <paramref name="withAspireReference"/> is <c>true</c>, this method calls
+		/// <c>WithReference</c> internally so you do not need to call it separately:
+		/// </para>
+		/// <code>
+		/// .WithLikeC4Reference(redis, opts =&gt; opts
+		///     .WithLabel("Caches sessions")
+		///     .WithTechnology("Redis Protocol"),
+		///     withAspireReference: true)
+		/// .WaitFor(redis)
+		/// </code>
+		/// </remarks>
+		/// <param name="builder">The source resource builder.</param>
+		/// <param name="target">The target resource builder that the relationship points to.</param>
+		/// <param name="configure">Optional action that configures the relationship appearance. Pass <c>null</c> for defaults.</param>
+		/// <param name="withAspireReference">When <c>true</c>, also calls <c>WithReference</c> on the target. Default is <c>true</c>.</param>
+		public IResourceBuilder<T> WithLikeC4Reference<TRef>(
+			IResourceBuilder<TRef> target,
+			Action<LikeC4RelationshipOptions>? configure,
+			bool withAspireReference = true
+		)
+			where TRef : IResourceWithConnectionString
+		{
+			ArgumentNullException.ThrowIfNull(builder);
+			ArgumentNullException.ThrowIfNull(target);
 
-		if (withAspireReference)
-			builder.WithReference((IResourceBuilder<IResourceWithConnectionString>)target);
+			if (withAspireReference)
+				builder.WithReference((IResourceBuilder<IResourceWithConnectionString>)target);
 
-		if (configure is not null)
-			builder.WithLikeC4Reference(target, configure);
+			if (configure is not null)
+				builder.WithLikeC4Reference(target, configure);
 
-		return builder;
+			return builder;
+		}
 	}
 
 	/// <summary>
