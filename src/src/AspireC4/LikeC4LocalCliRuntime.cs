@@ -23,4 +23,7 @@ public enum LikeC4LocalCliRuntime
 
 	/// <summary>Uses <c>bunx likec4 serve</c>.</summary>
 	Bun,
+
+	/// <summary>Uses <c>deno run --allow-all likec4 serve</c>.</summary>
+	Deno,
 }

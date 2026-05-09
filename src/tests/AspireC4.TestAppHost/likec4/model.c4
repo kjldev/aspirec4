@@ -7,22 +7,22 @@ model {
   azure_redis = container 'Redis' {
     technology 'Azure Redis'
     description 'A managed Redis instance for testing'
-    icon azure:azure-managed-redis
+    icon tech:redis
   }
   azure_postgres = container 'Postgres' {
     technology 'library/postgres'
     description 'A managed Postgres instance for testing'
-    icon azure:azure-database-postgre-sql-server
+    icon tech:postgresql
   }
   redis = container 'redis' {
     technology 'library/redis'
     description 'For testing Azure Redis vs. local Redis'
-    icon azure:azure-managed-redis
+    icon tech:redis
   }
   postgres = container 'postgres' {
     technology 'library/postgres'
     description 'For testing Azure Postgres vs. local Postgres'
-    icon azure:azure-database-postgre-sql-server
+    icon tech:postgresql
   }
   node_app = executable 'Node App' {
     technology 'Node.js'

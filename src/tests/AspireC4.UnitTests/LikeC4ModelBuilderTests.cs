@@ -148,6 +148,27 @@ public sealed class LikeC4ModelBuilderTests
 	}
 
 	[Test]
+	public async Task Build_AzureSurrogateContainer_InfersAzureIconFromName()
+	{
+		// RunAsContainer() produces a ContainerResource named after the Azure resource (e.g. "azure-redis")
+		var resource = CreateContainerResource("azure-redis");
+
+		var model = LikeC4ModelBuilder.Build([resource]);
+
+		await Assert.That(model.Elements[0].Icon).IsEqualTo("azure:azure-managed-redis");
+	}
+
+	[Test]
+	public async Task Build_PlainRedisContainer_UsesGenericTechIcon()
+	{
+		var resource = CreateContainerResource("redis");
+
+		var model = LikeC4ModelBuilder.Build([resource]);
+
+		await Assert.That(model.Elements[0].Icon).IsEqualTo("tech:redis");
+	}
+
+	[Test]
 	public async Task Build_PostgresResource_UsesGenericTechIcon()
 	{
 		var resource = CreateContainerResource("postgres");

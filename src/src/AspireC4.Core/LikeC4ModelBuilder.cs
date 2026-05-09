@@ -173,6 +173,7 @@ public static class LikeC4ModelBuilder
 			inferredTechnology,
 			resource.Annotations.OfType<ResourceSnapshotAnnotation>().LastOrDefault()?.InitialSnapshot.ResourceType,
 			resource.GetType().Name,
+			resource.Name,
 		];
 
 		foreach (var candidate in candidates)
@@ -194,6 +195,7 @@ public static class LikeC4ModelBuilder
 			resource.Annotations.OfType<ResourceSnapshotAnnotation>().LastOrDefault()?.InitialSnapshot.ResourceType,
 			resource.GetType().FullName,
 			resource.GetType().Name,
+			resource.Name,
 		];
 
 		foreach (var candidate in candidates)

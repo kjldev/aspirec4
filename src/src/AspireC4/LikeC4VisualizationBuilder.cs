@@ -55,6 +55,7 @@ sealed class LikeC4VisualizationBuilder(
 			(LikeC4LocalCliRuntime.Pnpm, "pnpm"),
 			(LikeC4LocalCliRuntime.Yarn, "yarn"),
 			(LikeC4LocalCliRuntime.Bun, "bun"),
+			(LikeC4LocalCliRuntime.Deno, "deno"),
 		];
 
 		foreach (var (candidate, executable) in candidates)
@@ -65,7 +66,7 @@ sealed class LikeC4VisualizationBuilder(
 
 		throw new DistributedApplicationException(
 			"No supported JavaScript package manager was found on the system PATH. "
-				+ "Install one of: Node.js (npx), pnpm, yarn, or bun, then retry. "
+				+ "Install one of: Node.js (npx), pnpm, yarn, bun, or Deno, then retry. "
 				+ "Alternatively, remove WithLocalCli() to use the Docker container (default)."
 		);
 	}
@@ -112,6 +113,10 @@ sealed class LikeC4VisualizationBuilder(
 			LikeC4LocalCliRuntime.Pnpm => ("pnpm", ["exec", "likec4", "serve", outputDirectory, "--port", portStr]),
 			LikeC4LocalCliRuntime.Yarn => ("yarn", ["dlx", "likec4", "serve", outputDirectory, "--port", portStr]),
 			LikeC4LocalCliRuntime.Bun => ("bunx", ["likec4", "serve", outputDirectory, "--port", portStr]),
+			LikeC4LocalCliRuntime.Deno => (
+				"deno",
+				["run", "--allow-all", "likec4", "serve", outputDirectory, "--port", portStr]
+			),
 			_ => throw new ArgumentOutOfRangeException(nameof(runtime), runtime, $"Unsupported runtime: {runtime}"),
 		};
 	}
