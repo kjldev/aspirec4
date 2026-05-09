@@ -47,6 +47,12 @@ A sample Node.js application that connects to Azure Redis and Azure Postgres
     icon tech:nodejs
   }
 
+  redis -> azure_redis 'syncs with' {
+    technology 'Redis Protocol'
+  }
+  postgres -> azure_postgres 'syncs with' {
+    technology 'PostgreSQL / JDBC'
+  }
   node_app -> azure_redis 'Caches sessions' {
     technology 'Redis Protocol'
   }
