@@ -229,6 +229,42 @@ public sealed class LikeC4ModelBuilderTests
 	}
 
 	[Test]
+	public async Task Build_JavaScriptInstallerResource_InfersNodejsIcon()
+	{
+		// Regression: JavaScriptInstallerResource (the real type behind .WithPnpm() in
+		// Aspire.Hosting.JavaScript) was returning tech:java.  CamelCase-splitting
+		// "JavaScriptInstallerResource" yields "java" + "script", and the lone "java" token
+		// exactly matched tech:java at score 0.5.
+		// Fix: the tokeniser now merges adjacent "java"+"script" bigrams into "javascript"
+		// and a TokenAlias redirects "javascript" → "node", scoring tech:nodejs instead.
+		var resource = new JavaScriptInstallerResource("pnpm-installer");
+		resource.Annotations.Add(
+			new ResourceSnapshotAnnotation(new CustomResourceSnapshot { ResourceType = "Executable", Properties = [] })
+		);
+
+		var model = LikeC4ModelBuilder.Build([resource]);
+
+		await Assert.That(model.Elements[0].Icon).IsEqualTo("tech:nodejs");
+	}
+
+	[Test]
+	public async Task Build_JavaApplicationResource_StillInfersJavaIcon()
+	{
+		// Regression guard: the "java"+"script" bigram merge must not affect genuine Java
+		// resources where "java" appears without a following "script" token.
+		var resource = new TestJavaAppResource("java-app");
+		resource.Annotations.Add(
+			new ResourceSnapshotAnnotation(
+				new CustomResourceSnapshot { ResourceType = "JavaApplication", Properties = [] }
+			)
+		);
+
+		var model = LikeC4ModelBuilder.Build([resource]);
+
+		await Assert.That(model.Elements[0].Icon).IsEqualTo("tech:java");
+	}
+
+	[Test]
 	public async Task Build_AzurePostgresRunAsContainer_InfersAzurePostgresIcon()
 	{
 		// Regression: "azure-postgres" container (from RunAsContainer()) was matching tech:postgresql
@@ -1612,4 +1648,12 @@ public sealed class LikeC4ModelBuilderTests
 	sealed class AzurePostgresFlexibleServerResource(string name) : Resource(name);
 
 	sealed class AzureManagedRedisResource(string name) : Resource(name);
+
+	// Named to match the real Aspire.Hosting.JavaScript.JavaScriptInstallerResource so that
+	// the icon matcher sees "JavaScript" in the type's short name and triggers the bigram fix.
+	sealed class JavaScriptInstallerResource(string name) : Resource(name);
+
+	// Generic Java app — "java" appears without a following "script" token, so tech:java
+	// should still be inferred.
+	sealed class TestJavaAppResource(string name) : Resource(name);
 }

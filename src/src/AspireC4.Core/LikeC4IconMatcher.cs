@@ -50,8 +50,14 @@ static class LikeC4IconMatcher
 	};
 
 	// Canonical form for tokens that normalise to an ambiguous short string.
-	// ".NET" → token "net" → preferred canonical icon token "dotnet".
-	static readonly Dictionary<string, string> TokenAliases = new(StringComparer.Ordinal) { ["net"] = "dotnet" };
+	// ".NET"        → token "net"        → preferred canonical icon token "dotnet".
+	// "JavaScript"  → tokens "java"+"script" (CamelCase split) merged to "javascript"
+	//               → preferred canonical icon token "node" (avoids matching tech:java).
+	static readonly Dictionary<string, string> TokenAliases = new(StringComparer.Ordinal)
+	{
+		["net"] = "dotnet",
+		["javascript"] = "node",
+	};
 
 	/// <summary>
 	/// Tries to infer a LikeC4 icon ID from the supplied string candidates.
@@ -250,14 +256,35 @@ static class LikeC4IconMatcher
 	static string[] Tokenize(string? value)
 	{
 		var normalized = NormalizeForIconLookup(value);
-		return string.IsNullOrEmpty(normalized)
-			? []
-			:
-			[
-				.. normalized
-					.Split(' ', StringSplitOptions.RemoveEmptyEntries)
-					.Select(t => TokenAliases.TryGetValue(t, out var alias) ? alias : t),
-			];
+		if (string.IsNullOrEmpty(normalized))
+			return [];
+
+		var rawTokens = normalized.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+
+		// Merge "java" + "script" bigrams into "javascript" so that the class name
+		// "JavaScriptInstallerResource" (Aspire.Hosting.JavaScript namespace) does not produce
+		// a "java" token that exactly matches tech:java.  The "javascript" alias redirects to
+		// "node", yielding tech:nodejs instead.
+		return
+		[
+			.. MergeJavaScriptBigrams(rawTokens).Select(t => TokenAliases.TryGetValue(t, out var alias) ? alias : t),
+		];
+	}
+
+	static IEnumerable<string> MergeJavaScriptBigrams(string[] tokens)
+	{
+		for (var i = 0; i < tokens.Length; i++)
+		{
+			if (tokens[i] == "java" && i + 1 < tokens.Length && tokens[i + 1] == "script")
+			{
+				yield return "javascript";
+				i++; // skip "script"
+			}
+			else
+			{
+				yield return tokens[i];
+			}
+		}
 	}
 
 	// Splits PascalCase / kebab-case / dotted strings into lowercase space-delimited tokens.

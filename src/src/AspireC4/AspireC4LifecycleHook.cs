@@ -435,7 +435,10 @@ sealed class AspireC4LifecycleHook(
 
 			await foreach (var batch in resourceLoggerService.WatchAsync(resource).WithCancellation(cancellationToken))
 			{
-				var errorLines = batch.Where(l => l.IsErrorMessage).Select(l => l.Content).ToList();
+				var errorLines = batch
+					.Where(l => l.IsErrorMessage && LikeC4LogFilter.IsActualError(l.Content))
+					.Select(l => l.Content)
+					.ToList();
 				if (errorLines.Count == 0)
 					continue;
 
