@@ -1,7 +1,7 @@
 namespace Aspire.Hosting.AspireC4;
 
 /// <summary>Configuration options for the LikeC4 diagram generation.</summary>
-public sealed class LikeC4DiagramOptions
+public sealed class AspireC4DiagramOptions
 {
 	public const string SectionName = "AspireC4";
 
@@ -19,6 +19,12 @@ public sealed class LikeC4DiagramOptions
 	/// Defaults to "model".
 	/// </summary>
 	public string FileName { get; set; } = "model";
+
+	/// <summary>
+	/// Disables the Hot Module Replacement (HMR) channel between the LikeC4 server and the browser, which provides
+	/// dynamic/ live updates to the diagram. Defaults to <see langword="false"/> (HMR enabled).
+	/// </summary>
+	public bool DisableHMR { get; set; }
 
 	/// <summary>
 	/// The tag of the <c>ghcr.io/likec4/likec4</c> container image to use for the live server.

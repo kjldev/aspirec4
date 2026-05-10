@@ -21,7 +21,7 @@ interface IAspireC4LifecycleHookTelemetry
 	void RegeneratingDiagramDueToStateChange();
 
 	[Warning]
-	void HmrPortUnavailable(int port, string error);
+	void HMRPortUnavailable(int port, string error);
 
 	[Warning]
 	void StateWatcherFailed(string error);
@@ -33,5 +33,5 @@ interface IAspireC4LifecycleHookTelemetry
 	void LikeC4ValidationPassed();
 
 	[Info]
-	void AdditionalDslFileSynced(string fileName);
+	void AdditionalDSLFileSynced(string fileName);
 }

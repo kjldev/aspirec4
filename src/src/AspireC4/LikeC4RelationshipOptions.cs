@@ -3,7 +3,7 @@ namespace Aspire.Hosting.AspireC4;
 /// <summary>
 /// Fluent options for customising how a relationship appears in the generated LikeC4 diagram.
 /// </summary>
-/// <seealso cref="LikeC4VisualizationExtensions.WithLikeC4Reference{T,TRef}"/>
+/// <seealso cref="AspireC4ResourceBuilderExtensions.WithLikeC4Reference{T,TRef}"/>
 public sealed class LikeC4RelationshipOptions
 {
 	readonly List<string> _tags = [];
@@ -84,6 +84,11 @@ public sealed class LikeC4RelationshipOptions
 		_links.Add(new LikeC4Link(url, title));
 		return this;
 	}
+
+	/// <summary>Adds a hyperlink to this relationship.</summary>
+	/// <param name="uri">The URI, which may be absolute or relative to the <c>.c4</c> file.</param>
+	/// <param name="title">Optional display text.</param>
+	public LikeC4RelationshipOptions WithLink(Uri uri, string? title = null) => WithLink(uri?.ToString()!, title);
 
 	/// <summary>Adds a metadata key-value pair to this relationship.</summary>
 	public LikeC4RelationshipOptions WithMetadata(string key, string value)

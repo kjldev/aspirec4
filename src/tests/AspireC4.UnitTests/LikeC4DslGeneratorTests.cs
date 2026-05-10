@@ -4,7 +4,7 @@ namespace Aspire.Hosting.AspireC4;
 
 public sealed class LikeC4DslGeneratorTests
 {
-	static readonly LikeC4DiagramOptions DefaultOptions = new()
+	static readonly AspireC4DiagramOptions DefaultOptions = new()
 	{
 		Title = "Test Architecture",
 		OutputDirectory = "./likec4",
@@ -14,7 +14,7 @@ public sealed class LikeC4DslGeneratorTests
 	[Test]
 	public async Task Generate_EmptyModel_ProducesMinimalValidDsl()
 	{
-		var dsl = LikeC4DslGenerator.Generate(LikeC4Model.Empty, DefaultOptions);
+		var dsl = LikeC4DSLGenerator.Generate(LikeC4Model.Empty, DefaultOptions);
 
 		// Should produce valid structure even with no elements.
 		await Assert.That(dsl).Contains("specification {");
@@ -40,7 +40,7 @@ public sealed class LikeC4DslGeneratorTests
 			Relationships = [],
 		};
 
-		var dsl = LikeC4DslGenerator.Generate(model, DefaultOptions);
+		var dsl = LikeC4DSLGenerator.Generate(model, DefaultOptions);
 
 		await Assert.That(dsl).Contains("element component");
 	}
@@ -74,7 +74,7 @@ public sealed class LikeC4DslGeneratorTests
 			Relationships = [],
 		};
 
-		var dsl = LikeC4DslGenerator.Generate(model, DefaultOptions);
+		var dsl = LikeC4DSLGenerator.Generate(model, DefaultOptions);
 
 		await Assert.That(dsl).Contains("element component");
 		await Assert.That(dsl).Contains("element database");
@@ -104,7 +104,7 @@ public sealed class LikeC4DslGeneratorTests
 			Relationships = [],
 		};
 
-		var dsl = LikeC4DslGenerator.Generate(model, DefaultOptions);
+		var dsl = LikeC4DSLGenerator.Generate(model, DefaultOptions);
 
 		var count = CountOccurrences(dsl, "element component");
 		await Assert.That(count).IsEqualTo(1);
@@ -128,7 +128,7 @@ public sealed class LikeC4DslGeneratorTests
 			Relationships = [],
 		};
 
-		var dsl = LikeC4DslGenerator.Generate(model, DefaultOptions);
+		var dsl = LikeC4DSLGenerator.Generate(model, DefaultOptions);
 
 		await Assert.That(dsl).Contains("technology 'ASP.NET Core'");
 	}
@@ -151,7 +151,7 @@ public sealed class LikeC4DslGeneratorTests
 			Relationships = [],
 		};
 
-		var dsl = LikeC4DslGenerator.Generate(model, DefaultOptions);
+		var dsl = LikeC4DSLGenerator.Generate(model, DefaultOptions);
 
 		await Assert.That(dsl).Contains("description '''");
 		await Assert.That(dsl).Contains("Handles HTTP requests");
@@ -175,7 +175,7 @@ public sealed class LikeC4DslGeneratorTests
 			Relationships = [],
 		};
 
-		var dsl = LikeC4DslGenerator.Generate(model, DefaultOptions);
+		var dsl = LikeC4DSLGenerator.Generate(model, DefaultOptions);
 
 		await Assert.That(dsl).Contains("icon tech:postgresql");
 	}
@@ -197,7 +197,7 @@ public sealed class LikeC4DslGeneratorTests
 			Relationships = [],
 		};
 
-		var dsl = LikeC4DslGenerator.Generate(model, DefaultOptions);
+		var dsl = LikeC4DSLGenerator.Generate(model, DefaultOptions);
 
 		await Assert.That(dsl).Contains(@"'O\'Brien\'s API'");
 	}
@@ -219,7 +219,7 @@ public sealed class LikeC4DslGeneratorTests
 			Relationships = [],
 		};
 
-		var dsl = LikeC4DslGenerator.Generate(model, DefaultOptions);
+		var dsl = LikeC4DSLGenerator.Generate(model, DefaultOptions);
 
 		await Assert.That(dsl).Contains("my_api_service = component");
 	}
@@ -247,7 +247,7 @@ public sealed class LikeC4DslGeneratorTests
 			Relationships = [new LikeC4Relationship { SourceName = "api", TargetName = "db" }],
 		};
 
-		var dsl = LikeC4DslGenerator.Generate(model, DefaultOptions);
+		var dsl = LikeC4DSLGenerator.Generate(model, DefaultOptions);
 
 		await Assert.That(dsl).Contains("api -> db");
 	}
@@ -283,7 +283,7 @@ public sealed class LikeC4DslGeneratorTests
 			],
 		};
 
-		var dsl = LikeC4DslGenerator.Generate(model, DefaultOptions);
+		var dsl = LikeC4DSLGenerator.Generate(model, DefaultOptions);
 
 		await Assert.That(dsl).Contains("api -> queue 'Publishes'");
 		// label-only: the relationship line should NOT open a block
@@ -321,7 +321,7 @@ public sealed class LikeC4DslGeneratorTests
 			],
 		};
 
-		var dsl = LikeC4DslGenerator.Generate(model, DefaultOptions);
+		var dsl = LikeC4DSLGenerator.Generate(model, DefaultOptions);
 
 		await Assert.That(dsl).Contains("api -> db {");
 		await Assert.That(dsl).Contains("technology 'PostgreSQL'");
@@ -358,7 +358,7 @@ public sealed class LikeC4DslGeneratorTests
 			],
 		};
 
-		var dsl = LikeC4DslGenerator.Generate(model, DefaultOptions);
+		var dsl = LikeC4DSLGenerator.Generate(model, DefaultOptions);
 
 		await Assert.That(dsl).Contains("api -> db {");
 		await Assert.That(dsl).Contains("description '''");
@@ -397,7 +397,7 @@ public sealed class LikeC4DslGeneratorTests
 			],
 		};
 
-		var dsl = LikeC4DslGenerator.Generate(model, DefaultOptions);
+		var dsl = LikeC4DSLGenerator.Generate(model, DefaultOptions);
 
 		await Assert.That(dsl).Contains("api -> cache 'Caches data' {");
 		await Assert.That(dsl).Contains("technology 'Redis Protocol'");
@@ -434,7 +434,7 @@ public sealed class LikeC4DslGeneratorTests
 			],
 		};
 
-		var dsl = LikeC4DslGenerator.Generate(model, DefaultOptions);
+		var dsl = LikeC4DSLGenerator.Generate(model, DefaultOptions);
 
 		await Assert.That(dsl).Contains("api .async queue");
 	}
@@ -470,7 +470,7 @@ public sealed class LikeC4DslGeneratorTests
 			],
 		};
 
-		var dsl = LikeC4DslGenerator.Generate(model, DefaultOptions);
+		var dsl = LikeC4DSLGenerator.Generate(model, DefaultOptions);
 
 		await Assert.That(dsl).Contains("relationship async");
 	}
@@ -507,7 +507,7 @@ public sealed class LikeC4DslGeneratorTests
 			],
 		};
 
-		var dsl = LikeC4DslGenerator.Generate(model, DefaultOptions);
+		var dsl = LikeC4DSLGenerator.Generate(model, DefaultOptions);
 
 		await Assert.That(dsl).Contains("api .async queue 'Publishes'");
 	}
@@ -542,14 +542,14 @@ public sealed class LikeC4DslGeneratorTests
 				},
 			],
 		};
-		var opts = new LikeC4DiagramOptions
+		var opts = new AspireC4DiagramOptions
 		{
 			Title = "Test",
 			OutputDirectory = ".",
 			RelationshipKindSyntax = LikeC4RelationshipKindSyntax.Bracket,
 		};
 
-		var dsl = LikeC4DslGenerator.Generate(model, opts);
+		var dsl = LikeC4DSLGenerator.Generate(model, opts);
 
 		await Assert.That(dsl).Contains("api -[async]-> queue");
 	}
@@ -585,14 +585,14 @@ public sealed class LikeC4DslGeneratorTests
 				},
 			],
 		};
-		var opts = new LikeC4DiagramOptions
+		var opts = new AspireC4DiagramOptions
 		{
 			Title = "Test",
 			OutputDirectory = ".",
 			RelationshipKindSyntax = LikeC4RelationshipKindSyntax.Bracket,
 		};
 
-		var dsl = LikeC4DslGenerator.Generate(model, opts);
+		var dsl = LikeC4DSLGenerator.Generate(model, opts);
 
 		await Assert.That(dsl).Contains("api -[async]-> queue 'Publishes'");
 	}
@@ -640,7 +640,7 @@ public sealed class LikeC4DslGeneratorTests
 			],
 		};
 
-		var dsl = LikeC4DslGenerator.Generate(model, DefaultOptions);
+		var dsl = LikeC4DSLGenerator.Generate(model, DefaultOptions);
 
 		var count = CountOccurrences(dsl, "relationship async");
 		await Assert.That(count).IsEqualTo(1);
@@ -689,7 +689,7 @@ public sealed class LikeC4DslGeneratorTests
 			],
 		};
 
-		var dsl = LikeC4DslGenerator.Generate(model, DefaultOptions);
+		var dsl = LikeC4DSLGenerator.Generate(model, DefaultOptions);
 
 		await Assert.That(dsl).Contains("relationship async");
 		await Assert.That(dsl).Contains("relationship sql");
@@ -718,7 +718,7 @@ public sealed class LikeC4DslGeneratorTests
 			Relationships = [new LikeC4Relationship { SourceName = "api", TargetName = "db" }],
 		};
 
-		var dsl = LikeC4DslGenerator.Generate(model, DefaultOptions);
+		var dsl = LikeC4DSLGenerator.Generate(model, DefaultOptions);
 
 		await Assert.That(dsl).DoesNotContain("relationship ");
 		await Assert.That(dsl).Contains("api -> db");
@@ -755,7 +755,7 @@ public sealed class LikeC4DslGeneratorTests
 			],
 		};
 
-		var dsl = LikeC4DslGenerator.Generate(model, DefaultOptions);
+		var dsl = LikeC4DSLGenerator.Generate(model, DefaultOptions);
 
 		var specIdx = dsl.IndexOf("specification {", StringComparison.Ordinal);
 		var specCloseIdx = dsl.IndexOf('}', specIdx);
@@ -770,7 +770,7 @@ public sealed class LikeC4DslGeneratorTests
 	[Test]
 	public async Task Generate_ViewContainsTitle()
 	{
-		var dsl = LikeC4DslGenerator.Generate(LikeC4Model.Empty, DefaultOptions);
+		var dsl = LikeC4DSLGenerator.Generate(LikeC4Model.Empty, DefaultOptions);
 
 		await Assert.That(dsl).Contains("title 'Test Architecture'");
 	}
@@ -778,9 +778,9 @@ public sealed class LikeC4DslGeneratorTests
 	[Test]
 	public async Task Generate_TitleWithSingleQuote_IsEscaped()
 	{
-		var opts = new LikeC4DiagramOptions { Title = "O'Reilly's App", OutputDirectory = "." };
+		var opts = new AspireC4DiagramOptions { Title = "O'Reilly's App", OutputDirectory = "." };
 
-		var dsl = LikeC4DslGenerator.Generate(LikeC4Model.Empty, opts);
+		var dsl = LikeC4DSLGenerator.Generate(LikeC4Model.Empty, opts);
 
 		await Assert.That(dsl).Contains(@"title 'O\'Reilly\'s App'");
 	}
@@ -802,7 +802,7 @@ public sealed class LikeC4DslGeneratorTests
 			Relationships = [],
 		};
 
-		var dsl = LikeC4DslGenerator.Generate(model, DefaultOptions);
+		var dsl = LikeC4DSLGenerator.Generate(model, DefaultOptions);
 
 		await Assert.That(dsl).Contains("include *");
 	}
@@ -831,7 +831,7 @@ public sealed class LikeC4DslGeneratorTests
 			Relationships = [],
 		};
 
-		var dsl = LikeC4DslGenerator.Generate(model, DefaultOptions);
+		var dsl = LikeC4DSLGenerator.Generate(model, DefaultOptions);
 
 		// The child should appear inside the parent's block
 		var postgresIdx = dsl.IndexOf("postgres = container", StringComparison.Ordinal);
@@ -878,7 +878,7 @@ public sealed class LikeC4DslGeneratorTests
 			Relationships = [],
 		};
 
-		var dsl = LikeC4DslGenerator.Generate(model, DefaultOptions);
+		var dsl = LikeC4DSLGenerator.Generate(model, DefaultOptions);
 
 		if (expectedColor is null)
 		{
@@ -950,7 +950,7 @@ public sealed class LikeC4DslGeneratorTests
 			Relationships = [],
 		};
 
-		var dsl = LikeC4DslGenerator.Generate(model, DefaultOptions);
+		var dsl = LikeC4DSLGenerator.Generate(model, DefaultOptions);
 
 		// Technology stays in model block.
 		await Assert.That(dsl).Contains("technology '.NET'");
@@ -984,7 +984,7 @@ public sealed class LikeC4DslGeneratorTests
 			Relationships = [],
 		};
 
-		var dsl = LikeC4DslGenerator.Generate(model, DefaultOptions);
+		var dsl = LikeC4DSLGenerator.Generate(model, DefaultOptions);
 
 		var viewsIdx = dsl.IndexOf("views {", StringComparison.Ordinal);
 		var iconIdx = dsl.IndexOf("icon tech:dotnet", StringComparison.Ordinal);
@@ -1013,7 +1013,7 @@ public sealed class LikeC4DslGeneratorTests
 			Relationships = [],
 		};
 
-		var dsl = LikeC4DslGenerator.Generate(model, DefaultOptions);
+		var dsl = LikeC4DSLGenerator.Generate(model, DefaultOptions);
 
 		await Assert.That(dsl).DoesNotContain("style api");
 		await Assert.That(dsl).DoesNotContain("color");
@@ -1037,7 +1037,7 @@ public sealed class LikeC4DslGeneratorTests
 			Relationships = [],
 		};
 
-		var dsl = LikeC4DslGenerator.Generate(model, DefaultOptions);
+		var dsl = LikeC4DSLGenerator.Generate(model, DefaultOptions);
 
 		// Tags declared in specification block.
 		await Assert.That(dsl).Contains("tag external");
@@ -1078,7 +1078,7 @@ public sealed class LikeC4DslGeneratorTests
 			Relationships = [],
 		};
 
-		var dsl = LikeC4DslGenerator.Generate(model, DefaultOptions);
+		var dsl = LikeC4DSLGenerator.Generate(model, DefaultOptions);
 
 		var count = CountOccurrences(dsl, "tag external");
 		await Assert.That(count).IsEqualTo(1);
@@ -1106,7 +1106,7 @@ public sealed class LikeC4DslGeneratorTests
 			Relationships = [],
 		};
 
-		var dsl = LikeC4DslGenerator.Generate(model, DefaultOptions);
+		var dsl = LikeC4DSLGenerator.Generate(model, DefaultOptions);
 
 		await Assert.That(dsl).Contains("link https://example.com/docs 'Docs'");
 		await Assert.That(dsl).Contains("link https://example.com/src");
@@ -1131,7 +1131,7 @@ public sealed class LikeC4DslGeneratorTests
 			Relationships = [],
 		};
 
-		var dsl = LikeC4DslGenerator.Generate(model, DefaultOptions);
+		var dsl = LikeC4DSLGenerator.Generate(model, DefaultOptions);
 
 		await Assert.That(dsl).Contains("metadata {");
 		await Assert.That(dsl).Contains("owner 'platform-team'");
@@ -1169,7 +1169,7 @@ public sealed class LikeC4DslGeneratorTests
 			],
 		};
 
-		var dsl = LikeC4DslGenerator.Generate(model, DefaultOptions);
+		var dsl = LikeC4DSLGenerator.Generate(model, DefaultOptions);
 
 		await Assert.That(dsl).Contains("tag internal");
 		await Assert.That(dsl).Contains("#internal");
@@ -1206,7 +1206,7 @@ public sealed class LikeC4DslGeneratorTests
 			],
 		};
 
-		var dsl = LikeC4DslGenerator.Generate(model, DefaultOptions);
+		var dsl = LikeC4DSLGenerator.Generate(model, DefaultOptions);
 
 		await Assert.That(dsl).Contains("link https://runbook.example.com");
 	}
@@ -1242,7 +1242,7 @@ public sealed class LikeC4DslGeneratorTests
 			],
 		};
 
-		var dsl = LikeC4DslGenerator.Generate(model, DefaultOptions);
+		var dsl = LikeC4DSLGenerator.Generate(model, DefaultOptions);
 
 		await Assert.That(dsl).Contains("metadata {");
 		await Assert.That(dsl).Contains("retries '3'");
@@ -1251,7 +1251,7 @@ public sealed class LikeC4DslGeneratorTests
 	[Test]
 	public async Task Generate_CustomElementKindSpec_EmittedInSpecification()
 	{
-		var opts = new LikeC4DiagramOptions
+		var opts = new AspireC4DiagramOptions
 		{
 			Title = "Test",
 			OutputDirectory = ".",
@@ -1265,7 +1265,7 @@ public sealed class LikeC4DslGeneratorTests
 		};
 
 		var model = new LikeC4Model { Elements = [], Relationships = [] };
-		var dsl = LikeC4DslGenerator.Generate(model, opts);
+		var dsl = LikeC4DSLGenerator.Generate(model, opts);
 
 		// Kind declared even though no elements use it.
 		await Assert.That(dsl).Contains("element queue {");
@@ -1279,7 +1279,7 @@ public sealed class LikeC4DslGeneratorTests
 	[Test]
 	public async Task Generate_ElementKindMatchingCustomSpec_EmitsFullBody()
 	{
-		var opts = new LikeC4DiagramOptions
+		var opts = new AspireC4DiagramOptions
 		{
 			Title = "Test",
 			OutputDirectory = ".",
@@ -1300,7 +1300,7 @@ public sealed class LikeC4DslGeneratorTests
 			Relationships = [],
 		};
 
-		var dsl = LikeC4DslGenerator.Generate(model, opts);
+		var dsl = LikeC4DSLGenerator.Generate(model, opts);
 
 		// element kind declared once with the notation body.
 		await Assert.That(dsl).Contains("element component {");
@@ -1333,7 +1333,7 @@ public sealed class LikeC4DslGeneratorTests
 			Relationships = [],
 		};
 
-		var dsl = LikeC4DslGenerator.Generate(model, DefaultOptions);
+		var dsl = LikeC4DSLGenerator.Generate(model, DefaultOptions);
 
 		// Group block inside views.
 		await Assert.That(dsl).Contains("group 'Frontend' {");
@@ -1379,7 +1379,7 @@ public sealed class LikeC4DslGeneratorTests
 			Relationships = [],
 		};
 
-		var dsl = LikeC4DslGenerator.Generate(model, DefaultOptions);
+		var dsl = LikeC4DSLGenerator.Generate(model, DefaultOptions);
 
 		await Assert.That(dsl).Contains("group 'Frontend' {");
 		await Assert.That(dsl).Contains("include ui");

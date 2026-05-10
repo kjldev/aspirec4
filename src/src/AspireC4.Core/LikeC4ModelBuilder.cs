@@ -111,7 +111,7 @@ public static class LikeC4ModelBuilder
 		var parentName = (resource as IResourceWithParent)?.Parent?.Name;
 		var group = resource.Annotations.OfType<LikeC4GroupAnnotation>().LastOrDefault()?.GroupName;
 
-		return new LikeC4Element
+		return new()
 		{
 			Name = resource.Name,
 			Label = label,

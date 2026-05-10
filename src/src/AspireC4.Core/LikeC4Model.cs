@@ -4,6 +4,7 @@ namespace Aspire.Hosting.AspireC4;
 public sealed record LikeC4Model
 {
 	public required IReadOnlyList<LikeC4Element> Elements { get; init; }
+
 	public required IReadOnlyList<LikeC4Relationship> Relationships { get; init; }
 
 	public static readonly LikeC4Model Empty = new() { Elements = [], Relationships = [] };

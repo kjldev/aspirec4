@@ -11,7 +11,7 @@ model {
     summary 'Azure Managed Redis'
     description '''
 A **Managed Azure** Redis instance for testing
-'''
+  '''
     icon azure:azure-managed-redis
   }
   azure_postgres = container 'Postgres' {
@@ -19,7 +19,7 @@ A **Managed Azure** Redis instance for testing
     summary 'Azure Managed Postgres Flexible Server'
     description '''
 An **Azure Managed** Postgres instance for testing
-'''
+  '''
     icon azure:azure-database-postgre-sql-server
   }
   redis = container 'redis' {
@@ -27,7 +27,7 @@ An **Azure Managed** Postgres instance for testing
     summary 'Local redis for development'
     description '''
 For testing **locally**, uses Redis as a container
-'''
+  '''
     icon tech:redis
   }
   postgres = container 'postgres' {
@@ -35,14 +35,14 @@ For testing **locally**, uses Redis as a container
     summary 'Local Postgres for development'
     description '''
 For testing Azure Postgres vs. local Postgres
-'''
+  '''
     icon tech:postgresql
   }
   node_app = executable 'Node App' {
     technology 'Node.js'
     description '''
 A sample Node.js application that connects to Azure Redis and Azure Postgres
-'''
+  '''
     icon tech:nodejs
   }
   node_app_installer = executable 'node-app-installer' {

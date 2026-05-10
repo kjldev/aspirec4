@@ -97,7 +97,9 @@ public sealed class LikeC4DetailsOptions
 		return this;
 	}
 
-	/// <summary>Adds a tag to this element. Tags are declared in the <c>specification</c> block.</summary>
+	/// <summary>
+	/// Adds a tag to this element. Tags are declared in the <c>specification</c> block.
+	/// </summary>
 	public LikeC4DetailsOptions WithTag(string tag)
 	{
 		ArgumentException.ThrowIfNullOrWhiteSpace(tag);
@@ -105,7 +107,9 @@ public sealed class LikeC4DetailsOptions
 		return this;
 	}
 
-	/// <summary>Adds a hyperlink to this element.</summary>
+	/// <summary>
+	/// Adds a hyperlink to this element.
+	/// </summary>
 	/// <param name="url">The URL, which may be absolute or relative to the <c>.c4</c> file.</param>
 	/// <param name="title">Optional display text.</param>
 	public LikeC4DetailsOptions WithLink(string url, string? title = null)
@@ -114,6 +118,13 @@ public sealed class LikeC4DetailsOptions
 		_links.Add(new LikeC4Link(url, title));
 		return this;
 	}
+
+	/// <summary>
+	/// Adds a hyperlink to this element.
+	/// </summary>
+	/// <param name="uri">The URL, which may be absolute or relative to the <c>.c4</c> file.</param>
+	/// <param name="title">Optional display text.</param>
+	public LikeC4DetailsOptions WithLink(Uri uri, string? title = null) => WithLink(uri?.ToString()!, title);
 
 	/// <summary>Adds a metadata key-value pair to this element.</summary>
 	public LikeC4DetailsOptions WithMetadata(string key, string value)

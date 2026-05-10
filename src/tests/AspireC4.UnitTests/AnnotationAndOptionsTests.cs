@@ -88,7 +88,7 @@ public sealed class LikeC4DetailsOptionsTests
 	[Test]
 	public async Task DiagramOptions_DefaultsToAutoIconsEnabled()
 	{
-		var options = new LikeC4DiagramOptions();
+		var options = new AspireC4DiagramOptions();
 
 		await Assert.That(options.AutoIconsEnabled).IsTrue();
 	}

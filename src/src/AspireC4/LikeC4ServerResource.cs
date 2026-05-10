@@ -9,7 +9,7 @@ namespace Aspire.Hosting.AspireC4;
 /// </summary>
 /// <remarks>
 /// To use a local Node.js CLI instead of Docker, call
-/// <see cref="IAspireC4Builder.WithLocalCli"/> on the returned builder.
+/// <see cref="IAspireC4Builder.WithLocalCLI"/> on the returned builder.
 /// </remarks>
 public sealed class LikeC4ServerResource : ContainerResource
 {
@@ -25,7 +25,7 @@ public sealed class LikeC4ServerResource : ContainerResource
 	/// <summary>The container image name (without registry prefix).</summary>
 	internal const string DefaultImage = "likec4/likec4";
 
-	/// <summary>The default image tag used when <see cref="LikeC4DiagramOptions.ContainerImageTag"/> is not set.</summary>
+	/// <summary>The default image tag used when <see cref="AspireC4DiagramOptions.ContainerImageTag"/> is not set.</summary>
 	internal const string DefaultTag = "latest";
 
 	/// <summary>The container port exposed by <c>likec4 serve</c>.</summary>

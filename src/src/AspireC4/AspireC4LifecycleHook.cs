@@ -14,8 +14,8 @@ namespace Aspire.Hosting.AspireC4;
 /// Aspire eventing subscriber that generates the LikeC4 <c>.c4</c> model file before the
 /// application starts, and dynamically regenerates it whenever a resource changes state at runtime.
 /// </summary>
-sealed class LikeC4VisualizationLifecycleHook(
-	IOptions<LikeC4DiagramOptions> options,
+sealed class AspireC4LifecycleHook(
+	IOptions<AspireC4DiagramOptions> options,
 	IOptions<LikeC4ContainerWorkspaceOptions> workspaceOptions,
 	ResourceNotificationService resourceNotificationService,
 	IAspireC4LifecycleHookTelemetry telemetry
@@ -42,7 +42,7 @@ sealed class LikeC4VisualizationLifecycleHook(
 				var syncContainerWorkspace = evt
 					.Model.Resources.OfType<LikeC4ServerResource>()
 					.Any(resource =>
-						resource.Name == AspireC4DistributedApplicationBuilderExtensions.ServerResourceName
+						resource.Name == AspireC4DistributedApplicationBuilderExtensions.AspireC4ResourceName
 					);
 
 				if (executionContext.IsPublishMode)
@@ -85,7 +85,7 @@ sealed class LikeC4VisualizationLifecycleHook(
 	)
 	{
 		var serverResource = appModel.Resources.FirstOrDefault(r =>
-			r.Name == AspireC4DistributedApplicationBuilderExtensions.ServerResourceName
+			r.Name == AspireC4DistributedApplicationBuilderExtensions.AspireC4ResourceName
 		);
 
 		if (serverResource is null)
@@ -368,7 +368,7 @@ sealed class LikeC4VisualizationLifecycleHook(
 		telemetry.GeneratingLikeC4Model(appModel.Resources.Count);
 
 		var model = LikeC4ModelBuilder.Build([.. appModel.Resources], _resourceStates, opts.AutoIconsEnabled);
-		var dsl = LikeC4DslGenerator.Generate(model, opts);
+		var dsl = LikeC4DSLGenerator.Generate(model, opts);
 
 		var outputDir = Path.GetFullPath(opts.OutputDirectory);
 		Directory.CreateDirectory(outputDir);
@@ -401,7 +401,7 @@ sealed class LikeC4VisualizationLifecycleHook(
 			File.Copy(absoluteSource, destPath, overwrite: true);
 
 			var fileNameWithoutExtension = Path.GetFileNameWithoutExtension(absoluteSource);
-			telemetry.AdditionalDslFileSynced(fileNameWithoutExtension);
+			telemetry.AdditionalDSLFileSynced(fileNameWithoutExtension);
 
 			if (syncContainerWorkspace)
 			{
@@ -562,7 +562,7 @@ sealed class LikeC4VisualizationLifecycleHook(
 
 	void EnsureLegacyHostHmrPortAvailable()
 	{
-		if (!workspaceOptions.Value.UseHmrRelay)
+		if (!workspaceOptions.Value.UseHMRRelay)
 		{
 			return;
 		}
@@ -583,7 +583,7 @@ sealed class LikeC4VisualizationLifecycleHook(
 			}
 			catch (SocketException ex)
 			{
-				telemetry.HmrPortUnavailable(LikeC4ServerResource.DefaultContainerUpdatePort, ex.Message);
+				telemetry.HMRPortUnavailable(LikeC4ServerResource.DefaultContainerUpdatePort, ex.Message);
 				throw new DistributedApplicationException(
 					$"LikeC4 live updates require host port {LikeC4ServerResource.DefaultContainerUpdatePort} to be free so the Vite HMR endpoint can be published. Stop the process using that port, or remove the LikeC4 visualization sidecar before starting the app."
 				);
@@ -597,7 +597,7 @@ sealed class LikeC4VisualizationLifecycleHook(
 
 	void StartLegacyHmrRelay(DistributedApplicationModel appModel, CancellationToken cancellationToken)
 	{
-		if (!workspaceOptions.Value.UseHmrRelay)
+		if (!workspaceOptions.Value.UseHMRRelay)
 		{
 			return;
 		}
@@ -660,10 +660,10 @@ sealed class LikeC4VisualizationLifecycleHook(
 	)
 	{
 		using var inboundConnection = inbound;
-		var target = await WaitForAllocatedHmrEndpointAsync(appModel, cancellationToken);
+		var (address, port) = await WaitForAllocatedHmrEndpointAsync(appModel, cancellationToken);
 
 		using var outboundConnection = new TcpClient();
-		await outboundConnection.ConnectAsync(target.Address, target.Port, cancellationToken);
+		await outboundConnection.ConnectAsync(address, port, cancellationToken);
 
 		await using var inboundStream = inboundConnection.GetStream();
 		await using var outboundStream = outboundConnection.GetStream();
@@ -716,7 +716,9 @@ sealed class LikeC4VisualizationLifecycleHook(
 		{
 			var endpoint = appModel
 				.Resources.OfType<LikeC4ServerResource>()
-				.Where(resource => resource.Name == AspireC4DistributedApplicationBuilderExtensions.ServerResourceName)
+				.Where(resource =>
+					resource.Name == AspireC4DistributedApplicationBuilderExtensions.AspireC4ResourceName
+				)
 				.SelectMany(resource => resource.Annotations.OfType<EndpointAnnotation>())
 				.FirstOrDefault(annotation => annotation.Name == LikeC4ServerResource.HmrEndpointName)
 				?.AllocatedEndpoint;

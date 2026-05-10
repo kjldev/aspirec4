@@ -15,12 +15,12 @@ public interface IAspireC4Builder
 	/// The resource builder for the LikeC4 server resource.
 	/// <para>
 	/// In the default (Docker) mode this is an <see cref="IResourceBuilder{T}"/> of
-	/// <see cref="LikeC4ServerResource"/>. After calling <see cref="WithLocalCli"/> it becomes
+	/// <see cref="LikeC4ServerResource"/>. After calling <see cref="WithLocalCLI"/> it becomes
 	/// an <see cref="IResourceBuilder{T}"/> of <see cref="LikeC4LocalServerResource"/>.
 	/// Both are assignable here because <c>IResourceBuilder&lt;out T&gt;</c> is covariant.
 	/// </para>
 	/// </summary>
-	IResourceBuilder<IResource> ServerResourceBuilder { get; }
+	IResourceBuilder<IResource> LikeC4ResourceBuilder { get; }
 
 	/// <summary>
 	/// Switches the LikeC4 server from the default Docker container to a local JavaScript
@@ -31,11 +31,11 @@ public interface IAspireC4Builder
 	/// The selected runtime must be installed and accessible on the system PATH.
 	/// </remarks>
 	/// <param name="runtime">
-	/// The CLI runtime to use. Defaults to <see cref="LikeC4LocalCliRuntime.Auto"/>,
+	/// The CLI runtime to use. Defaults to <see cref="LikeC4LocalCLIRuntime.Auto"/>,
 	/// which detects the first available runtime in the order: npx → pnpm → yarn → bun.
 	/// </param>
 	/// <returns>An updated <see cref="IAspireC4Builder"/> with the local server resource.</returns>
-	IAspireC4Builder WithLocalCli(LikeC4LocalCliRuntime runtime = LikeC4LocalCliRuntime.Auto);
+	IAspireC4Builder WithLocalCLI(LikeC4LocalCLIRuntime runtime = LikeC4LocalCLIRuntime.Auto);
 
 	/// <summary>
 	/// Hides the LikeC4 server resource from the Aspire dashboard and instead surfaces
@@ -69,5 +69,5 @@ public interface IAspireC4Builder
 	/// exist at startup the entry is silently skipped.
 	/// </param>
 	/// <returns>The same <see cref="IAspireC4Builder"/> for further configuration.</returns>
-	IAspireC4Builder WithAdditionalDslFile(string sourcePath);
+	IAspireC4Builder WithAdditionalDSLFile(string sourcePath);
 }

@@ -5,15 +5,15 @@ namespace Aspire.Hosting.AspireC4;
 /// <summary>
 /// Generates a LikeC4 DSL (<c>.c4</c>) string from a <see cref="LikeC4Model"/>.
 /// </summary>
-public static class LikeC4DslGenerator
+public static class LikeC4DSLGenerator
 {
 	/// <summary>Generates a LikeC4 DSL string from the given model and options.</summary>
-	public static string Generate(LikeC4Model model, LikeC4DiagramOptions options)
+	public static string Generate(LikeC4Model model, AspireC4DiagramOptions options)
 	{
 		ArgumentNullException.ThrowIfNull(model);
 		ArgumentNullException.ThrowIfNull(options);
 
-		var sb = new StringBuilder(512);
+		StringBuilder sb = new(512);
 
 		WriteSpecification(sb, model, options);
 		sb.AppendLine();
@@ -24,7 +24,7 @@ public static class LikeC4DslGenerator
 		return sb.ToString();
 	}
 
-	static void WriteSpecification(StringBuilder sb, LikeC4Model model, LikeC4DiagramOptions options)
+	static void WriteSpecification(StringBuilder sb, LikeC4Model model, AspireC4DiagramOptions options)
 	{
 		var elementKindsInModel = model.Elements.Select(e => e.Kind).ToHashSet();
 		var allElementKinds = elementKindsInModel.Union(options.ElementKindSpecs.Select(s => s.Name)).OrderBy(k => k);
@@ -137,7 +137,7 @@ public static class LikeC4DslGenerator
 		sb.AppendLine("  }");
 	}
 
-	static void WriteModel(StringBuilder sb, LikeC4Model model, LikeC4DiagramOptions options)
+	static void WriteModel(StringBuilder sb, LikeC4Model model, AspireC4DiagramOptions options)
 	{
 		sb.AppendLine("model {");
 
@@ -214,12 +214,12 @@ public static class LikeC4DslGenerator
 				{
 					sb.Append("    description '''").AppendLine();
 					sb.Append(EscapeQuote(rel.Description!)).AppendLine();
-					sb.AppendLine("'''");
+					sb.AppendLine("    '''");
 				}
 
 				foreach (var link in rel.Links)
 				{
-					sb.Append("    link ").Append(link.Url);
+					sb.Append("    link ").Append(link.Uri);
 					if (!string.IsNullOrWhiteSpace(link.Title))
 					{
 						sb.Append(" '").Append(EscapeQuote(link.Title)).Append('\'');
@@ -320,7 +320,7 @@ public static class LikeC4DslGenerator
 				.AppendLine()
 				.Append(EscapeQuote(element.Description!))
 				.AppendLine()
-				.AppendLine("'''");
+				.AppendLine("  '''");
 		}
 
 		if (hasIcon)
@@ -330,7 +330,7 @@ public static class LikeC4DslGenerator
 
 		foreach (var link in element.Links)
 		{
-			sb.Append(indent).Append("  link ").Append(link.Url);
+			sb.Append(indent).Append("  link ").Append(link.Uri);
 			if (!string.IsNullOrWhiteSpace(link.Title))
 			{
 				sb.Append(" '").Append(EscapeQuote(link.Title)).Append('\'');
@@ -389,7 +389,7 @@ public static class LikeC4DslGenerator
 			_ => new(null, null),
 		};
 
-	static void WriteViews(StringBuilder sb, LikeC4Model model, LikeC4DiagramOptions options)
+	static void WriteViews(StringBuilder sb, LikeC4Model model, AspireC4DiagramOptions options)
 	{
 		sb.AppendLine("views {");
 		sb.AppendLine("  view index {");

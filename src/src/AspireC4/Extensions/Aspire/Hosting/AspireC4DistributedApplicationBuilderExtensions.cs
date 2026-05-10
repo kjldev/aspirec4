@@ -1,5 +1,4 @@
 ﻿using System.ComponentModel;
-using System.Globalization;
 using System.Security.Cryptography;
 using System.Text;
 using Aspire.Hosting.ApplicationModel;
@@ -11,10 +10,7 @@ namespace Aspire.Hosting;
 [EditorBrowsable(EditorBrowsableState.Never)]
 public static class AspireC4DistributedApplicationBuilderExtensions
 {
-	internal static string ServerResourceName =>
-		CultureInfo.CurrentUICulture.Name.Equals("en-gb", StringComparison.OrdinalIgnoreCase)
-			? "likec4-visualisation"
-			: "likec4-visualization";
+	internal const string AspireC4ResourceName = "aspirec4";
 
 	extension(IDistributedApplicationBuilder builder)
 	{
@@ -33,22 +29,22 @@ public static class AspireC4DistributedApplicationBuilderExtensions
 		/// <param name="builder">The distributed application builder.</param>
 		/// <param name="name">Optional name of the LikeC4 visualization resource (used for the server container and diagram file).</param>
 		/// <param name="port">Optional host port to bind the LikeC4 server's HTTP endpoint to. By default, no fixed host port is used and Docker assigns a dynamic port.</param>
-		/// <param name="configure">Optional callback to configure <see cref="LikeC4DiagramOptions"/>.</param>
+		/// <param name="configure">Optional callback to configure <see cref="AspireC4DiagramOptions"/>.</param>
 		/// <returns>An <see cref="IAspireC4Builder"/> for further configuration.</returns>
 		public IAspireC4Builder AddAspireC4(
 			[ResourceName] string? name = null,
 			int? port = null,
-			Action<LikeC4DiagramOptions>? configure = null
+			Action<AspireC4DiagramOptions>? configure = null
 		)
 		{
 			if (string.IsNullOrWhiteSpace(name))
-				name = ServerResourceName;
+				name = AspireC4ResourceName;
 
 			ArgumentNullException.ThrowIfNull(builder);
 
 			builder
-				.Services.AddOptions<LikeC4DiagramOptions>()
-				.BindConfiguration(LikeC4DiagramOptions.SectionName)
+				.Services.AddOptions<AspireC4DiagramOptions>()
+				.BindConfiguration(AspireC4DiagramOptions.SectionName)
 				.Configure(opts =>
 				{
 					configure?.Invoke(opts);
@@ -56,7 +52,7 @@ public static class AspireC4DistributedApplicationBuilderExtensions
 				});
 
 			// Resolve options at build time so the bind mount and lifecycle hook use the same path.
-			LikeC4DiagramOptions opts = new();
+			AspireC4DiagramOptions opts = new();
 			configure?.Invoke(opts);
 
 			var outputDir = ResolveOutputDirectory(builder.AppHostDirectory, opts.OutputDirectory);
@@ -68,8 +64,8 @@ public static class AspireC4DistributedApplicationBuilderExtensions
 			// the well-known port (24678) reliably due to Hyper-V port reservations or port-cleanup
 			// races between container restarts. The relay owns port 24678 on the host side and
 			// bridges incoming HMR connections to whatever dynamic port Docker happened to allocate.
-			var useHmrRelay = hmrPortMode == LikeC4HmrPortMode.FixedPort || OperatingSystem.IsWindows();
-			var workspaceVolumeName = ResolveWorkspaceVolumeName(builder.AppHostDirectory, ServerResourceName);
+			var useHmrRelay = hmrPortMode == LikeC4HMRPortMode.FixedPort || OperatingSystem.IsWindows();
+			var workspaceVolumeName = ResolveWorkspaceVolumeName(builder.AppHostDirectory, AspireC4ResourceName);
 
 			builder
 				.Services.AddOptions<LikeC4ContainerWorkspaceOptions>()
@@ -78,11 +74,11 @@ public static class AspireC4DistributedApplicationBuilderExtensions
 					runtime.VolumeName = workspaceVolumeName;
 					runtime.ContainerImageReference = imageReference;
 					runtime.ContainerRuntimeExecutable = ResolveContainerRuntimeExecutable();
-					runtime.HmrPortMode = hmrPortMode;
-					runtime.UseHmrRelay = useHmrRelay;
+					runtime.HMRPortMode = hmrPortMode;
+					runtime.UseHMRRelay = useHmrRelay;
 				});
 
-			builder.Services.AddEventingSubscriber<LikeC4VisualizationLifecycleHook>();
+			builder.Services.AddEventingSubscriber<AspireC4LifecycleHook>();
 			builder.Services.AddAspireC4LifecycleHookTelemetry();
 
 			LikeC4ServerResource serverResource = new(name);
@@ -97,12 +93,18 @@ public static class AspireC4DistributedApplicationBuilderExtensions
 				}
 			);
 
+			List<string> args = ["start", "."];
+			if (opts.DisableHMR)
+			{
+				args.Add("--no-hmr");
+			}
+
 			var serverBuilder = builder
 				.AddResource(serverResource)
 				.WithImage(LikeC4ServerResource.DefaultImage)
 				.WithImageTag(imageTag)
 				.WithImageRegistry(LikeC4ServerResource.DefaultRegistry)
-				.WithArgs("start", ".", "--port", LikeC4ServerResource.DefaultContainerServePort)
+				.WithArgs(args)
 				.WithVolume(workspaceVolumeName, LikeC4ServerResource.WorkspacePath)
 				.WithHttpEndpoint(
 					port: port,
@@ -119,17 +121,31 @@ public static class AspireC4DistributedApplicationBuilderExtensions
 						opts.Url = "/view/index";
 					}
 				)
-				.WithHttpEndpoint(
-					// When using the relay, omit a fixed host port so Docker allocates a dynamic one.
-					// The relay owns port 24678 on the host and bridges connections to the dynamic port.
-					// Direct fixed-port mapping is only safe on non-Windows Configurable-mode images.
-					port: useHmrRelay ? null : LikeC4ServerResource.DefaultContainerUpdatePort,
-					targetPort: LikeC4ServerResource.DefaultContainerUpdatePort,
-					name: LikeC4ServerResource.HmrEndpointName
-				)
 				//.WithExternalHttpEndpoints()
 				// Exclude the sidecar from the architecture diagram — it is tooling, not a system element.
 				.WithAnnotation(new ExcludeFromLikeC4Annotation(), ResourceAnnotationMutationBehavior.Replace);
+
+			if (!opts.DisableHMR)
+			{
+				serverBuilder
+					.WithHttpEndpoint(
+						// When using the relay, omit a fixed host port so Docker allocates a dynamic one.
+						// The relay owns port 24678 on the host and bridges connections to the dynamic port.
+						// Direct fixed-port mapping is only safe on non-Windows Configurable-mode images.
+						port: useHmrRelay ? null : LikeC4ServerResource.DefaultContainerUpdatePort,
+						targetPort: LikeC4ServerResource.DefaultContainerUpdatePort,
+						name: LikeC4ServerResource.HmrEndpointName
+					)
+					.WithUrlForEndpoint(
+						LikeC4ServerResource.HmrEndpointName,
+						opts =>
+						{
+							opts.DisplayText = "LikeC4 HMR Endpoint";
+							opts.DisplayOrder = 1;
+							opts.DisplayLocation = UrlDisplayLocation.DetailsOnly;
+						}
+					);
+			}
 
 			if (OperatingSystem.IsWindows())
 			{
@@ -141,7 +157,7 @@ public static class AspireC4DistributedApplicationBuilderExtensions
 					.WithEnvironment("CHOKIDAR_INTERVAL", "200");
 			}
 
-			return new LikeC4VisualizationBuilder(builder, serverBuilder, outputDir);
+			return new AspireC4Builder(builder, serverBuilder, outputDir);
 		}
 
 		internal static string ResolveOutputDirectory(string appHostDirectory, string outputDirectory)
@@ -166,7 +182,7 @@ public static class AspireC4DistributedApplicationBuilderExtensions
 			var hashBytes = SHA256.HashData(Encoding.UTF8.GetBytes(normalizedAppHostDirectory));
 			var hash = Convert.ToHexString(hashBytes)[..12].ToLowerInvariant();
 
-			return $"likec4-{normalizedResourceName}-{hash}";
+			return $"aspirec4-{normalizedResourceName}-{hash}";
 		}
 
 		internal static string ResolveContainerRuntimeExecutable() =>

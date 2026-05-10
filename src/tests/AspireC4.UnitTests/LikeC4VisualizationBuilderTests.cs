@@ -13,11 +13,7 @@ public sealed class LikeC4VisualizationBuilderTests
 	[Test]
 	public async Task BuildLocalCliCommand_Npx_UsesNpxWithLikeC4Args()
 	{
-		var (command, args) = LikeC4VisualizationBuilder.BuildLocalCliCommand(
-			LikeC4LocalCliRuntime.Npx,
-			"/tmp/likec4",
-			5173
-		);
+		var (command, args) = AspireC4Builder.BuildLocalCliCommand(LikeC4LocalCLIRuntime.Npx, "/tmp/likec4", 5173);
 
 		await Assert.That(command).IsEqualTo("npx");
 		await Assert.That(args).IsEquivalentTo(["likec4", "serve", "/tmp/likec4", "--port", "5173"]);
@@ -26,11 +22,7 @@ public sealed class LikeC4VisualizationBuilderTests
 	[Test]
 	public async Task BuildLocalCliCommand_Pnpm_UsesPnpmExec()
 	{
-		var (command, args) = LikeC4VisualizationBuilder.BuildLocalCliCommand(
-			LikeC4LocalCliRuntime.Pnpm,
-			"/tmp/likec4",
-			5173
-		);
+		var (command, args) = AspireC4Builder.BuildLocalCliCommand(LikeC4LocalCLIRuntime.Pnpm, "/tmp/likec4", 5173);
 
 		await Assert.That(command).IsEqualTo("pnpm");
 		await Assert.That(args).IsEquivalentTo(["exec", "likec4", "serve", "/tmp/likec4", "--port", "5173"]);
@@ -39,11 +31,7 @@ public sealed class LikeC4VisualizationBuilderTests
 	[Test]
 	public async Task BuildLocalCliCommand_Yarn_UsesYarnDlx()
 	{
-		var (command, args) = LikeC4VisualizationBuilder.BuildLocalCliCommand(
-			LikeC4LocalCliRuntime.Yarn,
-			"/tmp/likec4",
-			5173
-		);
+		var (command, args) = AspireC4Builder.BuildLocalCliCommand(LikeC4LocalCLIRuntime.Yarn, "/tmp/likec4", 5173);
 
 		await Assert.That(command).IsEqualTo("yarn");
 		await Assert.That(args).IsEquivalentTo(["dlx", "likec4", "serve", "/tmp/likec4", "--port", "5173"]);
@@ -52,11 +40,7 @@ public sealed class LikeC4VisualizationBuilderTests
 	[Test]
 	public async Task BuildLocalCliCommand_Bun_UsesBunx()
 	{
-		var (command, args) = LikeC4VisualizationBuilder.BuildLocalCliCommand(
-			LikeC4LocalCliRuntime.Bun,
-			"/tmp/likec4",
-			5173
-		);
+		var (command, args) = AspireC4Builder.BuildLocalCliCommand(LikeC4LocalCLIRuntime.Bun, "/tmp/likec4", 5173);
 
 		await Assert.That(command).IsEqualTo("bunx");
 		await Assert.That(args).IsEquivalentTo(["likec4", "serve", "/tmp/likec4", "--port", "5173"]);
@@ -67,14 +51,14 @@ public sealed class LikeC4VisualizationBuilderTests
 	{
 		// Auto is resolved before reaching BuildLocalCliCommand; passing it directly is an error.
 		await Assert
-			.That(() => LikeC4VisualizationBuilder.BuildLocalCliCommand(LikeC4LocalCliRuntime.Auto, "/tmp", 5173))
+			.That(() => AspireC4Builder.BuildLocalCliCommand(LikeC4LocalCLIRuntime.Auto, "/tmp", 5173))
 			.Throws<ArgumentOutOfRangeException>();
 	}
 
 	[Test]
 	public async Task BuildLocalCliCommand_IncludesCorrectPort()
 	{
-		var (_, args) = LikeC4VisualizationBuilder.BuildLocalCliCommand(LikeC4LocalCliRuntime.Npx, "/output", 9090);
+		var (_, args) = AspireC4Builder.BuildLocalCliCommand(LikeC4LocalCLIRuntime.Npx, "/output", 9090);
 
 		await Assert.That(args).Contains("9090");
 	}
@@ -84,7 +68,7 @@ public sealed class LikeC4VisualizationBuilderTests
 	{
 		var mode = LikeC4HmrPortCompatibility.Resolve("1.56.0");
 
-		await Assert.That(mode).IsEqualTo(LikeC4HmrPortMode.Configurable);
+		await Assert.That(mode).IsEqualTo(LikeC4HMRPortMode.Configurable);
 	}
 
 	[Test]
@@ -92,7 +76,7 @@ public sealed class LikeC4VisualizationBuilderTests
 	{
 		var mode = LikeC4HmrPortCompatibility.Resolve("1.55.0", new Version(1, 56, 0));
 
-		await Assert.That(mode).IsEqualTo(LikeC4HmrPortMode.FixedPort);
+		await Assert.That(mode).IsEqualTo(LikeC4HMRPortMode.FixedPort);
 	}
 
 	[Test]
@@ -100,7 +84,7 @@ public sealed class LikeC4VisualizationBuilderTests
 	{
 		var mode = LikeC4HmrPortCompatibility.Resolve("v1.56.1-beta.2", new Version(1, 56, 0));
 
-		await Assert.That(mode).IsEqualTo(LikeC4HmrPortMode.Configurable);
+		await Assert.That(mode).IsEqualTo(LikeC4HMRPortMode.Configurable);
 	}
 
 	[Test]
@@ -110,7 +94,7 @@ public sealed class LikeC4VisualizationBuilderTests
 
 		var visualization = appBuilder.AddAspireC4();
 		var endpoints = visualization
-			.ServerResourceBuilder.Resource.Annotations.OfType<EndpointAnnotation>()
+			.LikeC4ResourceBuilder.Resource.Annotations.OfType<EndpointAnnotation>()
 			.OrderBy(endpoint => endpoint.Name, StringComparer.Ordinal)
 			.ToArray();
 
@@ -137,7 +121,7 @@ public sealed class LikeC4VisualizationBuilderTests
 		var workspaceOptions =
 			provider.GetRequiredService<Microsoft.Extensions.Options.IOptions<LikeC4ContainerWorkspaceOptions>>();
 
-		await Assert.That(workspaceOptions.Value.UseHmrRelay).IsTrue();
+		await Assert.That(workspaceOptions.Value.UseHMRRelay).IsTrue();
 	}
 
 	[Test]
@@ -152,7 +136,7 @@ public sealed class LikeC4VisualizationBuilderTests
 			provider.GetRequiredService<Microsoft.Extensions.Options.IOptions<LikeC4ContainerWorkspaceOptions>>();
 
 		var expectedUseRelay = OperatingSystem.IsWindows();
-		await Assert.That(workspaceOptions.Value.UseHmrRelay).IsEqualTo(expectedUseRelay);
+		await Assert.That(workspaceOptions.Value.UseHMRRelay).IsEqualTo(expectedUseRelay);
 	}
 
 	[Test]
@@ -165,7 +149,7 @@ public sealed class LikeC4VisualizationBuilderTests
 		var workspaceOptions =
 			provider.GetRequiredService<Microsoft.Extensions.Options.IOptions<LikeC4ContainerWorkspaceOptions>>();
 
-		await Assert.That(workspaceOptions.Value.HmrPortMode).IsEqualTo(LikeC4HmrPortMode.FixedPort);
+		await Assert.That(workspaceOptions.Value.HMRPortMode).IsEqualTo(LikeC4HMRPortMode.FixedPort);
 	}
 
 	[Test]
@@ -178,7 +162,7 @@ public sealed class LikeC4VisualizationBuilderTests
 		var workspaceOptions =
 			provider.GetRequiredService<Microsoft.Extensions.Options.IOptions<LikeC4ContainerWorkspaceOptions>>();
 
-		await Assert.That(workspaceOptions.Value.HmrPortMode).IsEqualTo(LikeC4HmrPortMode.Configurable);
+		await Assert.That(workspaceOptions.Value.HMRPortMode).IsEqualTo(LikeC4HMRPortMode.Configurable);
 	}
 
 	[Test]
@@ -189,10 +173,10 @@ public sealed class LikeC4VisualizationBuilderTests
 		var visualization = appBuilder.AddAspireC4();
 		var expectedSource = AspireC4DistributedApplicationBuilderExtensions.ResolveWorkspaceVolumeName(
 			appBuilder.AppHostDirectory,
-			AspireC4DistributedApplicationBuilderExtensions.ServerResourceName
+			AspireC4DistributedApplicationBuilderExtensions.AspireC4ResourceName
 		);
 		var mounts = visualization
-			.ServerResourceBuilder.Resource.Annotations.OfType<ContainerMountAnnotation>()
+			.LikeC4ResourceBuilder.Resource.Annotations.OfType<ContainerMountAnnotation>()
 			.ToArray();
 
 		await Assert.That(mounts).HasSingleItem();
@@ -206,15 +190,15 @@ public sealed class LikeC4VisualizationBuilderTests
 	{
 		var first = AspireC4DistributedApplicationBuilderExtensions.ResolveWorkspaceVolumeName(
 			@"P:\GitHub\kjldev\aspirec4\src\tests\AspireC4.TestAppHost",
-			AspireC4DistributedApplicationBuilderExtensions.ServerResourceName
+			AspireC4DistributedApplicationBuilderExtensions.AspireC4ResourceName
 		);
 		var second = AspireC4DistributedApplicationBuilderExtensions.ResolveWorkspaceVolumeName(
 			@"P:\GitHub\kjldev\aspirec4\src\tests\AspireC4.TestAppHost\",
-			AspireC4DistributedApplicationBuilderExtensions.ServerResourceName
+			AspireC4DistributedApplicationBuilderExtensions.AspireC4ResourceName
 		);
 
 		await Assert.That(first).IsEqualTo(second);
-		await Assert.That(first).StartsWith("likec4-likec4-visualization-");
+		await Assert.That(first).StartsWith("aspirec4-aspirec4-");
 	}
 
 	[Test]

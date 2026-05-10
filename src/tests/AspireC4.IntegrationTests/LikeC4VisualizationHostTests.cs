@@ -10,7 +10,7 @@ namespace Aspire.Hosting.AspireC4;
 /// Integration tests that verify the LikeC4 visualization starts successfully in a real Aspire app host.
 /// </summary>
 [NotInParallel]
-public sealed class LikeC4VisualizationHostTests : IAsyncDisposable
+public sealed partial class LikeC4VisualizationHostTests : IAsyncDisposable
 {
 	const string LikeC4ResourceName = "likec4-visualization";
 	static readonly TimeSpan LikeC4StartupTimeout = TimeSpan.FromSeconds(120);
@@ -23,6 +23,7 @@ public sealed class LikeC4VisualizationHostTests : IAsyncDisposable
 	string? _outputDir;
 	string? _modelPath;
 
+	[System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1031:Do not catch general exception types")]
 	static async Task<bool> IsDockerAvailableAsync(CancellationToken cancellationToken)
 	{
 		try
@@ -153,8 +154,8 @@ public sealed class LikeC4VisualizationHostTests : IAsyncDisposable
 
 		using var client = _app!.CreateHttpClient(LikeC4ResourceName, LikeC4ServerResource.HttpEndpointName);
 		var viteClient = await client.GetStringAsync("/@vite/client", cancellationToken);
-		var tokenMatch = Regex.Match(viteClient, "wsToken = \\\"([^\\\"]+)\\\"");
-		var portMatch = Regex.Match(viteClient, "hmrPort = (\\d+)");
+		var tokenMatch = WSTokenRegex().Match(viteClient);
+		var portMatch = HMRPortRegex().Match(viteClient);
 
 		await Assert.That(tokenMatch.Success).IsTrue();
 		await Assert.That(portMatch.Success).IsTrue();
@@ -224,4 +225,10 @@ public sealed class LikeC4VisualizationHostTests : IAsyncDisposable
 			Environment.SetEnvironmentVariable(_name, _previousValue);
 		}
 	}
+
+	[GeneratedRegex("hmrPort = (\\d+)")]
+	private static partial Regex HMRPortRegex();
+
+	[GeneratedRegex("wsToken = \\\"([^\\\"]+)\\\"")]
+	private static partial Regex WSTokenRegex();
 }

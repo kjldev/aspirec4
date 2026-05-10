@@ -1,6 +1,6 @@
 namespace Aspire.Hosting.AspireC4;
 
-enum LikeC4HmrPortMode
+enum LikeC4HMRPortMode
 {
 	FixedPort,
 	Configurable,
@@ -10,21 +10,16 @@ static class LikeC4HmrPortCompatibility
 {
 	static Version? ConfigurableHmrPortMinimumVersion => new(1, 56, 0);
 
-	internal static LikeC4HmrPortMode Resolve(string? loadedVersionTag) =>
+	internal static LikeC4HMRPortMode Resolve(string? loadedVersionTag) =>
 		Resolve(loadedVersionTag, ConfigurableHmrPortMinimumVersion);
 
-	internal static LikeC4HmrPortMode Resolve(string? loadedVersionTag, Version? configurableHmrPortMinimumVersion)
+	internal static LikeC4HMRPortMode Resolve(string? loadedVersionTag, Version? configurableHmrPortMinimumVersion)
 	{
-		if (configurableHmrPortMinimumVersion is null)
-		{
-			return LikeC4HmrPortMode.FixedPort;
-		}
-
-		return
-			TryParseVersion(loadedVersionTag, out var loadedVersion)
+		return configurableHmrPortMinimumVersion is null ? LikeC4HMRPortMode.FixedPort
+			: TryParseVersion(loadedVersionTag, out var loadedVersion)
 			&& loadedVersion >= configurableHmrPortMinimumVersion
-			? LikeC4HmrPortMode.Configurable
-			: LikeC4HmrPortMode.FixedPort;
+				? LikeC4HMRPortMode.Configurable
+			: LikeC4HMRPortMode.FixedPort;
 	}
 
 	internal static bool TryParseVersion(string? loadedVersionTag, out Version loadedVersion)

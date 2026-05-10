@@ -3,7 +3,7 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Aspire.Hosting.AspireC4;
 
-sealed class LikeC4VisualizationBuilder(
+sealed class AspireC4Builder(
 	IDistributedApplicationBuilder applicationBuilder,
 	IResourceBuilder<IResource> serverResourceBuilder,
 	string outputDirectory
@@ -11,16 +11,16 @@ sealed class LikeC4VisualizationBuilder(
 {
 	public IDistributedApplicationBuilder ApplicationBuilder { get; } = applicationBuilder;
 
-	public IResourceBuilder<IResource> ServerResourceBuilder { get; } = serverResourceBuilder;
+	public IResourceBuilder<IResource> LikeC4ResourceBuilder { get; } = serverResourceBuilder;
 
 	internal string OutputDirectory { get; } = outputDirectory;
 
-	public IAspireC4Builder WithLocalCli(LikeC4LocalCliRuntime runtime = LikeC4LocalCliRuntime.Auto)
+	public IAspireC4Builder WithLocalCLI(LikeC4LocalCLIRuntime runtime = LikeC4LocalCLIRuntime.Auto)
 	{
 		// Remove the existing server resource (container by default) from the app model.
-		ApplicationBuilder.Resources.Remove(ServerResourceBuilder.Resource);
+		ApplicationBuilder.Resources.Remove(LikeC4ResourceBuilder.Resource);
 
-		var resolvedRuntime = runtime == LikeC4LocalCliRuntime.Auto ? DetectRuntime() : runtime;
+		var resolvedRuntime = runtime == LikeC4LocalCLIRuntime.Auto ? DetectRuntime() : runtime;
 
 		var (command, args) = BuildLocalCliCommand(
 			resolvedRuntime,
@@ -29,7 +29,7 @@ sealed class LikeC4VisualizationBuilder(
 		);
 
 		var localResource = new LikeC4LocalServerResource(
-			AspireC4DistributedApplicationBuilderExtensions.ServerResourceName,
+			AspireC4DistributedApplicationBuilderExtensions.AspireC4ResourceName,
 			command,
 			OutputDirectory
 		);
@@ -44,14 +44,14 @@ sealed class LikeC4VisualizationBuilder(
 			.WithExternalHttpEndpoints()
 			.WithAnnotation(new ExcludeFromLikeC4Annotation(), ResourceAnnotationMutationBehavior.Replace);
 
-		return new LikeC4VisualizationBuilder(ApplicationBuilder, localBuilder, OutputDirectory);
+		return new AspireC4Builder(ApplicationBuilder, localBuilder, OutputDirectory);
 	}
 
 	public IAspireC4Builder WithHideFromDashboard(string displayName = "Architecture Diagram")
 	{
 		ArgumentException.ThrowIfNullOrWhiteSpace(displayName);
 
-		ApplicationBuilder.Services.Configure<LikeC4DiagramOptions>(opts =>
+		ApplicationBuilder.Services.Configure<AspireC4DiagramOptions>(opts =>
 		{
 			opts.HideFromDashboard = true;
 			opts.DashboardLinkDisplayName = displayName;
@@ -60,28 +60,25 @@ sealed class LikeC4VisualizationBuilder(
 		return this;
 	}
 
-	public IAspireC4Builder WithAdditionalDslFile(string sourcePath)
+	public IAspireC4Builder WithAdditionalDSLFile(string sourcePath)
 	{
 		ArgumentException.ThrowIfNullOrWhiteSpace(sourcePath);
 
-		ApplicationBuilder.Services.Configure<LikeC4DiagramOptions>(opts =>
-		{
-			opts.AdditionalDslFiles.Add(sourcePath);
-		});
+		ApplicationBuilder.Services.Configure<AspireC4DiagramOptions>(opts => opts.AdditionalDslFiles.Add(sourcePath));
 
 		return this;
 	}
 
-	static LikeC4LocalCliRuntime DetectRuntime()
+	static LikeC4LocalCLIRuntime DetectRuntime()
 	{
 		// Try runtimes in order of preference.
-		(LikeC4LocalCliRuntime Runtime, string Executable)[] candidates =
+		(LikeC4LocalCLIRuntime Runtime, string Executable)[] candidates =
 		[
-			(LikeC4LocalCliRuntime.Npx, "npx"),
-			(LikeC4LocalCliRuntime.Pnpm, "pnpm"),
-			(LikeC4LocalCliRuntime.Yarn, "yarn"),
-			(LikeC4LocalCliRuntime.Bun, "bun"),
-			(LikeC4LocalCliRuntime.Deno, "deno"),
+			(LikeC4LocalCLIRuntime.Npx, "npx"),
+			(LikeC4LocalCLIRuntime.Pnpm, "pnpm"),
+			(LikeC4LocalCLIRuntime.Yarn, "yarn"),
+			(LikeC4LocalCLIRuntime.Bun, "bun"),
+			(LikeC4LocalCLIRuntime.Deno, "deno"),
 		];
 
 		foreach (var (candidate, executable) in candidates)
@@ -132,7 +129,7 @@ sealed class LikeC4VisualizationBuilder(
 	/// Internal and visible for testing.
 	/// </summary>
 	internal static (string Command, string[] Args) BuildLocalCliCommand(
-		LikeC4LocalCliRuntime runtime,
+		LikeC4LocalCLIRuntime runtime,
 		string outputDirectory,
 		int port
 	)
@@ -140,11 +137,11 @@ sealed class LikeC4VisualizationBuilder(
 		var portStr = $"{port}";
 		return runtime switch
 		{
-			LikeC4LocalCliRuntime.Npx => ("npx", ["likec4", "serve", outputDirectory, "--port", portStr]),
-			LikeC4LocalCliRuntime.Pnpm => ("pnpm", ["exec", "likec4", "serve", outputDirectory, "--port", portStr]),
-			LikeC4LocalCliRuntime.Yarn => ("yarn", ["dlx", "likec4", "serve", outputDirectory, "--port", portStr]),
-			LikeC4LocalCliRuntime.Bun => ("bunx", ["likec4", "serve", outputDirectory, "--port", portStr]),
-			LikeC4LocalCliRuntime.Deno => (
+			LikeC4LocalCLIRuntime.Npx => ("npx", ["likec4", "serve", outputDirectory, "--port", portStr]),
+			LikeC4LocalCLIRuntime.Pnpm => ("pnpm", ["exec", "likec4", "serve", outputDirectory, "--port", portStr]),
+			LikeC4LocalCLIRuntime.Yarn => ("yarn", ["dlx", "likec4", "serve", outputDirectory, "--port", portStr]),
+			LikeC4LocalCLIRuntime.Bun => ("bunx", ["likec4", "serve", outputDirectory, "--port", portStr]),
+			LikeC4LocalCLIRuntime.Deno => (
 				"deno",
 				["run", "--allow-all", "likec4", "serve", outputDirectory, "--port", portStr]
 			),
