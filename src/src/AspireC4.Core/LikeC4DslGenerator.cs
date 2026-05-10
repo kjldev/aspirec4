@@ -54,6 +54,16 @@ public static class LikeC4DSLGenerator
 
 		sb.AppendLine("specification {");
 
+		// `orange` is not a LikeC4 built-in colour, so declare it as a custom colour
+		// only when at least one element uses the HasErrorLogs state that maps to it.
+		if (model.Elements.Any(e => e.State == LikeC4ResourceState.HasErrorLogs))
+		{
+			sb.AppendLine("  colors {");
+			sb.AppendLine("    orange #F97316");
+			sb.AppendLine("  }");
+			sb.AppendLine();
+		}
+
 		foreach (var kind in allElementKinds)
 		{
 			if (specsByName.TryGetValue(kind, out var spec))

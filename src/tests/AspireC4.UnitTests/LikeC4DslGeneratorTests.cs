@@ -1043,6 +1043,45 @@ public sealed partial class LikeC4DslGeneratorTests
 	}
 
 	[Test]
+	public async Task Generate_ElementWithHasErrorLogsState_DeclaresOrangeColorInSpecification()
+	{
+		// `orange` is not a LikeC4 built-in colour, so the spec block must declare it
+		// as a custom colour when the HasErrorLogs state is used.
+		var model = new LikeC4Model
+		{
+			Elements =
+			[
+				new LikeC4Element
+				{
+					Name = "api",
+					Label = "API",
+					Kind = LikeC4ElementKind.Component,
+					State = LikeC4ResourceState.HasErrorLogs,
+				},
+			],
+			Relationships = [],
+		};
+
+		var dsl = LikeC4DSLGenerator.Generate(model, DefaultOptions);
+
+		var specIdx = dsl.IndexOf("specification {", StringComparison.Ordinal);
+		var modelIdx = dsl.IndexOf("model {", StringComparison.Ordinal);
+		var colorsBlockIdx = dsl.IndexOf("colors {", StringComparison.Ordinal);
+		var orangeIdx = dsl.IndexOf("orange #", StringComparison.Ordinal);
+
+		// colors block must be inside specification, before model
+		await Assert.That(colorsBlockIdx).IsGreaterThan(specIdx);
+		await Assert.That(colorsBlockIdx).IsLessThan(modelIdx);
+		await Assert.That(orangeIdx).IsGreaterThan(colorsBlockIdx);
+		await Assert.That(orangeIdx).IsLessThan(modelIdx);
+
+		// style rule in views must reference orange
+		var viewsIdx = dsl.IndexOf("views {", StringComparison.Ordinal);
+		var colorOrangeIdx = dsl.IndexOf("color orange", StringComparison.Ordinal);
+		await Assert.That(colorOrangeIdx).IsGreaterThan(viewsIdx);
+	}
+
+	[Test]
 	public async Task Generate_ElementWithTags_EmitsTagsInSpecAndBody()
 	{
 		var model = new LikeC4Model
