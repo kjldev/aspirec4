@@ -272,6 +272,31 @@ public sealed class LikeC4ModelBuilderTests
 	}
 
 	[Test]
+	public async Task Build_NodeAnnotation_WithHashPrefixedTag_NormalizesTagInModel()
+	{
+		var resource = CreateProjectResource("api");
+		resource.Annotations.Add(
+			new LikeC4NodeDetailsAnnotation(
+				"API",
+				technology: null,
+				description: null,
+				summary: null,
+				icon: null,
+				autoIconEnabled: null,
+				kind: null,
+				tags: ["#external"],
+				links: [],
+				metadata: []
+			)
+		);
+
+		var model = LikeC4ModelBuilder.Build([resource]);
+
+		await Assert.That(model.Elements[0].Tags).Contains("external");
+		await Assert.That(model.Elements[0].Tags).DoesNotContain("#external");
+	}
+
+	[Test]
 	public async Task Build_ResourceRelationshipAnnotation_CreatesRelationship()
 	{
 		var api = CreateProjectResource("api");

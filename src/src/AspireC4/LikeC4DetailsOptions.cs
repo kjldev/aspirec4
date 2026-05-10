@@ -99,11 +99,19 @@ public sealed class LikeC4DetailsOptions
 
 	/// <summary>
 	/// Adds a tag to this element. Tags are declared in the <c>specification</c> block.
+	/// A leading <c>#</c> is accepted and stripped automatically, so <c>"#external"</c> and
+	/// <c>"external"</c> refer to the same tag.
 	/// </summary>
 	public LikeC4DetailsOptions WithTag(string tag)
 	{
 		ArgumentException.ThrowIfNullOrWhiteSpace(tag);
-		_tags.Add(tag);
+		var normalized = tag.TrimStart('#');
+		if (string.IsNullOrWhiteSpace(normalized))
+		{
+			throw new ArgumentException("Tag name must not be empty or consist only of '#' characters.", nameof(tag));
+		}
+
+		_tags.Add(normalized);
 		return this;
 	}
 

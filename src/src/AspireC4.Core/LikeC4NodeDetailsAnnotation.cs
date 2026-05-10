@@ -103,7 +103,7 @@ public sealed class LikeC4NodeDetailsAnnotation : IResourceAnnotation
 		Icon = icon;
 		AutoIconEnabled = autoIconEnabled;
 		Kind = kind;
-		Tags = tags ?? [];
+		Tags = (tags ?? []).Select(LikeC4TagHelper.Normalize).ToList();
 		Links = links ?? [];
 		Metadata = metadata ?? [];
 	}

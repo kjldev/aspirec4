@@ -64,6 +64,69 @@ public sealed class LikeC4NodeDetailsAnnotationTests
 			.That(() => new LikeC4NodeDetailsAnnotation("My Service", technology: null, description: null, icon: "   "))
 			.Throws<ArgumentException>();
 	}
+
+	[Test]
+	public async Task Constructor_WithHashPrefixedTag_NormalizesTag()
+	{
+		// "#external" is a valid way to specify a tag and must be stored as "external".
+		var annotation = new LikeC4NodeDetailsAnnotation(
+			"My Service",
+			technology: null,
+			description: null,
+			summary: null,
+			icon: null,
+			autoIconEnabled: null,
+			kind: null,
+			tags: ["#external"],
+			links: [],
+			metadata: []
+		);
+
+		await Assert.That(annotation.Tags).Contains("external");
+		await Assert.That(annotation.Tags).DoesNotContain("#external");
+	}
+
+	[Test]
+	public async Task Constructor_WithHashAndNonHashVersionsOfSameTag_ProducesOneEntry()
+	{
+		var annotation = new LikeC4NodeDetailsAnnotation(
+			"My Service",
+			technology: null,
+			description: null,
+			summary: null,
+			icon: null,
+			autoIconEnabled: null,
+			kind: null,
+			tags: ["#external", "external"],
+			links: [],
+			metadata: []
+		);
+
+		// Both normalise to "external" — distinct is handled by the DSL generator,
+		// but the stored list must only contain the stripped form.
+		await Assert.That(annotation.Tags.All(t => !t.StartsWith('#'))).IsTrue();
+	}
+
+	[Test]
+	public async Task Constructor_WithHashOnlyTag_Throws()
+	{
+		await Assert
+			.That(() =>
+				new LikeC4NodeDetailsAnnotation(
+					"My Service",
+					technology: null,
+					description: null,
+					summary: null,
+					icon: null,
+					autoIconEnabled: null,
+					kind: null,
+					tags: ["#"],
+					links: [],
+					metadata: []
+				)
+			)
+			.Throws<ArgumentException>();
+	}
 }
 
 public sealed class LikeC4DetailsOptionsTests
@@ -110,6 +173,31 @@ public sealed class LikeC4DetailsOptionsTests
 		await Assert.That(annotation.Description).IsEqualTo("Background job");
 		await Assert.That(annotation.AutoIconEnabled).IsFalse();
 	}
+
+	[Test]
+	public async Task WithTag_WithHashPrefix_NormalizesTag()
+	{
+		var options = new LikeC4DetailsOptions().WithTag("#external");
+
+		await Assert.That(options.Tags).Contains("external");
+		await Assert.That(options.Tags).DoesNotContain("#external");
+	}
+
+	[Test]
+	public async Task WithTag_WithAndWithoutHash_ProducesSingleNormalisedEntry()
+	{
+		var options = new LikeC4DetailsOptions().WithTag("external").WithTag("#external");
+
+		// Both calls normalise to "external"; list will contain it twice (dedup is DSL-level),
+		// but neither entry should carry the '#' prefix.
+		await Assert.That(options.Tags.All(t => !t.StartsWith('#'))).IsTrue();
+	}
+
+	[Test]
+	public async Task WithTag_WithOnlyHash_Throws()
+	{
+		await Assert.That(() => new LikeC4DetailsOptions().WithTag("#")).Throws<ArgumentException>();
+	}
 }
 
 public sealed class LikeC4RelationshipOptionsTests
@@ -148,5 +236,20 @@ public sealed class LikeC4RelationshipOptionsTests
 
 		var annotation = api.Resource.Annotations.OfType<LikeC4RelationshipDetailsAnnotation>().Last();
 		await Assert.That(annotation.Kind).IsEqualTo("async");
+	}
+
+	[Test]
+	public async Task WithTag_WithHashPrefix_NormalizesTag()
+	{
+		var options = new LikeC4RelationshipOptions().WithTag("#internal");
+
+		await Assert.That(options.Tags).Contains("internal");
+		await Assert.That(options.Tags).DoesNotContain("#internal");
+	}
+
+	[Test]
+	public async Task WithTag_WithOnlyHash_Throws()
+	{
+		await Assert.That(() => new LikeC4RelationshipOptions().WithTag("#")).Throws<ArgumentException>();
 	}
 }

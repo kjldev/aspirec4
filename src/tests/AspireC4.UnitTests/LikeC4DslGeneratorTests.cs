@@ -1107,6 +1107,34 @@ public sealed partial class LikeC4DslGeneratorTests
 	}
 
 	[Test]
+	public async Task Generate_TagsStoredWithoutHash_SpecAndBodyFormattedCorrectly()
+	{
+		// Tags stored in the model must be without '#'; the generator adds '#' in the body
+		// and emits the bare name in the spec. This test guards against double-hashing.
+		var model = new LikeC4Model
+		{
+			Elements =
+			[
+				new LikeC4Element
+				{
+					Name = "api",
+					Label = "API",
+					Kind = LikeC4ElementKind.Component,
+					Tags = ["external"],
+				},
+			],
+			Relationships = [],
+		};
+
+		var dsl = LikeC4DSLGenerator.Generate(model, DefaultOptions);
+
+		await Assert.That(dsl).Contains("tag external");
+		await Assert.That(dsl).Contains("#external");
+		await Assert.That(dsl).DoesNotContain("##external");
+		await Assert.That(dsl).DoesNotContain("tag #external");
+	}
+
+	[Test]
 	public async Task Generate_ElementWithLinks_EmitsLinkLines()
 	{
 		var model = new LikeC4Model
