@@ -30,11 +30,11 @@ test configuration=config_default:
 # Run unit tests only
 [group('dotnet')]
 test-unit configuration=config_default:
-    dotnet test src/tests/AspireC4.LikeC4.UnitTests --configuration {{ configuration }}
+    dotnet test src/tests/AspireC4.UnitTests --configuration {{ configuration }}
 # Run integration tests only
 [group('dotnet')]
 test-integration configuration=config_default:
-    dotnet test src/tests/AspireC4.LikeC4.IntegrationTests --configuration {{ configuration }}
+    dotnet test src/tests/AspireC4.IntegrationTests --configuration {{ configuration }}
 # Run C# linting (CSharpier check)
 [group('dotnet')]
 lintcheck:

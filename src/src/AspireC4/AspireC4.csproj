@@ -1,8 +1,8 @@
 <Project Sdk="Microsoft.NET.Sdk">
 	<PropertyGroup>
 		<IsPackable>true</IsPackable>
-		<AssemblyTitle>AspireC4 LikeC4 Hosting</AssemblyTitle>
-		<Description>Aspire hosting extensions for the AspireC4 LikeC4 plugin: builder API, lifecycle hook, and server resource.</Description>
+		<AssemblyTitle>AspireC4 Hosting</AssemblyTitle>
+		<Description>Aspire hosting extensions for the AspireC4 plugin: builder API, lifecycle hook, and server resource.</Description>
 	</PropertyGroup>
 
 	<ItemGroup>

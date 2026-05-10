@@ -1,8 +1,8 @@
 <Project Sdk="Microsoft.NET.Sdk">
 	<PropertyGroup>
 		<IsPackable>false</IsPackable>
-		<AssemblyTitle>AspireC4 LikeC4 Core</AssemblyTitle>
-		<Description>Core model types, DSL generator, and annotations for the AspireC4 LikeC4 plugin.</Description>
+		<AssemblyTitle>AspireC4 Core</AssemblyTitle>
+		<Description>Core model types, DSL generator, and annotations for the AspireC4 plugin.</Description>
 	</PropertyGroup>
 
 	<ItemGroup>
