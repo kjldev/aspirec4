@@ -14,35 +14,31 @@ public sealed class LikeC4NodeDetailsAnnotationTests
 	}
 
 	[Test]
-	public async Task Constructor_WithAllParameters_SetsAllProperties()
+	public async Task FluentMethods_SetConfiguredValues()
 	{
-		var annotation = new LikeC4NodeDetailsAnnotation("My Service", "ASP.NET Core", "A web service");
+		var annotation = new LikeC4NodeDetailsAnnotation("My Service")
+			.WithTechnology("ASP.NET Core")
+			.WithDescription("A web service")
+			.WithSummary("A summary")
+			.WithIcon("tech:dotnet")
+			.WithAutoIcon(false)
+			.WithKind("service");
 
 		await Assert.That(annotation.Label).IsEqualTo("My Service");
 		await Assert.That(annotation.Technology).IsEqualTo("ASP.NET Core");
 		await Assert.That(annotation.Description).IsEqualTo("A web service");
-	}
-
-	[Test]
-	public async Task Constructor_WithIcon_SetsIcon()
-	{
-		var annotation = new LikeC4NodeDetailsAnnotation("My Service", "ASP.NET Core", "A web service", "tech:dotnet");
-
+		await Assert.That(annotation.Summary).IsEqualTo("A summary");
 		await Assert.That(annotation.Icon).IsEqualTo("tech:dotnet");
+		await Assert.That(annotation.AutoIconEnabled).IsFalse();
+		await Assert.That(annotation.Kind).IsEqualTo("service");
 	}
 
 	[Test]
-	public async Task Constructor_WithAutoIconFlag_SetsAutoIconEnabled()
+	public async Task WithLabel_UpdatesLabel()
 	{
-		var annotation = new LikeC4NodeDetailsAnnotation(
-			"My Service",
-			"ASP.NET Core",
-			"A web service",
-			icon: null,
-			autoIconEnabled: false
-		);
+		var annotation = new LikeC4NodeDetailsAnnotation("original").WithLabel("updated");
 
-		await Assert.That(annotation.AutoIconEnabled).IsFalse();
+		await Assert.That(annotation.Label).IsEqualTo("updated");
 	}
 
 	[Test]
@@ -58,94 +54,35 @@ public sealed class LikeC4NodeDetailsAnnotationTests
 	}
 
 	[Test]
-	public async Task Constructor_WithWhiteSpaceIcon_Throws()
+	public async Task WithIcon_WithWhiteSpace_Throws()
 	{
 		await Assert
-			.That(() => new LikeC4NodeDetailsAnnotation("My Service", technology: null, description: null, icon: "   "))
+			.That(() => new LikeC4NodeDetailsAnnotation("My Service").WithIcon("   "))
 			.Throws<ArgumentException>();
 	}
 
 	[Test]
-	public async Task Constructor_WithHashPrefixedTag_NormalizesTag()
+	public async Task WithTag_WithHashPrefix_NormalizesTag()
 	{
-		// "#external" is a valid way to specify a tag and must be stored as "external".
-		var annotation = new LikeC4NodeDetailsAnnotation(
-			"My Service",
-			technology: null,
-			description: null,
-			summary: null,
-			icon: null,
-			autoIconEnabled: null,
-			kind: null,
-			tags: ["#external"],
-			links: [],
-			metadata: []
-		);
+		var annotation = new LikeC4NodeDetailsAnnotation("My Service").WithTag("#external");
 
 		await Assert.That(annotation.Tags).Contains("external");
 		await Assert.That(annotation.Tags).DoesNotContain("#external");
 	}
 
 	[Test]
-	public async Task Constructor_WithHashAndNonHashVersionsOfSameTag_ProducesOneEntry()
+	public async Task WithTag_WithHashAndNonHashVersionsOfSameTag_BothNormalized()
 	{
-		var annotation = new LikeC4NodeDetailsAnnotation(
-			"My Service",
-			technology: null,
-			description: null,
-			summary: null,
-			icon: null,
-			autoIconEnabled: null,
-			kind: null,
-			tags: ["#external", "external"],
-			links: [],
-			metadata: []
-		);
+		var annotation = new LikeC4NodeDetailsAnnotation("My Service").WithTag("#external").WithTag("external");
 
-		// Both normalise to "external" — distinct is handled by the DSL generator,
-		// but the stored list must only contain the stripped form.
+		// Both normalise to "external" — neither entry should carry the '#' prefix.
 		await Assert.That(annotation.Tags.All(t => !t.StartsWith('#'))).IsTrue();
 	}
 
 	[Test]
-	public async Task Constructor_WithHashOnlyTag_Throws()
+	public async Task WithTag_WithHashOnly_Throws()
 	{
-		await Assert
-			.That(() =>
-				new LikeC4NodeDetailsAnnotation(
-					"My Service",
-					technology: null,
-					description: null,
-					summary: null,
-					icon: null,
-					autoIconEnabled: null,
-					kind: null,
-					tags: ["#"],
-					links: [],
-					metadata: []
-				)
-			)
-			.Throws<ArgumentException>();
-	}
-}
-
-public sealed class LikeC4DetailsOptionsTests
-{
-	[Test]
-	public async Task FluentMethods_SetConfiguredValues()
-	{
-		var options = new LikeC4DetailsOptions()
-			.WithLabel("Worker")
-			.WithTechnology(".NET")
-			.WithDescription("Background job")
-			.WithIcon("tech:dotnet")
-			.WithAutoIcon(false);
-
-		await Assert.That(options.Label).IsEqualTo("Worker");
-		await Assert.That(options.Technology).IsEqualTo(".NET");
-		await Assert.That(options.Description).IsEqualTo("Background job");
-		await Assert.That(options.Icon).IsEqualTo("tech:dotnet");
-		await Assert.That(options.AutoIconEnabled).IsFalse();
+		await Assert.That(() => new LikeC4NodeDetailsAnnotation("My Service").WithTag("#")).Throws<ArgumentException>();
 	}
 
 	[Test]
@@ -162,8 +99,8 @@ public sealed class LikeC4DetailsOptionsTests
 		var appBuilder = DistributedApplication.CreateBuilder([]);
 		var resourceBuilder = appBuilder.AddExecutable("worker", "dotnet", ".");
 
-		resourceBuilder.WithLikeC4Details(options =>
-			options.WithTechnology(".NET").WithDescription("Background job").WithAutoIcon(false)
+		resourceBuilder.WithLikeC4Details(a =>
+			a.WithTechnology(".NET").WithDescription("Background job").WithAutoIcon(false)
 		);
 
 		var annotation = resourceBuilder.Resource.Annotations.OfType<LikeC4NodeDetailsAnnotation>().Last();
@@ -173,56 +110,31 @@ public sealed class LikeC4DetailsOptionsTests
 		await Assert.That(annotation.Description).IsEqualTo("Background job");
 		await Assert.That(annotation.AutoIconEnabled).IsFalse();
 	}
-
-	[Test]
-	public async Task WithTag_WithHashPrefix_NormalizesTag()
-	{
-		var options = new LikeC4DetailsOptions().WithTag("#external");
-
-		await Assert.That(options.Tags).Contains("external");
-		await Assert.That(options.Tags).DoesNotContain("#external");
-	}
-
-	[Test]
-	public async Task WithTag_WithAndWithoutHash_ProducesSingleNormalisedEntry()
-	{
-		var options = new LikeC4DetailsOptions().WithTag("external").WithTag("#external");
-
-		// Both calls normalise to "external"; list will contain it twice (dedup is DSL-level),
-		// but neither entry should carry the '#' prefix.
-		await Assert.That(options.Tags.All(t => !t.StartsWith('#'))).IsTrue();
-	}
-
-	[Test]
-	public async Task WithTag_WithOnlyHash_Throws()
-	{
-		await Assert.That(() => new LikeC4DetailsOptions().WithTag("#")).Throws<ArgumentException>();
-	}
 }
 
-public sealed class LikeC4RelationshipOptionsTests
+public sealed class LikeC4RelationshipDetailsAnnotationTests
 {
 	[Test]
 	public async Task FluentMethods_SetConfiguredValues()
 	{
-		var options = new LikeC4RelationshipOptions()
+		var annotation = new LikeC4RelationshipDetailsAnnotation("queue")
 			.WithLabel("calls")
 			.WithTechnology("gRPC")
 			.WithDescription("bidirectional streaming")
 			.WithKind("async");
 
-		await Assert.That(options.Label).IsEqualTo("calls");
-		await Assert.That(options.Technology).IsEqualTo("gRPC");
-		await Assert.That(options.Description).IsEqualTo("bidirectional streaming");
-		await Assert.That(options.Kind).IsEqualTo("async");
+		await Assert.That(annotation.Label).IsEqualTo("calls");
+		await Assert.That(annotation.Technology).IsEqualTo("gRPC");
+		await Assert.That(annotation.Description).IsEqualTo("bidirectional streaming");
+		await Assert.That(annotation.Kind).IsEqualTo("async");
 	}
 
 	[Test]
 	public async Task WithKind_SetToNull_KindIsNull()
 	{
-		var options = new LikeC4RelationshipOptions().WithKind(null);
+		var annotation = new LikeC4RelationshipDetailsAnnotation("target").WithKind(null);
 
-		await Assert.That(options.Kind).IsNull();
+		await Assert.That(annotation.Kind).IsNull();
 	}
 
 	[Test]
@@ -232,7 +144,7 @@ public sealed class LikeC4RelationshipOptionsTests
 		var api = appBuilder.AddExecutable("api", "dotnet", ".");
 		var queue = appBuilder.AddExecutable("queue", "node", ".");
 
-		api.WithLikeC4Reference(queue, opts => opts.WithKind("async"));
+		api.WithLikeC4Reference(queue, a => a.WithKind("async"));
 
 		var annotation = api.Resource.Annotations.OfType<LikeC4RelationshipDetailsAnnotation>().Last();
 		await Assert.That(annotation.Kind).IsEqualTo("async");
@@ -241,15 +153,25 @@ public sealed class LikeC4RelationshipOptionsTests
 	[Test]
 	public async Task WithTag_WithHashPrefix_NormalizesTag()
 	{
-		var options = new LikeC4RelationshipOptions().WithTag("#internal");
+		var annotation = new LikeC4RelationshipDetailsAnnotation("target").WithTag("#internal");
 
-		await Assert.That(options.Tags).Contains("internal");
-		await Assert.That(options.Tags).DoesNotContain("#internal");
+		await Assert.That(annotation.Tags).Contains("internal");
+		await Assert.That(annotation.Tags).DoesNotContain("#internal");
 	}
 
 	[Test]
 	public async Task WithTag_WithOnlyHash_Throws()
 	{
-		await Assert.That(() => new LikeC4RelationshipOptions().WithTag("#")).Throws<ArgumentException>();
+		await Assert
+			.That(() => new LikeC4RelationshipDetailsAnnotation("target").WithTag("#"))
+			.Throws<ArgumentException>();
+	}
+
+	[Test]
+	public async Task WithNavigateTo_SetsNavigateTo()
+	{
+		var annotation = new LikeC4RelationshipDetailsAnnotation("target").WithNavigateTo("my-view");
+
+		await Assert.That(annotation.NavigateTo).IsEqualTo("my-view");
 	}
 }

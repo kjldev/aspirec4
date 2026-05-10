@@ -104,7 +104,10 @@ public sealed class LikeC4ModelBuilderTests
 	{
 		var resource = CreateProjectResource("api");
 		resource.Annotations.Add(
-			new LikeC4NodeDetailsAnnotation("API Service", "ASP.NET Core", "Handles HTTP requests", "bootstrap:gear")
+			new LikeC4NodeDetailsAnnotation("API Service")
+				.WithTechnology("ASP.NET Core")
+				.WithDescription("Handles HTTP requests")
+				.WithIcon("bootstrap:gear")
 		);
 
 		var model = LikeC4ModelBuilder.Build([resource]);
@@ -176,7 +179,11 @@ public sealed class LikeC4ModelBuilderTests
 		// When the user labels the technology "Azure Postgres", the cloud phase detects "azure"
 		// and infers an azure postgres icon instead of the generic tech:postgresql.
 		var resource = CreateContainerResource("postgres");
-		resource.Annotations.Add(new LikeC4NodeDetailsAnnotation("Postgres", "Azure Postgres", "Managed PostgreSQL"));
+		resource.Annotations.Add(
+			new LikeC4NodeDetailsAnnotation("Postgres")
+				.WithTechnology("Azure Postgres")
+				.WithDescription("Managed PostgreSQL")
+		);
 
 		var model = LikeC4ModelBuilder.Build([resource]);
 
@@ -346,7 +353,10 @@ public sealed class LikeC4ModelBuilderTests
 	{
 		var resource = CreateProjectResource("api");
 		resource.Annotations.Add(
-			new LikeC4NodeDetailsAnnotation("API", ".NET", "HTTP API", icon: null, autoIconEnabled: false)
+			new LikeC4NodeDetailsAnnotation("API")
+				.WithTechnology(".NET")
+				.WithDescription("HTTP API")
+				.WithAutoIcon(false)
 		);
 
 		var model = LikeC4ModelBuilder.Build([resource]);
@@ -359,7 +369,7 @@ public sealed class LikeC4ModelBuilderTests
 	{
 		var resource = CreateProjectResource("api");
 		resource.Annotations.Add(
-			new LikeC4NodeDetailsAnnotation("API", ".NET", "HTTP API", icon: null, autoIconEnabled: true)
+			new LikeC4NodeDetailsAnnotation("API").WithTechnology(".NET").WithDescription("HTTP API").WithAutoIcon(true)
 		);
 
 		var model = LikeC4ModelBuilder.Build([resource], autoIconsEnabled: false);
@@ -372,7 +382,11 @@ public sealed class LikeC4ModelBuilderTests
 	{
 		var resource = CreateProjectResource("api");
 		resource.Annotations.Add(
-			new LikeC4NodeDetailsAnnotation("API", ".NET", "HTTP API", "bootstrap:gear", autoIconEnabled: false)
+			new LikeC4NodeDetailsAnnotation("API")
+				.WithTechnology(".NET")
+				.WithDescription("HTTP API")
+				.WithIcon("bootstrap:gear")
+				.WithAutoIcon(false)
 		);
 
 		var model = LikeC4ModelBuilder.Build([resource], autoIconsEnabled: false);
@@ -468,20 +482,7 @@ public sealed class LikeC4ModelBuilderTests
 	public async Task Build_NodeAnnotation_WithHashPrefixedTag_NormalizesTagInModel()
 	{
 		var resource = CreateProjectResource("api");
-		resource.Annotations.Add(
-			new LikeC4NodeDetailsAnnotation(
-				"API",
-				technology: null,
-				description: null,
-				summary: null,
-				icon: null,
-				autoIconEnabled: null,
-				kind: null,
-				tags: ["#external"],
-				links: [],
-				metadata: []
-			)
-		);
+		resource.Annotations.Add(new LikeC4NodeDetailsAnnotation("API").WithTag("#external"));
 
 		var model = LikeC4ModelBuilder.Build([resource]);
 
@@ -560,9 +561,7 @@ public sealed class LikeC4ModelBuilderTests
 		var api = CreateProjectResource("api");
 		var db = CreateContainerResource("db");
 		api.Annotations.Add(new ResourceRelationshipAnnotation(db, "Reference"));
-		api.Annotations.Add(
-			new LikeC4RelationshipDetailsAnnotation("db", label: "Reads from", technology: null, description: null)
-		);
+		api.Annotations.Add(new LikeC4RelationshipDetailsAnnotation("db").WithLabel("Reads from"));
 
 		var model = LikeC4ModelBuilder.Build([api, db]);
 
@@ -575,15 +574,7 @@ public sealed class LikeC4ModelBuilderTests
 		var api = CreateProjectResource("api");
 		var db = CreateContainerResource("db");
 		api.Annotations.Add(new ResourceRelationshipAnnotation(db, "Reference"));
-		api.Annotations.Add(
-			new LikeC4RelationshipDetailsAnnotation(
-				"db",
-				label: null,
-				technology: null,
-				description: null,
-				navigateTo: "db-detail-flow"
-			)
-		);
+		api.Annotations.Add(new LikeC4RelationshipDetailsAnnotation("db").WithNavigateTo("db-detail-flow"));
 
 		var model = LikeC4ModelBuilder.Build([api, db]);
 
@@ -597,12 +588,9 @@ public sealed class LikeC4ModelBuilderTests
 		var db = CreateContainerResource("db");
 		api.Annotations.Add(new ResourceRelationshipAnnotation(db, "Reference"));
 		api.Annotations.Add(
-			new LikeC4RelationshipDetailsAnnotation(
-				"db",
-				label: null,
-				technology: "PostgreSQL",
-				description: "Stores user records"
-			)
+			new LikeC4RelationshipDetailsAnnotation("db")
+				.WithTechnology("PostgreSQL")
+				.WithDescription("Stores user records")
 		);
 
 		var model = LikeC4ModelBuilder.Build([api, db]);
@@ -635,12 +623,9 @@ public sealed class LikeC4ModelBuilderTests
 		var nodeApp = new ExecutableResource("node-app", "node", ".");
 		nodeApp.Annotations.Add(new ResourceRelationshipAnnotation(hiddenAzureRedis, "Reference"));
 		nodeApp.Annotations.Add(
-			new LikeC4RelationshipDetailsAnnotation(
-				"redis",
-				label: "Caches sessions",
-				technology: "Redis Protocol",
-				description: null
-			)
+			new LikeC4RelationshipDetailsAnnotation("redis")
+				.WithLabel("Caches sessions")
+				.WithTechnology("Redis Protocol")
 		);
 
 		var model = LikeC4ModelBuilder.Build([hiddenAzureRedis, visibleContainerRedis, nodeApp]);
@@ -656,12 +641,8 @@ public sealed class LikeC4ModelBuilderTests
 		var api = CreateProjectResource("api");
 		var db = CreateContainerResource("db");
 		api.Annotations.Add(new ResourceRelationshipAnnotation(db, "Reference"));
-		api.Annotations.Add(
-			new LikeC4RelationshipDetailsAnnotation("db", label: "First", technology: null, description: null)
-		);
-		api.Annotations.Add(
-			new LikeC4RelationshipDetailsAnnotation("db", label: "Last", technology: null, description: null)
-		);
+		api.Annotations.Add(new LikeC4RelationshipDetailsAnnotation("db").WithLabel("First"));
+		api.Annotations.Add(new LikeC4RelationshipDetailsAnnotation("db").WithLabel("Last"));
 
 		var model = LikeC4ModelBuilder.Build([api, db]);
 
@@ -871,12 +852,9 @@ public sealed class LikeC4ModelBuilderTests
 		var local = CreateContainerResource("postgres");
 		var azure = CreateContainerResource("azure-postgres");
 		local.Annotations.Add(
-			new LikeC4RelationshipDetailsAnnotation(
-				"azure-postgres",
-				label: "syncs with",
-				technology: "PostgreSQL / JDBC",
-				description: null
-			)
+			new LikeC4RelationshipDetailsAnnotation("azure-postgres")
+				.WithLabel("syncs with")
+				.WithTechnology("PostgreSQL / JDBC")
 		);
 
 		var model = LikeC4ModelBuilder.Build([local, azure]);
@@ -896,9 +874,7 @@ public sealed class LikeC4ModelBuilderTests
 		var api = CreateProjectResource("api");
 		var db = CreateContainerResource("db");
 		api.Annotations.Add(new ResourceRelationshipAnnotation(db, "Reference"));
-		api.Annotations.Add(
-			new LikeC4RelationshipDetailsAnnotation("db", label: "Queries", technology: "SQL", description: null)
-		);
+		api.Annotations.Add(new LikeC4RelationshipDetailsAnnotation("db").WithLabel("Queries").WithTechnology("SQL"));
 
 		var model = LikeC4ModelBuilder.Build([api, db]);
 
@@ -912,15 +888,7 @@ public sealed class LikeC4ModelBuilderTests
 		var api = CreateProjectResource("api");
 		var queue = new TestSystemResource("queue");
 		api.Annotations.Add(new ResourceRelationshipAnnotation(queue, "Reference"));
-		api.Annotations.Add(
-			new LikeC4RelationshipDetailsAnnotation(
-				"queue",
-				label: null,
-				technology: null,
-				description: null,
-				kind: "async"
-			)
-		);
+		api.Annotations.Add(new LikeC4RelationshipDetailsAnnotation("queue").WithKind("async"));
 
 		var model = LikeC4ModelBuilder.Build([api, queue]);
 
@@ -933,13 +901,10 @@ public sealed class LikeC4ModelBuilderTests
 		var api = CreateProjectResource("api");
 		var queue = new TestSystemResource("queue");
 		api.Annotations.Add(
-			new LikeC4RelationshipDetailsAnnotation(
-				"queue",
-				label: "Publishes",
-				technology: "AMQP",
-				description: null,
-				kind: "async"
-			)
+			new LikeC4RelationshipDetailsAnnotation("queue")
+				.WithLabel("Publishes")
+				.WithTechnology("AMQP")
+				.WithKind("async")
 		);
 
 		var model = LikeC4ModelBuilder.Build([api, queue]);
@@ -1112,20 +1077,7 @@ public sealed class LikeC4ModelBuilderTests
 	public async Task Build_AutoMetadata_UserMetadataPreservedAndNotDuplicated()
 	{
 		var resource = CreateProjectResource("api");
-		resource.Annotations.Add(
-			new LikeC4NodeDetailsAnnotation(
-				"API",
-				technology: null,
-				description: null,
-				summary: null,
-				icon: null,
-				autoIconEnabled: null,
-				kind: null,
-				tags: [],
-				links: [],
-				metadata: [new LikeC4Metadata("aspire-name", "custom-override")]
-			)
-		);
+		resource.Annotations.Add(new LikeC4NodeDetailsAnnotation("API").WithMetadata("aspire-name", "custom-override"));
 
 		var model = LikeC4ModelBuilder.Build([resource]);
 
@@ -1143,18 +1095,7 @@ public sealed class LikeC4ModelBuilderTests
 		endpoint.AllocatedEndpoint = new AllocatedEndpoint(endpoint, "localhost", 5000);
 		resource.Annotations.Add(endpoint);
 		resource.Annotations.Add(
-			new LikeC4NodeDetailsAnnotation(
-				"API",
-				technology: null,
-				description: null,
-				summary: null,
-				icon: null,
-				autoIconEnabled: null,
-				kind: null,
-				tags: [],
-				links: [new LikeC4Link("http://localhost:5000", "My Service")],
-				metadata: []
-			)
+			new LikeC4NodeDetailsAnnotation("API").WithLink("http://localhost:5000", "My Service")
 		);
 
 		var model = LikeC4ModelBuilder.Build([resource]);
@@ -1171,20 +1112,7 @@ public sealed class LikeC4ModelBuilderTests
 	public async Task Build_NormaliseMetadata_Default_ReplacesSpaceWithUnderscore()
 	{
 		var resource = CreateProjectResource("api");
-		resource.Annotations.Add(
-			new LikeC4NodeDetailsAnnotation(
-				"API",
-				technology: null,
-				description: null,
-				summary: null,
-				icon: null,
-				autoIconEnabled: null,
-				kind: null,
-				tags: [],
-				links: [],
-				metadata: [new("Azure SKU", "Standard")]
-			)
-		);
+		resource.Annotations.Add(new LikeC4NodeDetailsAnnotation("API").WithMetadata("Azure SKU", "Standard"));
 
 		var model = LikeC4ModelBuilder.Build([resource]);
 
@@ -1197,18 +1125,9 @@ public sealed class LikeC4ModelBuilderTests
 	{
 		var resource = CreateProjectResource("api");
 		resource.Annotations.Add(
-			new LikeC4NodeDetailsAnnotation(
-				"API",
-				technology: null,
-				description: null,
-				summary: null,
-				icon: null,
-				autoIconEnabled: null,
-				kind: null,
-				tags: [],
-				links: [],
-				metadata: [new("Azure SKU", "Entry 1"), new("Azure SKU", "Entry 2")]
-			)
+			new LikeC4NodeDetailsAnnotation("API")
+				.WithMetadata("Azure SKU", "Entry 1")
+				.WithMetadata("Azure SKU", "Entry 2")
 		);
 
 		var model = LikeC4ModelBuilder.Build([resource]);
@@ -1225,20 +1144,7 @@ public sealed class LikeC4ModelBuilderTests
 	public async Task Build_NormaliseMetadata_Default_PreservesValidChars()
 	{
 		var resource = CreateProjectResource("api");
-		resource.Annotations.Add(
-			new LikeC4NodeDetailsAnnotation(
-				"API",
-				technology: null,
-				description: null,
-				summary: null,
-				icon: null,
-				autoIconEnabled: null,
-				kind: null,
-				tags: [],
-				links: [],
-				metadata: [new LikeC4Metadata("valid-key_123", "value")]
-			)
-		);
+		resource.Annotations.Add(new LikeC4NodeDetailsAnnotation("API").WithMetadata("valid-key_123", "value"));
 
 		var model = LikeC4ModelBuilder.Build([resource]);
 
@@ -1250,20 +1156,7 @@ public sealed class LikeC4ModelBuilderTests
 	public async Task Build_NormaliseLowercase_LowercasesKey()
 	{
 		var resource = CreateProjectResource("api");
-		resource.Annotations.Add(
-			new LikeC4NodeDetailsAnnotation(
-				"API",
-				technology: null,
-				description: null,
-				summary: null,
-				icon: null,
-				autoIconEnabled: null,
-				kind: null,
-				tags: [],
-				links: [],
-				metadata: [new LikeC4Metadata("Azure SKU", "Standard")]
-			)
-		);
+		resource.Annotations.Add(new LikeC4NodeDetailsAnnotation("API").WithMetadata("Azure SKU", "Standard"));
 
 		var model = LikeC4ModelBuilder.Build(
 			[resource],
@@ -1278,20 +1171,7 @@ public sealed class LikeC4ModelBuilderTests
 	public async Task Build_NormaliseMetadata_Throw_ThrowsOnInvalidKey()
 	{
 		var resource = CreateProjectResource("api");
-		resource.Annotations.Add(
-			new LikeC4NodeDetailsAnnotation(
-				"API",
-				technology: null,
-				description: null,
-				summary: null,
-				icon: null,
-				autoIconEnabled: null,
-				kind: null,
-				tags: [],
-				links: [],
-				metadata: [new LikeC4Metadata("Azure SKU", "Standard")]
-			)
-		);
+		resource.Annotations.Add(new LikeC4NodeDetailsAnnotation("API").WithMetadata("Azure SKU", "Standard"));
 
 		await Assert
 			.That(() =>
@@ -1304,20 +1184,7 @@ public sealed class LikeC4ModelBuilderTests
 	public async Task Build_NormaliseMetadata_Throw_AcceptsValidKey()
 	{
 		var resource = CreateProjectResource("api");
-		resource.Annotations.Add(
-			new LikeC4NodeDetailsAnnotation(
-				"API",
-				technology: null,
-				description: null,
-				summary: null,
-				icon: null,
-				autoIconEnabled: null,
-				kind: null,
-				tags: [],
-				links: [],
-				metadata: [new LikeC4Metadata("valid-key_123", "value")]
-			)
-		);
+		resource.Annotations.Add(new LikeC4NodeDetailsAnnotation("API").WithMetadata("valid-key_123", "value"));
 
 		var model = LikeC4ModelBuilder.Build([resource], normaliseMetadataBehaviour: NormaliseMetadataBehaviour.Throw);
 
@@ -1328,43 +1195,16 @@ public sealed class LikeC4ModelBuilderTests
 	[Test]
 	public async Task Build_NormaliseMetadata_Normalise_ThrowsOnNullKey()
 	{
-		var resource = CreateProjectResource("api");
-		resource.Annotations.Add(
-			new LikeC4NodeDetailsAnnotation(
-				"API",
-				technology: null,
-				description: null,
-				summary: null,
-				icon: null,
-				autoIconEnabled: null,
-				kind: null,
-				tags: [],
-				links: [],
-				metadata: [new LikeC4Metadata(null!, "value")]
-			)
-		);
-
-		await Assert.That(() => LikeC4ModelBuilder.Build([resource])).Throws<ArgumentNullException>();
+		await Assert
+			.That(() => new LikeC4NodeDetailsAnnotation("API").WithMetadata(null!, "value"))
+			.Throws<ArgumentNullException>();
 	}
 
 	[Test]
 	public async Task Build_NormaliseMetadata_Default_ReplacesMultipleInvalidChars()
 	{
 		var resource = CreateProjectResource("api");
-		resource.Annotations.Add(
-			new LikeC4NodeDetailsAnnotation(
-				"API",
-				technology: null,
-				description: null,
-				summary: null,
-				icon: null,
-				autoIconEnabled: null,
-				kind: null,
-				tags: [],
-				links: [],
-				metadata: [new LikeC4Metadata("My Key (v2)!", "value")]
-			)
-		);
+		resource.Annotations.Add(new LikeC4NodeDetailsAnnotation("API").WithMetadata("My Key (v2)!", "value"));
 
 		var model = LikeC4ModelBuilder.Build([resource]);
 
@@ -1377,19 +1217,10 @@ public sealed class LikeC4ModelBuilderTests
 	{
 		var resource = CreateProjectResource("api");
 		resource.Annotations.Add(
-			new LikeC4NodeDetailsAnnotation(
-				"API",
-				technology: null,
-				description: null,
-				summary: null,
-				icon: null,
-				autoIconEnabled: null,
-				kind: null,
-				tags: [],
-				links: [],
-				// "Azure SKU" and "Azure_SKU" both normalise to "Azure_SKU"
-				metadata: [new("Azure SKU", "first"), new("Azure_SKU", "second")]
-			)
+			// "Azure SKU" and "Azure_SKU" both normalise to "Azure_SKU"
+			new LikeC4NodeDetailsAnnotation("API")
+				.WithMetadata("Azure SKU", "first")
+				.WithMetadata("Azure_SKU", "second")
 		);
 
 		var model = LikeC4ModelBuilder.Build([resource]);
@@ -1444,7 +1275,7 @@ public sealed class LikeC4ModelBuilderTests
 	public async Task Build_ErrorLogLines_HasErrorLogsState_PreservesUserDescription()
 	{
 		var resource = CreateContainerResource("api");
-		resource.Annotations.Add(new LikeC4NodeDetailsAnnotation(label: "API", description: "My component"));
+		resource.Annotations.Add(new LikeC4NodeDetailsAnnotation("API").WithDescription("My component"));
 
 		var states = new Dictionary<string, LikeC4ResourceState> { { "api", LikeC4ResourceState.HasErrorLogs } };
 		var errorLines = new Dictionary<string, IReadOnlyList<string>> { { "api", ["Error: disk full"] } };
@@ -1597,20 +1428,7 @@ public sealed class LikeC4ModelBuilderTests
 	{
 		var resource = CreateProjectResource("api");
 		var expectedUrl = "https://localhost:15086/consolelogs/resource/api";
-		resource.Annotations.Add(
-			new LikeC4NodeDetailsAnnotation(
-				"API",
-				technology: null,
-				description: null,
-				summary: null,
-				icon: null,
-				autoIconEnabled: null,
-				kind: null,
-				tags: [],
-				links: [new LikeC4Link(expectedUrl, "My custom link")],
-				metadata: []
-			)
-		);
+		resource.Annotations.Add(new LikeC4NodeDetailsAnnotation("API").WithLink(expectedUrl, "My custom link"));
 
 		var model = LikeC4ModelBuilder.Build([resource], dashboardBaseUrl: "https://localhost:15086");
 

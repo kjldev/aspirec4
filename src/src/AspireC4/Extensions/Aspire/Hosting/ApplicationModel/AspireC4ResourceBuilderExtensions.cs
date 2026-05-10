@@ -18,32 +18,31 @@ public static partial class AspireC4ResourceBuilderExtensions
 			string? description = null,
 			string? summary = null,
 			string? icon = null
-		) => WithLikeC4DetailsCore(builder, label, technology, description, summary, icon, autoIconEnabled: null);
+		)
+		{
+			ArgumentNullException.ThrowIfNull(builder);
+
+			var annotation = new LikeC4NodeDetailsAnnotation(label ?? builder.Resource.Name)
+				.WithTechnology(technology)
+				.WithDescription(description)
+				.WithSummary(summary)
+				.WithIcon(icon);
+
+			return builder.WithAnnotation(annotation, ResourceAnnotationMutationBehavior.Replace);
+		}
 
 		/// <summary>
 		/// Customises how a resource appears in the generated LikeC4 diagram using fluent options.
 		/// </summary>
-		public IResourceBuilder<T> WithLikeC4Details(Action<LikeC4DetailsOptions> configure)
+		public IResourceBuilder<T> WithLikeC4Details(Action<LikeC4NodeDetailsAnnotation> configure)
 		{
 			ArgumentNullException.ThrowIfNull(builder);
 			ArgumentNullException.ThrowIfNull(configure);
 
-			LikeC4DetailsOptions options = new();
-			configure(options);
+			var annotation = new LikeC4NodeDetailsAnnotation(builder.Resource.Name);
+			configure(annotation);
 
-			return WithLikeC4DetailsCore(
-				builder,
-				options.Label,
-				options.Technology,
-				options.Description,
-				options.Summary,
-				options.Icon,
-				options.AutoIconEnabled,
-				options.Kind,
-				options.Tags,
-				options.Links,
-				options.Metadata
-			);
+			return builder.WithAnnotation(annotation, ResourceAnnotationMutationBehavior.Replace);
 		}
 
 		/// <summary>
@@ -60,30 +59,16 @@ public static partial class AspireC4ResourceBuilderExtensions
 		/// <param name="configure">Optional action that configures the relationship appearance.</param>
 		public IResourceBuilder<T> WithLikeC4Reference<TRef>(
 			IResourceBuilder<TRef> target,
-			Action<LikeC4RelationshipOptions>? configure = null
+			Action<LikeC4RelationshipDetailsAnnotation>? configure = null
 		)
 			where TRef : IResource
 		{
 			ArgumentNullException.ThrowIfNull(builder);
 			ArgumentNullException.ThrowIfNull(target);
 
-			LikeC4RelationshipOptions options = new();
-			if (configure is not null)
-				configure(options);
-
-			builder.Resource.Annotations.Add(
-				new LikeC4RelationshipDetailsAnnotation(
-					target.Resource.Name,
-					options.Label,
-					options.Technology,
-					options.Description,
-					options.Kind,
-					options.NavigateTo,
-					options.Tags,
-					options.Links,
-					options.Metadata
-				)
-			);
+			var annotation = new LikeC4RelationshipDetailsAnnotation(target.Resource.Name);
+			configure?.Invoke(annotation);
+			builder.Resource.Annotations.Add(annotation);
 
 			return builder;
 		}
@@ -116,40 +101,5 @@ public static partial class AspireC4ResourceBuilderExtensions
 				ResourceAnnotationMutationBehavior.Replace
 			);
 		}
-	}
-
-	static IResourceBuilder<T> WithLikeC4DetailsCore<T>(
-		IResourceBuilder<T> builder,
-		string? label,
-		string? technology,
-		string? description,
-		string? summary,
-		string? icon,
-		bool? autoIconEnabled,
-		string? kind = null,
-		IReadOnlyList<string>? tags = null,
-		IReadOnlyList<LikeC4Link>? links = null,
-		IReadOnlyList<LikeC4Metadata>? metadata = null
-	)
-		where T : IResource
-	{
-		ArgumentNullException.ThrowIfNull(builder);
-
-		var effectiveLabel = label ?? builder.Resource.Name;
-		return builder.WithAnnotation(
-			new LikeC4NodeDetailsAnnotation(
-				effectiveLabel,
-				technology,
-				description,
-				summary,
-				icon,
-				autoIconEnabled,
-				kind,
-				tags ?? [],
-				links ?? [],
-				metadata ?? []
-			),
-			ResourceAnnotationMutationBehavior.Replace
-		);
 	}
 }

@@ -12,7 +12,7 @@ static partial class AspireC4ResourceBuilderEnvExtensions
 		/// </summary>
 		public IResourceBuilder<T> WithLikeC4Reference(
 			IResourceBuilder<IResourceWithConnectionString> source,
-			Action<LikeC4RelationshipOptions>? configure,
+			Action<LikeC4RelationshipDetailsAnnotation>? configure,
 			string? connectionName = null,
 			bool optional = false
 		)
