@@ -49,6 +49,8 @@ Callers must:
 				"https://learn.microsoft.com/azure/azure-cache-for-redis/cache-overview",
 				"Learn more about Azure Redis"
 			)
+			.WithLink("https://azure.com/", "Learn more about Azure")
+			.WithLink("https://redis.io/", "Learn more about Redis")
 	);
 
 var azurePostgres = builder
@@ -64,22 +66,31 @@ var azurePostgres = builder
 				"https://learn.microsoft.com/azure/postgresql/flexible-server/overview",
 				"Learn more about Azure Postgres Flexible Server"
 			)
-			.WithMetadata("Azure SKU", "Flexible Server")
-			.WithMetadata("Use Case", "Primary data store")
+			.WithLink("https://www.postgresql.org/", "Learn more about Postgres")
+			.WithLink("https://azure.com/", "Learn more about Azure")
+			.WithMetadata([
+				("Azure SKU", "Flexible Server x 1 (NON-PROD)"),
+				("Azure SKU", "Flexible Server x 2 (PROD)"),
+				("Use Case", "Primary data store"),
+			])
 	);
 
 var redis = builder
 	.AddRedis("redis")
-	.WithLikeC4Details(
-		description: "For testing **locally**, uses Redis as a container",
-		summary: "Local redis for development"
+	.WithLikeC4Details(opts =>
+		opts.WithDescription("For testing **locally**, uses Redis as a container")
+			.WithSummary("Local redis for development")
+			.WithLink("https://redis.io/", "Learn more about Redis")
+			.WithTag("local-dev")
 	)
 	.WithLikeC4Group("Local Dev/ Sync Group");
 var postgres = builder
 	.AddPostgres("postgres")
-	.WithLikeC4Details(
-		description: "For testing Azure Postgres vs. local Postgres",
-		summary: "Local Postgres for development"
+	.WithLikeC4Details(opts =>
+		opts.WithDescription("For testing Azure Postgres vs. local Postgres")
+			.WithSummary("Local Postgres for development")
+			.WithLink("https://www.postgresql.org/", "Learn more about Postgres")
+			.WithTag("local-dev")
 	)
 	.WithLikeC4Group("Local Dev/ Sync Group");
 

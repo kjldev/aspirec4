@@ -128,7 +128,7 @@ public static partial class AspireC4ResourceBuilderExtensions
 		string? kind = null,
 		IReadOnlyList<string>? tags = null,
 		IReadOnlyList<LikeC4Link>? links = null,
-		IReadOnlyDictionary<string, string>? metadata = null
+		IReadOnlyList<LikeC4Metadata>? metadata = null
 	)
 		where T : IResource
 	{
@@ -146,7 +146,7 @@ public static partial class AspireC4ResourceBuilderExtensions
 				kind,
 				tags ?? [],
 				links ?? [],
-				metadata ?? new Dictionary<string, string>()
+				metadata ?? []
 			),
 			ResourceAnnotationMutationBehavior.Replace
 		);

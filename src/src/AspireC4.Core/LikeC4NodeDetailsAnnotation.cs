@@ -18,7 +18,7 @@ public sealed class LikeC4NodeDetailsAnnotation : IResourceAnnotation
 			kind: null,
 			tags: [],
 			links: [],
-			metadata: new Dictionary<string, string>()
+			metadata: []
 		) { }
 
 	public LikeC4NodeDetailsAnnotation(string label, string? technology, string? description, string? icon)
@@ -32,7 +32,7 @@ public sealed class LikeC4NodeDetailsAnnotation : IResourceAnnotation
 			kind: null,
 			tags: [],
 			links: [],
-			metadata: new Dictionary<string, string>()
+			metadata: []
 		) { }
 
 	public LikeC4NodeDetailsAnnotation(
@@ -52,7 +52,7 @@ public sealed class LikeC4NodeDetailsAnnotation : IResourceAnnotation
 			kind: null,
 			tags: [],
 			links: [],
-			metadata: new Dictionary<string, string>()
+			metadata: []
 		) { }
 
 	public LikeC4NodeDetailsAnnotation(
@@ -73,7 +73,7 @@ public sealed class LikeC4NodeDetailsAnnotation : IResourceAnnotation
 			kind: null,
 			tags: [],
 			links: [],
-			metadata: new Dictionary<string, string>()
+			metadata: []
 		) { }
 
 	public LikeC4NodeDetailsAnnotation(
@@ -86,7 +86,7 @@ public sealed class LikeC4NodeDetailsAnnotation : IResourceAnnotation
 		string? kind,
 		IReadOnlyList<string> tags,
 		IReadOnlyList<LikeC4Link> links,
-		IReadOnlyDictionary<string, string> metadata
+		IReadOnlyList<LikeC4Metadata> metadata
 	)
 	{
 		ArgumentException.ThrowIfNullOrWhiteSpace(label);
@@ -105,7 +105,7 @@ public sealed class LikeC4NodeDetailsAnnotation : IResourceAnnotation
 		Kind = kind;
 		Tags = tags ?? [];
 		Links = links ?? [];
-		Metadata = metadata ?? new Dictionary<string, string>();
+		Metadata = metadata ?? [];
 	}
 
 	public string Label { get; }
@@ -125,5 +125,5 @@ public sealed class LikeC4NodeDetailsAnnotation : IResourceAnnotation
 	public IReadOnlyList<LikeC4Link> Links { get; }
 
 	/// <summary>Metadata key-value pairs for this element.</summary>
-	public IReadOnlyDictionary<string, string> Metadata { get; }
+	public IReadOnlyList<LikeC4Metadata> Metadata { get; }
 }

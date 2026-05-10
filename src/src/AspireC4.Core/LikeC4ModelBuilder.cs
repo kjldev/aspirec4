@@ -124,7 +124,7 @@ public static class LikeC4ModelBuilder
 			State = state,
 			Tags = details?.Tags ?? [],
 			Links = details?.Links ?? [],
-			Metadata = details?.Metadata ?? new Dictionary<string, string>(),
+			Metadata = details?.Metadata ?? [],
 			Group = group,
 		};
 	}

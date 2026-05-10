@@ -7,7 +7,7 @@ public sealed class LikeC4DetailsOptions
 {
 	readonly List<string> _tags = [];
 	readonly List<LikeC4Link> _links = [];
-	readonly Dictionary<string, string> _metadata = [];
+	readonly List<LikeC4Metadata> _metadata = [];
 
 	/// <summary>The resource label shown in the diagram.</summary>
 	public string? Label { get; private set; }
@@ -43,7 +43,7 @@ public sealed class LikeC4DetailsOptions
 	public IReadOnlyList<LikeC4Link> Links => _links;
 
 	/// <summary>Metadata key-value pairs for this element.</summary>
-	public IReadOnlyDictionary<string, string> Metadata => _metadata;
+	public IReadOnlyList<LikeC4Metadata> Metadata => _metadata;
 
 	public LikeC4DetailsOptions WithLabel(string label)
 	{
@@ -130,7 +130,31 @@ public sealed class LikeC4DetailsOptions
 	public LikeC4DetailsOptions WithMetadata(string key, string value)
 	{
 		ArgumentException.ThrowIfNullOrWhiteSpace(key);
-		_metadata[key] = value;
+		ArgumentException.ThrowIfNullOrWhiteSpace(value);
+
+		_metadata.Add(new(key, value));
+		return this;
+	}
+
+	/// <summary>Adds a metadata key-value pair to this element.</summary>
+	public LikeC4DetailsOptions WithMetadata(params (string key, string value)[] metadata)
+	{
+		ArgumentNullException.ThrowIfNull(metadata);
+
+		foreach (var (key, value) in metadata)
+			WithMetadata(key, value);
+
+		return this;
+	}
+
+	/// <summary>Adds a metadata key-value pair to this element.</summary>
+	public LikeC4DetailsOptions WithMetadata(IDictionary<string, string> metadata)
+	{
+		ArgumentNullException.ThrowIfNull(metadata);
+
+		foreach (var (key, value) in metadata)
+			WithMetadata(key, value);
+
 		return this;
 	}
 }

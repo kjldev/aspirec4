@@ -245,7 +245,7 @@ public sealed class LikeC4VisualizationBuilderTests
 				.ToArray();
 
 			// 1 named volume (workspace) + 1 bind mount (extra.c4 directory).
-			await Assert.That(mounts).HasCount().EqualTo(2);
+			await Assert.That(mounts.Length).EqualTo(2);
 
 			var bindMount = mounts.FirstOrDefault(m => m.Type == ContainerMountType.BindMount);
 			await Assert.That(bindMount).IsNotNull();

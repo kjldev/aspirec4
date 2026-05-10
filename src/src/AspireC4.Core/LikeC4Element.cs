@@ -37,7 +37,7 @@ public sealed record LikeC4Element
 	public IReadOnlyList<LikeC4Link> Links { get; init; } = [];
 
 	/// <summary>Metadata key-value pairs emitted as a <c>metadata { key "value" }</c> block in the element body.</summary>
-	public IReadOnlyDictionary<string, string> Metadata { get; init; } = new Dictionary<string, string>();
+	public IReadOnlyList<LikeC4Metadata> Metadata { get; init; } = [];
 
 	/// <summary>Optional view-level group label. Elements sharing the same label are emitted inside a <c>group 'label' { include ... }</c> block in the generated view.</summary>
 	public string? Group { get; init; }
