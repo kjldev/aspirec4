@@ -19,11 +19,13 @@ public static class LikeC4ModelBuilder
 	/// </param>
 	/// <param name="autoIconsEnabled">When <see langword="true"/>, infers icons from resource type/name.</param>
 	/// <param name="aspireMetadataInclusion">Controls which Aspire runtime metadata is injected into elements.</param>
+	/// <param name="normaliseMetadataBehaviour">Controls how invalid characters in metadata keys are handled.</param>
 	public static LikeC4Model Build(
 		IReadOnlyList<IResource> resources,
 		IReadOnlyDictionary<string, LikeC4ResourceState>? resourceStates = null,
 		bool autoIconsEnabled = true,
-		AspireMetadataInclusion aspireMetadataInclusion = AspireMetadataInclusion.All
+		AspireMetadataInclusion aspireMetadataInclusion = AspireMetadataInclusion.All,
+		NormaliseMetadataBehaviour normaliseMetadataBehaviour = NormaliseMetadataBehaviour.Normalise
 	)
 	{
 		ArgumentNullException.ThrowIfNull(resources);
@@ -51,8 +53,17 @@ public static class LikeC4ModelBuilder
 					? s
 					: LikeC4ResourceState.Unknown;
 
-			elements.Add(BuildElement(resource, state, autoIconsEnabled, aspireMetadataInclusion));
-			CollectRelationships(resource, visibleResources, visibleByName, relationships, visitedRelationships);
+			elements.Add(
+				BuildElement(resource, state, autoIconsEnabled, aspireMetadataInclusion, normaliseMetadataBehaviour)
+			);
+			CollectRelationships(
+				resource,
+				visibleResources,
+				visibleByName,
+				relationships,
+				visitedRelationships,
+				normaliseMetadataBehaviour
+			);
 		}
 
 		return new LikeC4Model { Elements = elements, Relationships = relationships };
@@ -104,7 +115,8 @@ public static class LikeC4ModelBuilder
 		IResource resource,
 		LikeC4ResourceState state,
 		bool autoIconsEnabled,
-		AspireMetadataInclusion aspireMetadataInclusion = AspireMetadataInclusion.All
+		AspireMetadataInclusion aspireMetadataInclusion = AspireMetadataInclusion.All,
+		NormaliseMetadataBehaviour normaliseMetadataBehaviour = NormaliseMetadataBehaviour.Normalise
 	)
 	{
 		var details = resource.Annotations.OfType<LikeC4NodeDetailsAnnotation>().LastOrDefault();
@@ -119,7 +131,17 @@ public static class LikeC4ModelBuilder
 		var parentName = (resource as IResourceWithParent)?.Parent?.Name;
 		var group = resource.Annotations.OfType<LikeC4GroupAnnotation>().LastOrDefault()?.GroupName;
 
-		var userMetadata = details?.Metadata ?? [];
+		var userMetadata = new List<LikeC4Metadata>();
+		var seenMetadataKeys = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+		foreach (var m in details?.Metadata ?? [])
+		{
+			var normalisedKey = NormaliseMetadataKey(m.Key, normaliseMetadataBehaviour);
+			if (seenMetadataKeys.Add(normalisedKey))
+			{
+				userMetadata.Add(new LikeC4Metadata(normalisedKey, m.Value));
+			}
+		}
+
 		var userLinks = details?.Links ?? [];
 		var (autoMetadata, autoLinks) = BuildAspireData(resource, aspireMetadataInclusion, userMetadata, userLinks);
 
@@ -204,6 +226,95 @@ public static class LikeC4ModelBuilder
 		return (metadata, links);
 	}
 
+	/// <summary>
+	/// Normalises a single metadata key according to the specified behaviour.
+	/// Valid key characters are letters, digits, hyphens (<c>-</c>), and underscores (<c>_</c>).
+	/// </summary>
+	/// <exception cref="ArgumentNullException">Thrown when <paramref name="key"/> is <see langword="null"/>.</exception>
+	/// <exception cref="ArgumentException">
+	/// Thrown when <paramref name="behaviour"/> is <see cref="NormaliseMetadataBehaviour.Throw"/>
+	/// and <paramref name="key"/> contains invalid characters.
+	/// </exception>
+	static string NormaliseMetadataKey(string key, NormaliseMetadataBehaviour behaviour)
+	{
+		ArgumentNullException.ThrowIfNull(key);
+
+		if (behaviour == NormaliseMetadataBehaviour.Throw)
+		{
+			if (!IsValidMetadataKey(key))
+			{
+				throw new ArgumentException(
+					$"Metadata key '{key}' contains invalid characters. "
+						+ "Valid characters are letters, digits, hyphens (-), and underscores (_).",
+					nameof(key)
+				);
+			}
+
+			return key;
+		}
+
+		var normalised = string.Create(
+			key.Length,
+			key,
+			static (span, src) =>
+			{
+				for (var i = 0; i < src.Length; i++)
+				{
+					span[i] = IsValidMetadataKeyChar(src[i]) ? src[i] : '_';
+				}
+			}
+		);
+
+		return behaviour == NormaliseMetadataBehaviour.NormaliseLowercase
+#pragma warning disable CA1308 // ToLowerInvariant is intentional: metadata keys are normalised to lowercase for readability
+			? normalised.ToLowerInvariant()
+#pragma warning restore CA1308
+			: normalised;
+	}
+
+	/// <summary>
+	/// Returns a new dictionary with all keys normalised according to <paramref name="behaviour"/>.
+	/// When two keys normalise to the same value, the first occurrence is kept.
+	/// </summary>
+	static IReadOnlyDictionary<string, string> NormaliseMetadataKeys(
+		IReadOnlyDictionary<string, string> metadata,
+		NormaliseMetadataBehaviour behaviour
+	)
+	{
+		if (metadata.Count == 0)
+		{
+			return metadata;
+		}
+
+		var result = new Dictionary<string, string>(metadata.Count, StringComparer.OrdinalIgnoreCase);
+		foreach (var (key, value) in metadata)
+		{
+			result.TryAdd(NormaliseMetadataKey(key, behaviour), value);
+		}
+
+		return result;
+	}
+
+	static bool IsValidMetadataKey(string key)
+	{
+		if (string.IsNullOrEmpty(key))
+		{
+			return false;
+		}
+
+		foreach (var c in key)
+		{
+			if (!IsValidMetadataKeyChar(c))
+			{
+				return false;
+			}
+		}
+
+		return true;
+	}
+
+	static bool IsValidMetadataKeyChar(char c) => char.IsLetterOrDigit(c) || c == '_' || c == '-';
+
 	static string InferKind(IResource resource) =>
 		resource switch
 		{
@@ -258,7 +369,8 @@ public static class LikeC4ModelBuilder
 		HashSet<IResource> visibleResources,
 		Dictionary<string, IResource> visibleByName,
 		List<LikeC4Relationship> relationships,
-		HashSet<(string, string)> visited
+		HashSet<(string, string)> visited,
+		NormaliseMetadataBehaviour normaliseMetadataBehaviour
 	)
 	{
 		foreach (var annotation in resource.Annotations.OfType<ResourceRelationshipAnnotation>())
@@ -315,7 +427,10 @@ public static class LikeC4ModelBuilder
 					Kind = details?.Kind,
 					Tags = details?.Tags ?? [],
 					Links = details?.Links ?? [],
-					Metadata = details?.Metadata ?? new Dictionary<string, string>(),
+					Metadata = NormaliseMetadataKeys(
+						details?.Metadata ?? new Dictionary<string, string>(),
+						normaliseMetadataBehaviour
+					),
 				}
 			);
 		}
@@ -348,7 +463,7 @@ public static class LikeC4ModelBuilder
 					Kind = details.Kind,
 					Tags = details.Tags,
 					Links = details.Links,
-					Metadata = details.Metadata,
+					Metadata = NormaliseMetadataKeys(details.Metadata, normaliseMetadataBehaviour),
 				}
 			);
 		}

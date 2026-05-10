@@ -96,6 +96,13 @@ public sealed class AspireC4DiagramOptions
 	public AspireMetadataInclusion AutoIncludeAspireMetadata { get; set; } = AspireMetadataInclusion.All;
 
 	/// <summary>
+	/// Controls how invalid characters in LikeC4 metadata keys are handled when building the diagram model.
+	/// Valid metadata key characters are letters, digits, hyphens (<c>-</c>), and underscores (<c>_</c>).
+	/// Defaults to <see cref="NormaliseMetadataBehaviour.Normalise"/>.
+	/// </summary>
+	public NormaliseMetadataBehaviour NormaliseMetadataBehaviour { get; set; } = NormaliseMetadataBehaviour.Normalise;
+
+	/// <summary>
 	/// Additional user-managed <c>.c4</c> source files that are copied into the output directory
 	/// (and synced to the Docker volume when in container mode) alongside the generated model file.
 	/// LikeC4 automatically discovers all <c>.c4</c> files in the project directory, so these files

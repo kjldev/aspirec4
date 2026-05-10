@@ -367,14 +367,19 @@ sealed class AspireC4LifecycleHook(
 			[.. appModel.Resources],
 			_resourceStates,
 			opts.AutoIconsEnabled,
-			opts.AutoIncludeAspireMetadata
+			opts.AutoIncludeAspireMetadata,
+			opts.NormaliseMetadataBehaviour
 		);
 		var dsl = LikeC4DSLGenerator.Generate(model, opts);
 
 		var outputDir = Path.GetFullPath(opts.OutputDirectory);
 		Directory.CreateDirectory(outputDir);
 
-		var outputPath = Path.Combine(outputDir, opts.FileName + ".c4");
+		var filename = opts.FileName;
+		if (!filename.EndsWith(".c4", StringComparison.OrdinalIgnoreCase))
+			filename += ".c4";
+
+		var outputPath = Path.Combine(outputDir, filename);
 		await File.WriteAllTextAsync(outputPath, dsl, cancellationToken);
 
 		if (opts.ValidateBeforeStart)

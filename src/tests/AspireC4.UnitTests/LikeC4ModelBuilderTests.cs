@@ -885,6 +885,212 @@ public sealed class LikeC4ModelBuilderTests
 		await Assert.That(httpLinks[0].Title).IsEqualTo("My Service");
 	}
 
+	// ── NormaliseMetadataBehaviour tests ──────────────────────────────────────
+
+	[Test]
+	public async Task Build_NormaliseMetadata_Default_ReplacesSpaceWithUnderscore()
+	{
+		var resource = CreateProjectResource("api");
+		resource.Annotations.Add(
+			new LikeC4NodeDetailsAnnotation(
+				"API",
+				technology: null,
+				description: null,
+				summary: null,
+				icon: null,
+				autoIconEnabled: null,
+				kind: null,
+				tags: [],
+				links: [],
+				metadata: [new LikeC4Metadata("Azure SKU", "Standard")]
+			)
+		);
+
+		var model = LikeC4ModelBuilder.Build([resource]);
+
+		var meta = model.Elements[0].Metadata;
+		await Assert.That(meta.Any(m => m.Key == "Azure_SKU" && m.Value == "Standard")).IsTrue();
+	}
+
+	[Test]
+	public async Task Build_NormaliseMetadata_Default_PreservesValidChars()
+	{
+		var resource = CreateProjectResource("api");
+		resource.Annotations.Add(
+			new LikeC4NodeDetailsAnnotation(
+				"API",
+				technology: null,
+				description: null,
+				summary: null,
+				icon: null,
+				autoIconEnabled: null,
+				kind: null,
+				tags: [],
+				links: [],
+				metadata: [new LikeC4Metadata("valid-key_123", "value")]
+			)
+		);
+
+		var model = LikeC4ModelBuilder.Build([resource]);
+
+		var meta = model.Elements[0].Metadata;
+		await Assert.That(meta.Any(m => m.Key == "valid-key_123")).IsTrue();
+	}
+
+	[Test]
+	public async Task Build_NormaliseLowercase_LowercasesKey()
+	{
+		var resource = CreateProjectResource("api");
+		resource.Annotations.Add(
+			new LikeC4NodeDetailsAnnotation(
+				"API",
+				technology: null,
+				description: null,
+				summary: null,
+				icon: null,
+				autoIconEnabled: null,
+				kind: null,
+				tags: [],
+				links: [],
+				metadata: [new LikeC4Metadata("Azure SKU", "Standard")]
+			)
+		);
+
+		var model = LikeC4ModelBuilder.Build(
+			[resource],
+			normaliseMetadataBehaviour: NormaliseMetadataBehaviour.NormaliseLowercase
+		);
+
+		var meta = model.Elements[0].Metadata;
+		await Assert.That(meta.Any(m => m.Key == "azure_sku" && m.Value == "Standard")).IsTrue();
+	}
+
+	[Test]
+	public async Task Build_NormaliseMetadata_Throw_ThrowsOnInvalidKey()
+	{
+		var resource = CreateProjectResource("api");
+		resource.Annotations.Add(
+			new LikeC4NodeDetailsAnnotation(
+				"API",
+				technology: null,
+				description: null,
+				summary: null,
+				icon: null,
+				autoIconEnabled: null,
+				kind: null,
+				tags: [],
+				links: [],
+				metadata: [new LikeC4Metadata("Azure SKU", "Standard")]
+			)
+		);
+
+		await Assert
+			.That(() =>
+				LikeC4ModelBuilder.Build([resource], normaliseMetadataBehaviour: NormaliseMetadataBehaviour.Throw)
+			)
+			.Throws<ArgumentException>();
+	}
+
+	[Test]
+	public async Task Build_NormaliseMetadata_Throw_AcceptsValidKey()
+	{
+		var resource = CreateProjectResource("api");
+		resource.Annotations.Add(
+			new LikeC4NodeDetailsAnnotation(
+				"API",
+				technology: null,
+				description: null,
+				summary: null,
+				icon: null,
+				autoIconEnabled: null,
+				kind: null,
+				tags: [],
+				links: [],
+				metadata: [new LikeC4Metadata("valid-key_123", "value")]
+			)
+		);
+
+		var model = LikeC4ModelBuilder.Build([resource], normaliseMetadataBehaviour: NormaliseMetadataBehaviour.Throw);
+
+		var meta = model.Elements[0].Metadata;
+		await Assert.That(meta.Any(m => m.Key == "valid-key_123")).IsTrue();
+	}
+
+	[Test]
+	public async Task Build_NormaliseMetadata_Normalise_ThrowsOnNullKey()
+	{
+		var resource = CreateProjectResource("api");
+		resource.Annotations.Add(
+			new LikeC4NodeDetailsAnnotation(
+				"API",
+				technology: null,
+				description: null,
+				summary: null,
+				icon: null,
+				autoIconEnabled: null,
+				kind: null,
+				tags: [],
+				links: [],
+				metadata: [new LikeC4Metadata(null!, "value")]
+			)
+		);
+
+		await Assert.That(() => LikeC4ModelBuilder.Build([resource])).Throws<ArgumentNullException>();
+	}
+
+	[Test]
+	public async Task Build_NormaliseMetadata_Default_ReplacesMultipleInvalidChars()
+	{
+		var resource = CreateProjectResource("api");
+		resource.Annotations.Add(
+			new LikeC4NodeDetailsAnnotation(
+				"API",
+				technology: null,
+				description: null,
+				summary: null,
+				icon: null,
+				autoIconEnabled: null,
+				kind: null,
+				tags: [],
+				links: [],
+				metadata: [new LikeC4Metadata("My Key (v2)!", "value")]
+			)
+		);
+
+		var model = LikeC4ModelBuilder.Build([resource]);
+
+		var meta = model.Elements[0].Metadata;
+		await Assert.That(meta.Any(m => m.Key == "My_Key__v2__")).IsTrue();
+	}
+
+	[Test]
+	public async Task Build_NormaliseMetadata_DuplicateNormalisedKeys_KeepsFirst()
+	{
+		var resource = CreateProjectResource("api");
+		resource.Annotations.Add(
+			new LikeC4NodeDetailsAnnotation(
+				"API",
+				technology: null,
+				description: null,
+				summary: null,
+				icon: null,
+				autoIconEnabled: null,
+				kind: null,
+				tags: [],
+				links: [],
+				// "Azure SKU" and "Azure_SKU" both normalise to "Azure_SKU"
+				metadata: [new LikeC4Metadata("Azure SKU", "first"), new LikeC4Metadata("Azure_SKU", "second")]
+			)
+		);
+
+		var model = LikeC4ModelBuilder.Build([resource]);
+
+		var meta = model.Elements[0].Metadata;
+		var normalised = meta.Where(m => m.Key == "Azure_SKU").ToList();
+		await Assert.That(normalised).Count().IsEqualTo(1);
+		await Assert.That(normalised[0].Value).IsEqualTo("first");
+	}
+
 	static ProjectResource CreateProjectResource(string name)
 	{
 		var resource = new ProjectResource(name);
