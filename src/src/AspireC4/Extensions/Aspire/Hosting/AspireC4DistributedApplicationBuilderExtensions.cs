@@ -93,18 +93,12 @@ public static class AspireC4DistributedApplicationBuilderExtensions
 				}
 			);
 
-			List<string> args = ["start", ".", "--port", $"{LikeC4ServerResource.DefaultContainerServePort}"];
-			if (opts.DisableHMR)
-			{
-				args.Add("--no-react-hmr");
-			}
-
 			var serverBuilder = builder
 				.AddResource(serverResource)
 				.WithImage(LikeC4ServerResource.DefaultImage)
 				.WithImageTag(imageTag)
 				.WithImageRegistry(LikeC4ServerResource.DefaultRegistry)
-				.WithArgs(args)
+				.WithArgs("start", ".", "--port", $"{LikeC4ServerResource.DefaultContainerServePort}")
 				.WithVolume(workspaceVolumeName, LikeC4ServerResource.WorkspacePath)
 				.WithHttpEndpoint(
 					port: port,
@@ -124,6 +118,11 @@ public static class AspireC4DistributedApplicationBuilderExtensions
 				//.WithExternalHttpEndpoints()
 				// Exclude the sidecar from the architecture diagram — it is tooling, not a system element.
 				.WithAnnotation(new ExcludeFromLikeC4Annotation(), ResourceAnnotationMutationBehavior.Replace);
+
+			if (opts.DisableHMR)
+			{
+				serverBuilder.WithArgs("--no-react-hmr");
+			}
 
 			if (!opts.DisableHMR)
 			{
