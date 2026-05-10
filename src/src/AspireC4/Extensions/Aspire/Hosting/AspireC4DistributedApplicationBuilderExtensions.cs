@@ -1,4 +1,4 @@
-﻿using System.ComponentModel;
+using System.ComponentModel;
 using System.Security.Cryptography;
 using System.Text;
 using Aspire.Hosting.ApplicationModel;
@@ -93,10 +93,10 @@ public static class AspireC4DistributedApplicationBuilderExtensions
 				}
 			);
 
-			List<string> args = ["start", "."];
+			List<string> args = ["start", ".", "--port", $"{LikeC4ServerResource.DefaultContainerServePort}"];
 			if (opts.DisableHMR)
 			{
-				args.Add("--no-hmr");
+				args.Add("--no-react-hmr");
 			}
 
 			var serverBuilder = builder

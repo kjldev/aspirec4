@@ -12,7 +12,7 @@ namespace Aspire.Hosting.AspireC4;
 [NotInParallel]
 public sealed partial class LikeC4VisualizationHostTests : IAsyncDisposable
 {
-	const string LikeC4ResourceName = "likec4-visualization";
+	const string LikeC4ResourceName = AspireC4DistributedApplicationBuilderExtensions.AspireC4ResourceName;
 	static readonly TimeSpan LikeC4StartupTimeout = TimeSpan.FromSeconds(120);
 
 	DistributedApplication? _app;
