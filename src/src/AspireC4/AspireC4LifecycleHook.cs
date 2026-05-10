@@ -368,7 +368,8 @@ sealed class AspireC4LifecycleHook(
 			_resourceStates,
 			opts.AutoIconsEnabled,
 			opts.AutoIncludeAspireMetadata,
-			opts.NormaliseMetadataBehaviour
+			opts.NormaliseMetadataBehaviour,
+			opts.IconResolvers
 		);
 		var dsl = LikeC4DSLGenerator.Generate(model, opts);
 

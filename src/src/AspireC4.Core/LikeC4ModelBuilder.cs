@@ -20,12 +20,18 @@ public static class LikeC4ModelBuilder
 	/// <param name="autoIconsEnabled">When <see langword="true"/>, infers icons from resource type/name.</param>
 	/// <param name="aspireMetadataInclusion">Controls which Aspire runtime metadata is injected into elements.</param>
 	/// <param name="normaliseMetadataBehaviour">Controls how invalid characters in metadata keys are handled.</param>
+	/// <param name="iconResolvers">
+	/// Optional list of custom icon resolvers evaluated before built-in auto-icon inference.
+	/// Each resolver receives a <see cref="LikeC4IconResolverContext"/> and should return a non-null icon string
+	/// to override the default, or <see langword="null"/> to defer to the next resolver or built-in inference.
+	/// </param>
 	public static LikeC4Model Build(
 		IReadOnlyList<IResource> resources,
 		IReadOnlyDictionary<string, LikeC4ResourceState>? resourceStates = null,
 		bool autoIconsEnabled = true,
 		AspireMetadataInclusion aspireMetadataInclusion = AspireMetadataInclusion.All,
-		NormaliseMetadataBehaviour normaliseMetadataBehaviour = NormaliseMetadataBehaviour.Normalise
+		NormaliseMetadataBehaviour normaliseMetadataBehaviour = NormaliseMetadataBehaviour.Normalise,
+		IReadOnlyList<LikeC4IconResolver>? iconResolvers = null
 	)
 	{
 		ArgumentNullException.ThrowIfNull(resources);
@@ -69,7 +75,8 @@ public static class LikeC4ModelBuilder
 					autoIconsEnabled,
 					aspireMetadataInclusion,
 					normaliseMetadataBehaviour,
-					hiddenByName.GetValueOrDefault(resource.Name)
+					hiddenByName.GetValueOrDefault(resource.Name),
+					iconResolvers
 				)
 			);
 			CollectRelationships(
@@ -133,7 +140,8 @@ public static class LikeC4ModelBuilder
 		bool autoIconsEnabled,
 		AspireMetadataInclusion aspireMetadataInclusion = AspireMetadataInclusion.All,
 		NormaliseMetadataBehaviour normaliseMetadataBehaviour = NormaliseMetadataBehaviour.Normalise,
-		IResource? hiddenOriginal = null
+		IResource? hiddenOriginal = null,
+		IReadOnlyList<LikeC4IconResolver>? iconResolvers = null
 	)
 	{
 		var details = resource.Annotations.OfType<LikeC4NodeDetailsAnnotation>().LastOrDefault();
@@ -143,7 +151,7 @@ public static class LikeC4ModelBuilder
 		var technology = details?.Technology ?? inferredTechnology;
 		var description = details?.Description;
 		var summary = details?.Summary;
-		var icon = ResolveIcon(resource, details, inferredTechnology, autoIconsEnabled, hiddenOriginal);
+		var icon = ResolveIcon(resource, details, inferredTechnology, autoIconsEnabled, hiddenOriginal, iconResolvers);
 		var kind = details?.Kind ?? InferKind(resource);
 		var parentName = (resource as IResourceWithParent)?.Parent?.Name;
 		var group = resource.Annotations.OfType<LikeC4GroupAnnotation>().LastOrDefault()?.GroupName;
@@ -359,12 +367,27 @@ public static class LikeC4ModelBuilder
 		LikeC4NodeDetailsAnnotation? details,
 		string? inferredTechnology,
 		bool autoIconsEnabled,
-		IResource? hiddenOriginal = null
+		IResource? hiddenOriginal = null,
+		IReadOnlyList<LikeC4IconResolver>? iconResolvers = null
 	)
 	{
 		if (!string.IsNullOrWhiteSpace(details?.Icon))
 		{
 			return details.Icon;
+		}
+
+		// Custom resolvers run before auto-inference; first non-null result wins.
+		if (iconResolvers is { Count: > 0 })
+		{
+			var ctx = new LikeC4IconResolverContext { Resource = resource, HiddenOriginal = hiddenOriginal };
+			foreach (var resolver in iconResolvers)
+			{
+				var resolved = resolver(ctx);
+				if (resolved is not null)
+				{
+					return resolved;
+				}
+			}
 		}
 
 		if (!(details?.AutoIconEnabled ?? autoIconsEnabled))

@@ -112,4 +112,23 @@ public sealed class AspireC4DiagramOptions
 	/// Each entry should be an absolute path or a path relative to the AppHost working directory.
 	/// </remarks>
 	public List<string> AdditionalDslFiles { get; set; } = [];
+
+	/// <summary>
+	/// Custom icon resolvers that are evaluated before the built-in auto-icon inference.
+	/// Each resolver receives a <see cref="LikeC4IconResolverContext"/> and returns either
+	/// a LikeC4 icon string (e.g. <c>"tech:redis"</c>) or <see langword="null"/> to defer.
+	/// Resolvers are evaluated in registration order; the first non-<see langword="null"/>
+	/// result wins. If all resolvers return <see langword="null"/> (or the list is empty),
+	/// the built-in icon inference runs as normal.
+	/// </summary>
+	/// <example>
+	/// <code>
+	/// builder.AddAspireC4Visualization(options =>
+	/// {
+	///     options.IconResolvers.Add(ctx =>
+	///         ctx.Resource is MyCustomResource ? "tech:dotnet" : null);
+	/// });
+	/// </code>
+	/// </example>
+	public List<LikeC4IconResolver> IconResolvers { get; } = [];
 }

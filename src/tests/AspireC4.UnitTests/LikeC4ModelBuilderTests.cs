@@ -345,6 +345,87 @@ public sealed class LikeC4ModelBuilderTests
 	}
 
 	[Test]
+	public async Task Build_WithCustomIconResolver_OverridesAutoInference()
+	{
+		var resource = CreateProjectResource("api");
+
+		LikeC4IconResolver resolver = ctx => ctx.Resource is ProjectResource ? "tech:dotnet" : null;
+
+		var model = LikeC4ModelBuilder.Build([resource], iconResolvers: [resolver]);
+
+		await Assert.That(model.Elements[0].Icon).IsEqualTo("tech:dotnet");
+	}
+
+	[Test]
+	public async Task Build_WithCustomIconResolver_NullResultFallsBackToAutoInference()
+	{
+		var resource = CreateContainerResource("redis");
+
+		// Resolver explicitly declines; auto-inference should still pick tech:redis.
+		LikeC4IconResolver resolver = _ => null;
+
+		var model = LikeC4ModelBuilder.Build([resource], iconResolvers: [resolver]);
+
+		await Assert.That(model.Elements[0].Icon).IsEqualTo("tech:redis");
+	}
+
+	[Test]
+	public async Task Build_WithCustomIconResolver_ContextExposesHiddenOriginal()
+	{
+		IResource? capturedHidden = null;
+
+		LikeC4IconResolver resolver = ctx =>
+		{
+			capturedHidden = ctx.HiddenOriginal;
+			return null;
+		};
+
+		var visibleContainer = CreateContainerResource("azure-redis");
+		var hiddenAzureResource = new AzureManagedRedisResource("azure-redis");
+		var snapshot = new ResourceSnapshotAnnotation(
+			new CustomResourceSnapshot
+			{
+				ResourceType = "AzureManagedRedisResource",
+				Properties = [],
+				IsHidden = true,
+			}
+		);
+		hiddenAzureResource.Annotations.Add(snapshot);
+
+		LikeC4ModelBuilder.Build([hiddenAzureResource, visibleContainer], iconResolvers: [resolver]);
+
+		await Assert.That(capturedHidden).IsTypeOf<AzureManagedRedisResource>();
+	}
+
+	[Test]
+	public async Task Build_WithMultipleCustomIconResolvers_FirstNonNullWins()
+	{
+		var resource = CreateProjectResource("api");
+		var callOrder = new List<int>();
+
+		LikeC4IconResolver first = _ =>
+		{
+			callOrder.Add(1);
+			return null;
+		};
+		LikeC4IconResolver second = _ =>
+		{
+			callOrder.Add(2);
+			return "tech:custom";
+		};
+		LikeC4IconResolver third = _ =>
+		{
+			callOrder.Add(3);
+			return "tech:should-not-reach";
+		};
+
+		var model = LikeC4ModelBuilder.Build([resource], iconResolvers: [first, second, third]);
+
+		await Assert.That(model.Elements[0].Icon).IsEqualTo("tech:custom");
+		await Assert.That(callOrder).IsEquivalentTo([1, 2]);
+	}
+
+	[Test]
 	public async Task Build_NodeAnnotation_WithHashPrefixedTag_NormalizesTagInModel()
 	{
 		var resource = CreateProjectResource("api");
