@@ -114,6 +114,16 @@ public sealed class AspireC4DiagramOptions
 	public List<string> AdditionalDslFiles { get; set; } = [];
 
 	/// <summary>
+	/// When <see langword="true"/>, adds links from each LikeC4 element back to the Aspire dashboard
+	/// console logs and structured logs pages for that resource. The links are constructed at runtime
+	/// once the Aspire dashboard URL is discovered and are encoded as login-redirect URLs when a browser
+	/// token is present, so clicking them authenticates the browser before navigating to the resource page.
+	/// Requires <see cref="AutoIncludeAspireMetadata"/> to include <see cref="AspireMetadataInclusion.Links"/>.
+	/// Defaults to <see langword="true"/>.
+	/// </summary>
+	public bool IncludeAspireDashboardLinks { get; set; } = true;
+
+	/// <summary>
 	/// Custom icon resolvers that are evaluated before the built-in auto-icon inference.
 	/// Each resolver receives a <see cref="LikeC4IconResolverContext"/> and returns either
 	/// a LikeC4 icon string (e.g. <c>"tech:redis"</c>) or <see langword="null"/> to defer.

@@ -1361,6 +1361,140 @@ public sealed class LikeC4ModelBuilderTests
 		await Assert.That(normalised[0].Value).IsEqualTo("first");
 	}
 
+	// ── Dashboard deep-link tests ─────────────────────────────────────────────
+
+	[Test]
+	public async Task Build_DashboardLinks_WithBaseUrl_InjectsConsoleAndStructuredLogLinks()
+	{
+		var resource = CreateProjectResource("my-api");
+
+		var model = LikeC4ModelBuilder.Build([resource], dashboardBaseUrl: "https://localhost:15086");
+
+		var links = model.Elements[0].Links;
+		var consoleLink = links.FirstOrDefault(l => l.Title == "Dashboard: Console Logs");
+		var structuredLink = links.FirstOrDefault(l => l.Title == "Dashboard: Structured Logs");
+
+		await Assert.That(consoleLink).IsNotNull();
+		await Assert.That(structuredLink).IsNotNull();
+		await Assert.That(consoleLink!.Uri).IsEqualTo("https://localhost:15086/consolelogs/resource/my-api");
+		await Assert.That(structuredLink!.Uri).IsEqualTo("https://localhost:15086/structuredlogs/resource/my-api");
+	}
+
+	[Test]
+	public async Task Build_DashboardLinks_WithTokenAndBaseUrl_GeneratesLoginRedirectUrls()
+	{
+		var resource = CreateProjectResource("api");
+
+		var model = LikeC4ModelBuilder.Build(
+			[resource],
+			dashboardBaseUrl: "https://localhost:15086",
+			dashboardBrowserToken: "secret-token"
+		);
+
+		var links = model.Elements[0].Links;
+		var consoleLink = links.First(l => l.Title == "Dashboard: Console Logs");
+		var structuredLink = links.First(l => l.Title == "Dashboard: Structured Logs");
+
+		var consolePath = Uri.EscapeDataString("/consolelogs/resource/api");
+		var structuredPath = Uri.EscapeDataString("/structuredlogs/resource/api");
+		var encodedToken = Uri.EscapeDataString("secret-token");
+
+		await Assert
+			.That(consoleLink.Uri)
+			.IsEqualTo($"https://localhost:15086/login?t={encodedToken}&returnUrl={consolePath}");
+		await Assert
+			.That(structuredLink.Uri)
+			.IsEqualTo($"https://localhost:15086/login?t={encodedToken}&returnUrl={structuredPath}");
+	}
+
+	[Test]
+	public async Task Build_DashboardLinks_WithSpecialCharsInResourceName_EncodesNameInUrl()
+	{
+		var resource = CreateProjectResource("my api+service");
+
+		var model = LikeC4ModelBuilder.Build([resource], dashboardBaseUrl: "https://localhost:15086");
+
+		var consoleLink = model.Elements[0].Links.FirstOrDefault(l => l.Title == "Dashboard: Console Logs");
+		await Assert.That(consoleLink).IsNotNull();
+		await Assert
+			.That(consoleLink!.Uri)
+			.IsEqualTo($"https://localhost:15086/consolelogs/resource/{Uri.EscapeDataString("my api+service")}");
+	}
+
+	[Test]
+	public async Task Build_DashboardLinks_WithNoDashboardUrl_NoLinksInjected()
+	{
+		var resource = CreateProjectResource("api");
+
+		var model = LikeC4ModelBuilder.Build([resource], dashboardBaseUrl: null);
+
+		var dashboardLinks = model
+			.Elements[0]
+			.Links.Where(l => l.Title?.StartsWith("Dashboard:", StringComparison.Ordinal) == true);
+		await Assert.That(dashboardLinks).IsEmpty();
+	}
+
+	[Test]
+	public async Task Build_DashboardLinks_Disabled_NoLinksInjectedEvenWithBaseUrl()
+	{
+		var resource = CreateProjectResource("api");
+
+		var model = LikeC4ModelBuilder.Build(
+			[resource],
+			includeDashboardLinks: false,
+			dashboardBaseUrl: "https://localhost:15086"
+		);
+
+		var dashboardLinks = model
+			.Elements[0]
+			.Links.Where(l => l.Title?.StartsWith("Dashboard:", StringComparison.Ordinal) == true);
+		await Assert.That(dashboardLinks).IsEmpty();
+	}
+
+	[Test]
+	public async Task Build_DashboardLinks_LinksInclusionDisabled_NoLinksInjected()
+	{
+		var resource = CreateProjectResource("api");
+
+		var model = LikeC4ModelBuilder.Build(
+			[resource],
+			aspireMetadataInclusion: AspireMetadataInclusion.Metadata,
+			dashboardBaseUrl: "https://localhost:15086"
+		);
+
+		var dashboardLinks = model
+			.Elements[0]
+			.Links.Where(l => l.Title?.StartsWith("Dashboard:", StringComparison.Ordinal) == true);
+		await Assert.That(dashboardLinks).IsEmpty();
+	}
+
+	[Test]
+	public async Task Build_DashboardLinks_UserLinkWithSameUriNotDuplicated()
+	{
+		var resource = CreateProjectResource("api");
+		var expectedUrl = "https://localhost:15086/consolelogs/resource/api";
+		resource.Annotations.Add(
+			new LikeC4NodeDetailsAnnotation(
+				"API",
+				technology: null,
+				description: null,
+				summary: null,
+				icon: null,
+				autoIconEnabled: null,
+				kind: null,
+				tags: [],
+				links: [new LikeC4Link(expectedUrl, "My custom link")],
+				metadata: []
+			)
+		);
+
+		var model = LikeC4ModelBuilder.Build([resource], dashboardBaseUrl: "https://localhost:15086");
+
+		var matchingLinks = model.Elements[0].Links.Where(l => l.Uri == expectedUrl).ToList();
+		await Assert.That(matchingLinks).Count().IsEqualTo(1);
+		await Assert.That(matchingLinks[0].Title).IsEqualTo("My custom link");
+	}
+
 	static ProjectResource CreateProjectResource(string name)
 	{
 		var resource = new ProjectResource(name);

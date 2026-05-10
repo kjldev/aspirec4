@@ -6,6 +6,7 @@ using System.Text.Json;
 using Aspire.Hosting.ApplicationModel;
 using Aspire.Hosting.Eventing;
 using Aspire.Hosting.Lifecycle;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Options;
 
 namespace Aspire.Hosting.AspireC4;
@@ -19,11 +20,18 @@ sealed class AspireC4LifecycleHook(
 	IOptions<LikeC4ContainerWorkspaceOptions> workspaceOptions,
 	ResourceNotificationService resourceNotificationService,
 	ResourceLoggerService resourceLoggerService,
-	IAspireC4LifecycleHookTelemetry telemetry
+	IAspireC4LifecycleHookTelemetry telemetry,
+	IConfiguration configuration
 ) : IDistributedApplicationEventingSubscriber, IDisposable
 {
+	// Well-known Aspire resource name for the dashboard process.
+	const string AspireDashboardResourceName = "aspire-dashboard";
+
 	readonly ConcurrentDictionary<string, LikeC4ResourceState> _resourceStates = new(StringComparer.OrdinalIgnoreCase);
 	readonly ConcurrentDictionary<string, bool> _resourcesWithErrorLogs = new(StringComparer.OrdinalIgnoreCase);
+
+	// Discovered at runtime once the aspire-dashboard resource starts.
+	volatile string? _dashboardBaseUrl;
 
 	// Debounce: cancels any pending delayed write when a new state change arrives.
 	CancellationTokenSource? _debounceCts;
@@ -67,6 +75,11 @@ sealed class AspireC4LifecycleHook(
 				// The ct is the application lifetime token; it is cancelled on shutdown.
 				_ = WatchResourceStatesAsync(evt.Model, syncContainerWorkspace, ct);
 				_ = WatchResourceLogsAsync(evt.Model, syncContainerWorkspace, ct);
+
+				if (options.Value.IncludeAspireDashboardLinks)
+				{
+					_ = WatchDashboardUrlAsync(evt.Model, syncContainerWorkspace, ct);
+				}
 			}
 		);
 
@@ -74,6 +87,57 @@ sealed class AspireC4LifecycleHook(
 	}
 
 	// ── Background watcher ────────────────────────────────────────────────────
+
+	/// <summary>
+	/// Watches for the Aspire dashboard resource to start, captures its base URL, and triggers
+	/// a diagram regeneration so that dashboard deep-links are injected into the generated file.
+	/// </summary>
+	async Task WatchDashboardUrlAsync(
+		DistributedApplicationModel appModel,
+		bool syncContainerWorkspace,
+		CancellationToken cancellationToken
+	)
+	{
+		try
+		{
+			await foreach (var notification in resourceNotificationService.WatchAsync(cancellationToken))
+			{
+				if (notification.Resource.Name != AspireDashboardResourceName)
+					continue;
+				if (notification.Snapshot.State?.Text != KnownResourceStates.Running)
+					continue;
+
+				// Extract base URL (scheme + authority) from the first non-internal URL.
+				var rawUrl = notification.Snapshot.Urls.FirstOrDefault(u => !u.IsInternal)?.Url;
+				if (rawUrl is null)
+					continue;
+
+				if (!Uri.TryCreate(rawUrl, UriKind.Absolute, out var parsed))
+					continue;
+
+				var baseUrl = $"{parsed.Scheme}://{parsed.Authority}";
+
+				// Only regenerate if the URL is genuinely new.
+				if (_dashboardBaseUrl == baseUrl)
+					break;
+
+				_dashboardBaseUrl = baseUrl;
+				telemetry.DashboardUrlDiscovered(baseUrl);
+				ScheduleRegeneration(appModel, syncContainerWorkspace, cancellationToken);
+				break;
+			}
+		}
+		catch (OperationCanceledException)
+		{
+			// Normal on shutdown.
+		}
+#pragma warning disable CA1031
+		catch (Exception ex)
+		{
+			telemetry.StateWatcherFailed(ex.Message);
+		}
+#pragma warning restore CA1031
+	}
 
 	// ── Dashboard integration (hide & surface URL/command on project resources) ──
 
@@ -447,7 +511,10 @@ sealed class AspireC4LifecycleHook(
 			opts.AutoIconsEnabled,
 			opts.AutoIncludeAspireMetadata,
 			opts.NormaliseMetadataBehaviour,
-			opts.IconResolvers
+			opts.IconResolvers,
+			opts.IncludeAspireDashboardLinks,
+			_dashboardBaseUrl,
+			configuration["AppHost:BrowserToken"]
 		);
 		var dsl = LikeC4DSLGenerator.Generate(model, opts);
 

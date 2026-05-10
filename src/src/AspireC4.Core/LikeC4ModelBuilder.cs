@@ -25,13 +25,35 @@ public static class LikeC4ModelBuilder
 	/// Each resolver receives a <see cref="LikeC4IconResolverContext"/> and should return a non-null icon string
 	/// to override the default, or <see langword="null"/> to defer to the next resolver or built-in inference.
 	/// </param>
+	/// <param name="includeDashboardLinks">
+	/// When <see langword="true"/> and <paramref name="dashboardBaseUrl"/> is provided, adds links from each element
+	/// to the Aspire dashboard console logs and structured logs pages for that resource.
+	/// </param>
+	/// <param name="dashboardBaseUrl">
+	/// Base URL of the Aspire dashboard (e.g. <c>https://localhost:15086</c>). When provided and
+	/// <paramref name="includeDashboardLinks"/> is <see langword="true"/>, dashboard deep-links are injected
+	/// into each element's <see cref="LikeC4Element.Links"/> collection.
+	/// </param>
+	/// <param name="dashboardBrowserToken">
+	/// The Aspire dashboard browser token (from <c>AppHost:BrowserToken</c> configuration). When provided,
+	/// dashboard links use a <c>/login?t=…&amp;returnUrl=…</c> redirect URL so clicking the link in LikeC4
+	/// authenticates the browser before navigating to the resource page.
+	/// </param>
+	[System.Diagnostics.CodeAnalysis.SuppressMessage(
+		"Design",
+		"CA1054:URI-like parameters should not be strings",
+		Justification = "Dashboard base URL is composed via string concatenation consistent with LikeC4Link.Uri; wrapping as System.Uri would add unnecessary conversion overhead"
+	)]
 	public static LikeC4Model Build(
 		IReadOnlyList<IResource> resources,
 		IReadOnlyDictionary<string, LikeC4ResourceState>? resourceStates = null,
 		bool autoIconsEnabled = true,
 		AspireMetadataInclusion aspireMetadataInclusion = AspireMetadataInclusion.All,
 		NormaliseMetadataBehaviour normaliseMetadataBehaviour = NormaliseMetadataBehaviour.Normalise,
-		IReadOnlyList<LikeC4IconResolver>? iconResolvers = null
+		IReadOnlyList<LikeC4IconResolver>? iconResolvers = null,
+		bool includeDashboardLinks = true,
+		string? dashboardBaseUrl = null,
+		string? dashboardBrowserToken = null
 	)
 	{
 		ArgumentNullException.ThrowIfNull(resources);
@@ -76,7 +98,10 @@ public static class LikeC4ModelBuilder
 					aspireMetadataInclusion,
 					normaliseMetadataBehaviour,
 					hiddenByName.GetValueOrDefault(resource.Name),
-					iconResolvers
+					iconResolvers,
+					includeDashboardLinks,
+					dashboardBaseUrl,
+					dashboardBrowserToken
 				)
 			);
 			CollectRelationships(
@@ -141,7 +166,10 @@ public static class LikeC4ModelBuilder
 		AspireMetadataInclusion aspireMetadataInclusion = AspireMetadataInclusion.All,
 		NormaliseMetadataBehaviour normaliseMetadataBehaviour = NormaliseMetadataBehaviour.Normalise,
 		IResource? hiddenOriginal = null,
-		IReadOnlyList<LikeC4IconResolver>? iconResolvers = null
+		IReadOnlyList<LikeC4IconResolver>? iconResolvers = null,
+		bool includeDashboardLinks = true,
+		string? dashboardBaseUrl = null,
+		string? dashboardBrowserToken = null
 	)
 	{
 		var details = resource.Annotations.OfType<LikeC4NodeDetailsAnnotation>().LastOrDefault();
@@ -158,7 +186,15 @@ public static class LikeC4ModelBuilder
 
 		var userMetadata = NormaliseMetadataKeys(details?.Metadata ?? [], normaliseMetadataBehaviour);
 		var userLinks = details?.Links ?? [];
-		var (autoMetadata, autoLinks) = BuildAspireData(resource, aspireMetadataInclusion, userMetadata, userLinks);
+		var (autoMetadata, autoLinks) = BuildAspireData(
+			resource,
+			aspireMetadataInclusion,
+			userMetadata,
+			userLinks,
+			includeDashboardLinks,
+			dashboardBaseUrl,
+			dashboardBrowserToken
+		);
 
 		return new()
 		{
@@ -186,7 +222,10 @@ public static class LikeC4ModelBuilder
 		IResource resource,
 		AspireMetadataInclusion inclusion,
 		IReadOnlyList<LikeC4Metadata> existingMetadata,
-		IReadOnlyList<LikeC4Link> existingLinks
+		IReadOnlyList<LikeC4Link> existingLinks,
+		bool includeDashboardLinks = true,
+		string? dashboardBaseUrl = null,
+		string? dashboardBrowserToken = null
 	)
 	{
 		var metadata = new List<LikeC4Metadata>();
@@ -234,6 +273,38 @@ public static class LikeC4ModelBuilder
 				if (existingUris.Add(uri))
 				{
 					links.Add(new LikeC4Link(uri, $"Endpoint: {endpoint.Name}"));
+				}
+			}
+
+			if (includeDashboardLinks && dashboardBaseUrl is not null)
+			{
+				var consolePath = $"/consolelogs/resource/{Uri.EscapeDataString(resource.Name)}";
+				var structuredPath = $"/structuredlogs/resource/{Uri.EscapeDataString(resource.Name)}";
+
+				string consoleUrl,
+					structuredUrl;
+				if (dashboardBrowserToken is not null)
+				{
+					var encodedToken = Uri.EscapeDataString(dashboardBrowserToken);
+					consoleUrl =
+						$"{dashboardBaseUrl}/login?t={encodedToken}&returnUrl={Uri.EscapeDataString(consolePath)}";
+					structuredUrl =
+						$"{dashboardBaseUrl}/login?t={encodedToken}&returnUrl={Uri.EscapeDataString(structuredPath)}";
+				}
+				else
+				{
+					consoleUrl = $"{dashboardBaseUrl}{consolePath}";
+					structuredUrl = $"{dashboardBaseUrl}{structuredPath}";
+				}
+
+				if (existingUris.Add(consoleUrl))
+				{
+					links.Add(new LikeC4Link(consoleUrl, "Dashboard: Console Logs"));
+				}
+
+				if (existingUris.Add(structuredUrl))
+				{
+					links.Add(new LikeC4Link(structuredUrl, "Dashboard: Structured Logs"));
 				}
 			}
 		}
