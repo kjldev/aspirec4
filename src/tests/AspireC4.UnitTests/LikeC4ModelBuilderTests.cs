@@ -797,7 +797,9 @@ public sealed class LikeC4ModelBuilderTests
 		var model = LikeC4ModelBuilder.Build([resource]);
 
 		var links = model.Elements[0].Links;
-		await Assert.That(links.Any(l => l.Uri == "http://localhost:5000")).IsTrue();
+		var injected = links.FirstOrDefault(l => l.Uri == "http://localhost:5000");
+		await Assert.That(injected).IsNotNull();
+		await Assert.That(injected!.Title).IsEqualTo("Endpoint: http");
 	}
 
 	[Test]

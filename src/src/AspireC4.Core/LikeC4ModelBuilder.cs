@@ -196,7 +196,7 @@ public static class LikeC4ModelBuilder
 
 				if (existingUris.Add(uri))
 				{
-					links.Add(new LikeC4Link(uri, endpoint.Name));
+					links.Add(new LikeC4Link(uri, $"Endpoint: {endpoint.Name}"));
 				}
 			}
 		}
