@@ -123,8 +123,7 @@ public static class AspireC4DistributedApplicationBuilderExtensions
 			{
 				serverBuilder.WithArgs("--no-react-hmr");
 			}
-
-			if (!opts.DisableHMR)
+			else
 			{
 				serverBuilder
 					.WithHttpEndpoint(
@@ -144,16 +143,16 @@ public static class AspireC4DistributedApplicationBuilderExtensions
 							opts.DisplayLocation = UrlDisplayLocation.DetailsOnly;
 						}
 					);
-			}
 
-			if (OperatingSystem.IsWindows())
-			{
-				serverBuilder
-					// Required on Windows/Docker Desktop: inotify events do not propagate from the host
-					// filesystem into the container, so chokidar must fall back to polling to detect
-					// changes to the generated .c4 file.
-					.WithEnvironment("CHOKIDAR_USEPOLLING", "1")
-					.WithEnvironment("CHOKIDAR_INTERVAL", "200");
+				if (OperatingSystem.IsWindows())
+				{
+					serverBuilder
+						// Required on Windows/Docker Desktop: inotify events do not propagate from the host
+						// filesystem into the container, so chokidar must fall back to polling to detect
+						// changes to the generated .c4 file.
+						.WithEnvironment("CHOKIDAR_USEPOLLING", "1")
+						.WithEnvironment("CHOKIDAR_INTERVAL", "200");
+				}
 			}
 
 			return new AspireC4Builder(builder, serverBuilder, outputDir);

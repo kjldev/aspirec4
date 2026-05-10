@@ -29,9 +29,9 @@ public sealed class LikeC4PublishModeTests
 				UseShellExecute = false,
 				CreateNoWindow = true,
 			};
-			startInfo.Environment["LikeC4__OutputDirectory"] = modelOutputDir;
-			startInfo.Environment["LikeC4__FileName"] = "publish-model";
-			startInfo.Environment["LikeC4__Title"] = "Publish Mode Test";
+			startInfo.Environment["AspireC4__OutputDirectory"] = modelOutputDir;
+			startInfo.Environment["AspireC4__FileName"] = "publish-model";
+			startInfo.Environment["AspireC4__Title"] = "Publish Mode Test";
 
 			using var process = new System.Diagnostics.Process { StartInfo = startInfo };
 			process.Start();
