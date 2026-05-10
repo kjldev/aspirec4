@@ -188,12 +188,14 @@ public sealed class LikeC4VisualizationBuilderTests
 	[Test]
 	public async Task ResolveWorkspaceVolumeName_IsStableForTheSameAppHostDirectory()
 	{
+		var appHostDir = $"{Guid.NewGuid()}/subdir/{Guid.CreateVersion7()}/";
+
 		var first = AspireC4DistributedApplicationBuilderExtensions.ResolveWorkspaceVolumeName(
-			@"P:\GitHub\kjldev\aspirec4\src\tests\AspireC4.TestAppHost",
+			appHostDir,
 			AspireC4DistributedApplicationBuilderExtensions.AspireC4ResourceName
 		);
 		var second = AspireC4DistributedApplicationBuilderExtensions.ResolveWorkspaceVolumeName(
-			@"P:\GitHub\kjldev\aspirec4\src\tests\AspireC4.TestAppHost\",
+			appHostDir,
 			AspireC4DistributedApplicationBuilderExtensions.AspireC4ResourceName
 		);
 
@@ -261,7 +263,7 @@ public sealed class LikeC4VisualizationBuilderTests
 	}
 
 	[Test]
-	public async Task WithAdditionalDSLFile_SameDirectoryTwice_OnlyOneBindMount()
+	public async Task WithAdditionalDSLFile_SameDirectoryTwice_OnlyOneBindMount(CancellationToken cancellationToken)
 	{
 		var appBuilder = DistributedApplication.CreateBuilder([]);
 
@@ -270,8 +272,8 @@ public sealed class LikeC4VisualizationBuilderTests
 
 		try
 		{
-			await File.WriteAllTextAsync(Path.Combine(tempDir, "a.c4"), "// a");
-			await File.WriteAllTextAsync(Path.Combine(tempDir, "b.c4"), "// b");
+			await File.WriteAllTextAsync(Path.Combine(tempDir, "a.c4"), "// a", cancellationToken);
+			await File.WriteAllTextAsync(Path.Combine(tempDir, "b.c4"), "// b", cancellationToken);
 
 			var visualization = appBuilder.AddAspireC4();
 			visualization

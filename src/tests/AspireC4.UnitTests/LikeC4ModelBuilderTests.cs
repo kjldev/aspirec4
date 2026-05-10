@@ -679,6 +679,52 @@ public sealed class LikeC4ModelBuilderTests
 		await Assert.That(model.Relationships[0].Kind).IsNull();
 	}
 
+	[Test]
+	public async Task Build_AwsLambdaResource_InfersAwsIcon()
+	{
+		var resource = new TestSystemResource("fn");
+		resource.Annotations.Add(
+			new ResourceSnapshotAnnotation(new CustomResourceSnapshot { ResourceType = "AWS.Lambda", Properties = [] })
+		);
+
+		var model = LikeC4ModelBuilder.Build([resource]);
+
+		await Assert.That(model.Elements[0].Icon).IsEqualTo("aws:lambda");
+	}
+
+	[Test]
+	public async Task Build_GcpPubSubResource_InfersGcpIcon()
+	{
+		var resource = new TestSystemResource("queue");
+		resource.Annotations.Add(
+			new ResourceSnapshotAnnotation(new CustomResourceSnapshot { ResourceType = "GCP.PubSub", Properties = [] })
+		);
+
+		var model = LikeC4ModelBuilder.Build([resource]);
+
+		await Assert.That(model.Elements[0].Icon).IsEqualTo("gcp:pub-sub");
+	}
+
+	[Test]
+	public async Task Build_RabbitMqContainer_InfersTechIcon()
+	{
+		var resource = CreateContainerResource("rabbitmq");
+
+		var model = LikeC4ModelBuilder.Build([resource]);
+
+		await Assert.That(model.Elements[0].Icon).IsEqualTo("tech:rabbitmq");
+	}
+
+	[Test]
+	public async Task Build_MongoDbContainer_InfersTechIcon()
+	{
+		var resource = CreateContainerResource("mongodb");
+
+		var model = LikeC4ModelBuilder.Build([resource]);
+
+		await Assert.That(model.Elements[0].Icon).IsEqualTo("tech:mongodb");
+	}
+
 	static ProjectResource CreateProjectResource(string name)
 	{
 		var resource = new ProjectResource(name);

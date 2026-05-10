@@ -26,7 +26,7 @@ build configuration=config_default:
 # Run all tests (unit + integration)
 [group('dotnet')]
 test configuration=config_default:
-    dotnet test {{ _solution }} --configuration {{ configuration }}
+    dotnet test --solution {{ _solution }} --configuration {{ configuration }}
 # Run unit tests only
 [group('dotnet')]
 test-unit configuration=config_default:
@@ -47,6 +47,12 @@ lintfix:
 [group('dotnet')]
 pack configuration=config_default: (build configuration)
     dotnet pack {{ _solution }} --no-build --no-restore --configuration {{ configuration }} --output artifacts/nuget
+# ── Icon manifest ─────────────────────────────────────────────────────────────
+
+# Regenerate the LikeC4 icon manifest from the upstream GitHub repository
+[group('dotnet')]
+refresh-icons:
+    node scripts/generate-icon-manifest.mjs
 # ── LikeC4 diagram viewer ─────────────────────────────────────────────────────
 
 # View all LikeC4 diagrams in this repository

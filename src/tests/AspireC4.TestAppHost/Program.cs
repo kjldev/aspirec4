@@ -3,23 +3,10 @@ var builder = DistributedApplication.CreateBuilder(args);
 // Add LikeC4 visualization to the application. This will allow us to visualize the components and their relationships in a C4 model.
 builder.AddAspireC4(configure: opts =>
 {
-	var title = builder.Configuration["LikeC4:Title"];
-	if (!string.IsNullOrWhiteSpace(title))
-	{
-		opts.Title = title;
-	}
-
-	var outputDirectory = builder.Configuration["LikeC4:OutputDirectory"];
-	if (!string.IsNullOrWhiteSpace(outputDirectory))
-	{
-		opts.OutputDirectory = outputDirectory;
-	}
-
-	var fileName = builder.Configuration["LikeC4:FileName"];
-	if (!string.IsNullOrWhiteSpace(fileName))
-	{
-		opts.FileName = fileName;
-	}
+	// Disable HMR (Hot Module Replacement) when in publish mode for better performance and stability.
+	// HMR is typically used in development to allow live updates without restarting the application, but it can
+	// add overhead that is not desirable in a production environment.
+	opts.DisableHMR = builder.ExecutionContext.IsPublishMode;
 });
 
 var azureManagerRedis = builder
@@ -78,7 +65,11 @@ var azurePostgres = builder
 var redis = builder
 	.AddRedis("redis")
 	.WithLikeC4Details(opts =>
-		opts.WithDescription("For testing **locally**, uses Redis as a container")
+		opts.WithDescription(
+				@"For testing **locally**, uses Redis as a container.
+
+When using Azure Managed Redis with `.RunAsContainer()`, the application will differenciate between that and a real Redis resource using `.AddRedis(...)` and pick the correct icon/ technology."
+			)
 			.WithSummary("Local redis for development")
 			.WithLink("https://redis.io/", "Learn more about Redis")
 			.WithTag("local-dev")
