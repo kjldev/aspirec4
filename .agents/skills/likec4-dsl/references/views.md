@@ -152,6 +152,47 @@ views {
 
 Style groups can contain multiple `style` rules. They are applied in the order defined within the group. When used in a view, global styles sit between local styles and view-level styles in the cascade.
 
+## Rank Constraints
+
+`rank` blocks pin elements to specific horizontal/vertical positions in the Graphviz layout. They are forwarded to the layout engine and do not affect which elements are included.
+
+```likec4
+view checkoutFlow {
+  include *
+
+  // Keep these API nodes on the same horizontal/vertical level
+  rank same {
+    cloud.backend.api,
+    cloud.backend.billingApi,
+  }
+
+  // Push customers to the beginning (source) of the diagram
+  rank source {
+    customer
+  }
+
+  // Render reporting systems at the end (sink)
+  rank sink {
+    analytics,
+    dataWarehouse
+  }
+}
+```
+
+| Rank value | Effect |
+| ---------- | ------ |
+| `same`     | (default if omitted) Keeps listed elements on the same rank level |
+| `min`      | Places elements at the minimum rank (top/left depending on direction) |
+| `max`      | Places elements at the maximum rank (bottom/right) |
+| `source`   | Renders elements at the beginning of the diagram (exclusive of other elements) |
+| `sink`     | Renders elements at the end of the diagram (exclusive of other elements) |
+
+**Rules:**
+
+- Targets are regular FQN references — nested elements are valid.
+- Non-existent or duplicate targets are silently ignored.
+- Rank constraints are hints to the layout engine; exact positioning is not guaranteed.
+
 # Dynamic Views — Detailed Reference
 
 ## Steps
@@ -227,6 +268,7 @@ Parallel blocks can be nested and mixed with sequential steps.
 The `variant sequence` keyword renders the dynamic view as a UML sequence diagram. This is especially useful for API call sequences and protocol flows.
 
 **Key syntax points:**
+
 - Use `variant sequence` at the start of the dynamic view block
 - Use `->` for forward/call direction
 - Use `<-` for backward/return direction (not `->` with different semantics)
@@ -248,6 +290,7 @@ dynamic view api-sequence {
 ```
 
 **Common mistake:** Using `->` for returns instead of `<-`. The arrow direction indicates message flow:
+
 - `a -> b` means "a sends to b" (request/call)
 - `a <- b` means "b sends to a" (response/return)
 
@@ -284,6 +327,33 @@ dynamic view flow {
   include amazon
 }
 ```
+
+### Actor Ordering in Sequence Variant
+
+In `variant sequence` views, the `include` predicate can also control the **order** of actors (columns) in the sequence diagram. By default, actors appear in the order they first participate in steps. Use `include` to pin a partial or full order:
+
+```likec4
+dynamic view my-sequence {
+  variant sequence
+
+  customer -> web "opens"
+  web -> auth "validate token"
+  auth -> web "200 OK"
+  web -> api "request data"
+
+  // Default: actors ordered by first appearance: customer, web, auth, api
+
+  // Override: pin specific order (remaining actors follow their natural order)
+  include
+    auth,
+    web,
+    api
+}
+```
+
+- `include` in a sequence view defines order partially; actors not listed follow the order derived from step appearances.
+- Listing all actors in `include` gives full control over column order.
+- `include` for context elements (with style overrides) behaves the same as in element views.
 
 ## Styling in Dynamic Views
 

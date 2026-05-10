@@ -1,5 +1,4 @@
 <Project Sdk="Microsoft.NET.Sdk">
-
 	<PropertyGroup>
 		<DisableGenerateAssemblyInfoClass>true</DisableGenerateAssemblyInfoClass>
 	</PropertyGroup>
@@ -16,5 +15,4 @@
 		<!--<ProjectReference Include="..\..\src\AspireC4\AspireC4.csproj" />-->
 		<ProjectReference Include="..\AspireC4.TestAppHost\AspireC4.TestAppHost.csproj" />
 	</ItemGroup>
-
 </Project>

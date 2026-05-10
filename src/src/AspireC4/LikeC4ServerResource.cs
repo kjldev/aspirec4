@@ -9,7 +9,7 @@ namespace Aspire.Hosting.AspireC4;
 /// </summary>
 /// <remarks>
 /// To use a local Node.js CLI instead of Docker, call
-/// <see cref="ILikeC4VisualizationBuilder.WithLocalCli"/> on the returned builder.
+/// <see cref="IAspireC4Builder.WithLocalCli"/> on the returned builder.
 /// </remarks>
 public sealed class LikeC4ServerResource : ContainerResource
 {
@@ -37,8 +37,7 @@ public sealed class LikeC4ServerResource : ContainerResource
 	/// <summary>The path inside the container where <c>.c4</c> source files are mounted.</summary>
 	internal const string WorkspacePath = "/data";
 
-	internal static string GetImageReference(string imageTag) =>
-		$"{DefaultRegistry}/{DefaultImage}:{imageTag}";
+	internal static string GetImageReference(string imageTag) => $"{DefaultRegistry}/{DefaultImage}:{imageTag}";
 
 	internal LikeC4ServerResource(string name)
 		: base(name) { }

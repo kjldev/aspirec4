@@ -4,9 +4,9 @@ namespace Aspire.Hosting.AspireC4;
 
 /// <summary>
 /// Provides a fluent interface for configuring the LikeC4 visualization after calling
-/// <see cref="LikeC4VisualizationExtensions.AddLikeC4Visualization"/>.
+/// <see cref="LikeC4VisualizationExtensions.AddAspireC4"/>.
 /// </summary>
-public interface ILikeC4VisualizationBuilder
+public interface IAspireC4Builder
 {
 	/// <summary>The underlying distributed application builder.</summary>
 	IDistributedApplicationBuilder ApplicationBuilder { get; }
@@ -34,8 +34,8 @@ public interface ILikeC4VisualizationBuilder
 	/// The CLI runtime to use. Defaults to <see cref="LikeC4LocalCliRuntime.Auto"/>,
 	/// which detects the first available runtime in the order: npx → pnpm → yarn → bun.
 	/// </param>
-	/// <returns>An updated <see cref="ILikeC4VisualizationBuilder"/> with the local server resource.</returns>
-	ILikeC4VisualizationBuilder WithLocalCli(LikeC4LocalCliRuntime runtime = LikeC4LocalCliRuntime.Auto);
+	/// <returns>An updated <see cref="IAspireC4Builder"/> with the local server resource.</returns>
+	IAspireC4Builder WithLocalCli(LikeC4LocalCliRuntime runtime = LikeC4LocalCliRuntime.Auto);
 
 	/// <summary>
 	/// Hides the LikeC4 server resource from the Aspire dashboard and instead surfaces
@@ -49,6 +49,6 @@ public interface ILikeC4VisualizationBuilder
 	/// <param name="displayName">
 	/// The text shown for the link and command button. Defaults to <c>"Architecture Diagram"</c>.
 	/// </param>
-	/// <returns>The same <see cref="ILikeC4VisualizationBuilder"/> for further configuration.</returns>
-	ILikeC4VisualizationBuilder WithHideFromDashboard(string displayName = "Architecture Diagram");
+	/// <returns>The same <see cref="IAspireC4Builder"/> for further configuration.</returns>
+	IAspireC4Builder WithHideFromDashboard(string displayName = "Architecture Diagram");
 }

@@ -17,7 +17,7 @@ public static class LikeC4DslGenerator
 
 		WriteSpecification(sb, model);
 		sb.AppendLine();
-		WriteModel(sb, model);
+		WriteModel(sb, model, options);
 		sb.AppendLine();
 		WriteViews(sb, model, options);
 
@@ -26,18 +26,28 @@ public static class LikeC4DslGenerator
 
 	static void WriteSpecification(StringBuilder sb, LikeC4Model model)
 	{
-		var kinds = model.Elements.Select(e => e.Kind).Distinct().OrderBy(k => k);
+		var elementKinds = model.Elements.Select(e => e.Kind).Distinct().OrderBy(k => k);
+		var relationshipKinds = model
+			.Relationships.Where(r => !string.IsNullOrWhiteSpace(r.Kind))
+			.Select(r => r.Kind!)
+			.Distinct()
+			.OrderBy(k => k);
 
 		sb.AppendLine("specification {");
-		foreach (var kind in kinds)
+		foreach (var kind in elementKinds)
 		{
 			sb.Append("  element ").AppendLine(kind);
+		}
+
+		foreach (var kind in relationshipKinds)
+		{
+			sb.Append("  relationship ").AppendLine(kind);
 		}
 
 		sb.AppendLine("}");
 	}
 
-	static void WriteModel(StringBuilder sb, LikeC4Model model)
+	static void WriteModel(StringBuilder sb, LikeC4Model model, LikeC4DiagramOptions options)
 	{
 		sb.AppendLine("model {");
 
@@ -57,7 +67,27 @@ public static class LikeC4DslGenerator
 
 		foreach (var rel in model.Relationships)
 		{
-			sb.Append("  ").Append(Sanitize(rel.SourceName)).Append(" -> ").Append(Sanitize(rel.TargetName));
+			var hasKind = !string.IsNullOrWhiteSpace(rel.Kind);
+
+			sb.Append("  ").Append(Sanitize(rel.SourceName));
+
+			if (hasKind)
+			{
+				if (options.RelationshipKindSyntax == LikeC4RelationshipKindSyntax.Bracket)
+				{
+					sb.Append(" -[").Append(rel.Kind).Append("]-> ");
+				}
+				else
+				{
+					sb.Append(" .").Append(rel.Kind).Append(' ');
+				}
+			}
+			else
+			{
+				sb.Append(" -> ");
+			}
+
+			sb.Append(Sanitize(rel.TargetName));
 
 			if (!string.IsNullOrWhiteSpace(rel.Label))
 			{

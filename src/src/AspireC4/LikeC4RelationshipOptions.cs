@@ -15,6 +15,13 @@ public sealed class LikeC4RelationshipOptions
 	/// <summary>Longer description of the relationship.</summary>
 	public string? Description { get; private set; }
 
+	/// <summary>
+	/// Optional LikeC4 relationship kind identifier (e.g. "async", "sync", "grpc"). When set, the kind
+	/// is declared in the <c>specification</c> block and the typed <c>-[kind]-&gt;</c> syntax is used.
+	/// Must be a valid LikeC4 identifier (letters, digits, hyphens, underscores; cannot start with a digit).
+	/// </summary>
+	public string? Kind { get; private set; }
+
 	/// <summary>Sets the short label shown on the relationship arrow.</summary>
 	public LikeC4RelationshipOptions WithLabel(string label)
 	{
@@ -34,6 +41,16 @@ public sealed class LikeC4RelationshipOptions
 	public LikeC4RelationshipOptions WithDescription(string? description)
 	{
 		Description = description;
+		return this;
+	}
+
+	/// <summary>
+	/// Sets the LikeC4 relationship kind (e.g. "async", "sync", "grpc"). The kind is declared in the
+	/// <c>specification</c> block and the typed <c>-[kind]-&gt;</c> syntax is used in the model.
+	/// </summary>
+	public LikeC4RelationshipOptions WithKind(string? kind)
+	{
+		Kind = kind;
 		return this;
 	}
 }

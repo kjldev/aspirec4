@@ -5,7 +5,7 @@ namespace Aspire.Hosting.AspireC4;
 /// <summary>
 /// An Aspire executable resource that runs the LikeC4 live server via a local JavaScript
 /// package manager CLI (npx, pnpm, yarn, or bun). Used as a fallback when Docker is not
-/// available or when explicitly requested via <see cref="ILikeC4VisualizationBuilder.WithLocalCli"/>.
+/// available or when explicitly requested via <see cref="IAspireC4Builder.WithLocalCli"/>.
 /// </summary>
 public sealed class LikeC4LocalServerResource : ExecutableResource
 {

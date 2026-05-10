@@ -1,6 +1,8 @@
 specification {
   element container
   element executable
+  relationship RESP
+  relationship tcp-ip
 }
 
 model {
@@ -47,22 +49,22 @@ A sample Node.js application that connects to Azure Redis and Azure Postgres
     icon tech:nodejs
   }
 
-  redis -> azure_redis 'syncs with' {
+  redis .RESP azure_redis 'syncs with' {
     technology 'Redis Protocol'
   }
-  postgres -> azure_postgres 'syncs with' {
+  postgres .tcp-ip azure_postgres 'syncs with' {
     technology 'PostgreSQL / JDBC'
   }
-  node_app -> azure_redis 'Caches sessions' {
+  node_app .RESP azure_redis 'Caches sessions' {
     technology 'Redis Protocol'
   }
-  node_app -> redis 'Caches  sessions (local)' {
+  node_app .RESP redis 'Caches  sessions (local)' {
     technology 'Redis Protocol'
   }
-  node_app -> azure_postgres 'Persists data' {
+  node_app .tcp-ip azure_postgres 'Persists data' {
     technology 'PostgreSQL / JDBC'
   }
-  node_app -> postgres 'Persists data (local)' {
+  node_app .tcp-ip postgres 'Persists data (local)' {
     technology 'PostgreSQL / JDBC'
   }
   node_app_installer -> node_app 'Parent'

@@ -3,6 +3,7 @@
 The `specification` block defines all named vocabularies for the project: element kinds, deployment node kinds, relationship kinds, tags, and custom color tokens. Every kind used in `model` or `deployment` blocks must be declared here first.
 
 **Key rules:**
+
 - Specification is global across all files in the project.
 - Duplicate identifiers (same kind, same tag, etc.) will cause a validation error.
 - Multiple `specification` blocks (in one file or across files) are allowed, but not recommended.
@@ -14,6 +15,11 @@ The `specification` block defines all named vocabularies for the project: elemen
 specification {
   // Define a tag; outside specification it is referenced as #IDENTIFIER
   tag IDENTIFIER
+
+  // Tags can have a display color (CSS hex or rgb/rgba)
+  tag IDENTIFIER {
+    color #FF0000         // or rgb(255, 0, 0) / rgba(255, 0, 0, 0.9)
+  }
 
   // Define element kind for use in model
   element IDENTIFIER {
@@ -37,7 +43,7 @@ specification {
     style { ... }          // default style for this relationship kind
   }
 
-  // Define a custom named color token
+  // Define a custom named color token (hex, rgb, or rgba)
   color IDENTIFIER #FFFFFF  // or rgba(255,255,255,1)
 }
 ```
@@ -56,7 +62,7 @@ specification {
   relationship async { color amber; line dotted; head diamond; tail vee }
   relationship sql   { technology "SQL"; line dashed }
 
-  tag deprecated
+  tag deprecated { color #FF0000 }   // red indicator in the legend
   tag critical
 
   deploymentNode environment { notation "Environment"; style { color gray } }

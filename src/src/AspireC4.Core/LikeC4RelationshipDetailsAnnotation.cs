@@ -16,11 +16,17 @@ public sealed class LikeC4RelationshipDetailsAnnotation : IResourceAnnotation
 	/// <param name="label">Short label shown on the relationship arrow.</param>
 	/// <param name="technology">Technology or protocol used by the relationship (e.g., "HTTP/2", "gRPC").</param>
 	/// <param name="description">Longer description of the relationship.</param>
+	/// <param name="kind">
+	/// Optional LikeC4 relationship kind identifier (e.g. "async", "sync"). Must be a valid LikeC4
+	/// identifier (letters, digits, hyphens, underscores; cannot start with a digit). When set, the
+	/// kind is declared in the <c>specification</c> block and the typed <c>-[kind]-&gt;</c> syntax is used.
+	/// </param>
 	public LikeC4RelationshipDetailsAnnotation(
 		string targetName,
 		string? label,
 		string? technology,
-		string? description
+		string? description,
+		string? kind = null
 	)
 	{
 		ArgumentException.ThrowIfNullOrWhiteSpace(targetName);
@@ -29,6 +35,7 @@ public sealed class LikeC4RelationshipDetailsAnnotation : IResourceAnnotation
 		Label = label;
 		Technology = technology;
 		Description = description;
+		Kind = kind;
 	}
 
 	/// <summary>The <see cref="IResource.Name"/> of the relationship target resource.</summary>
@@ -42,4 +49,10 @@ public sealed class LikeC4RelationshipDetailsAnnotation : IResourceAnnotation
 
 	/// <summary>Longer description of the relationship.</summary>
 	public string? Description { get; }
+
+	/// <summary>
+	/// Optional LikeC4 relationship kind identifier (e.g. "async", "sync"). When set, the kind is
+	/// declared in the <c>specification</c> block and the typed <c>-[kind]-&gt;</c> syntax is used.
+	/// </summary>
+	public string? Kind { get; }
 }

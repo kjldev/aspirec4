@@ -3,6 +3,8 @@ namespace Aspire.Hosting.AspireC4;
 /// <summary>Configuration options for the LikeC4 diagram generation.</summary>
 public sealed class LikeC4DiagramOptions
 {
+	public const string SectionName = "AspireC4";
+
 	/// <summary>Title shown in the generated LikeC4 view. Defaults to "Architecture".</summary>
 	public string Title { get; set; } = "Architecture";
 
@@ -47,4 +49,13 @@ public sealed class LikeC4DiagramOptions
 	/// Defaults to <c>"Architecture Diagram"</c>.
 	/// </summary>
 	public string DashboardLinkDisplayName { get; set; } = "Architecture Diagram";
+
+	/// <summary>
+	/// Controls the DSL syntax used to emit typed relationships in the generated <c>.c4</c> file.
+	/// <list type="bullet">
+	///   <item><description><see cref="LikeC4RelationshipKindSyntax.Dot"/> — <c>SOURCE .KIND TARGET</c> (default, preferred).</description></item>
+	///   <item><description><see cref="LikeC4RelationshipKindSyntax.Bracket"/> — <c>SOURCE -[KIND]-&gt; TARGET</c>.</description></item>
+	/// </list>
+	/// </summary>
+	public LikeC4RelationshipKindSyntax RelationshipKindSyntax { get; set; } = LikeC4RelationshipKindSyntax.Dot;
 }

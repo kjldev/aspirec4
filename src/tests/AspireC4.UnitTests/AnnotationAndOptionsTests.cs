@@ -34,7 +34,13 @@ public sealed class LikeC4NodeDetailsAnnotationTests
 	[Test]
 	public async Task Constructor_WithAutoIconFlag_SetsAutoIconEnabled()
 	{
-		var annotation = new LikeC4NodeDetailsAnnotation("My Service", "ASP.NET Core", "A web service", icon: null, autoIconEnabled: false);
+		var annotation = new LikeC4NodeDetailsAnnotation(
+			"My Service",
+			"ASP.NET Core",
+			"A web service",
+			icon: null,
+			autoIconEnabled: false
+		);
 
 		await Assert.That(annotation.AutoIconEnabled).IsFalse();
 	}
@@ -42,21 +48,20 @@ public sealed class LikeC4NodeDetailsAnnotationTests
 	[Test]
 	public async Task Constructor_WithEmptyLabel_Throws()
 	{
-		await Assert.That(() => new LikeC4NodeDetailsAnnotation(""))
-			.Throws<ArgumentException>();
+		await Assert.That(() => new LikeC4NodeDetailsAnnotation("")).Throws<ArgumentException>();
 	}
 
 	[Test]
 	public async Task Constructor_WithWhiteSpaceLabel_Throws()
 	{
-		await Assert.That(() => new LikeC4NodeDetailsAnnotation("   "))
-			.Throws<ArgumentException>();
+		await Assert.That(() => new LikeC4NodeDetailsAnnotation("   ")).Throws<ArgumentException>();
 	}
 
 	[Test]
 	public async Task Constructor_WithWhiteSpaceIcon_Throws()
 	{
-		await Assert.That(() => new LikeC4NodeDetailsAnnotation("My Service", technology: null, description: null, icon: "   "))
+		await Assert
+			.That(() => new LikeC4NodeDetailsAnnotation("My Service", technology: null, description: null, icon: "   "))
 			.Throws<ArgumentException>();
 	}
 }
@@ -94,10 +99,9 @@ public sealed class LikeC4DetailsOptionsTests
 		var appBuilder = DistributedApplication.CreateBuilder([]);
 		var resourceBuilder = appBuilder.AddExecutable("worker", "dotnet", ".");
 
-		resourceBuilder.WithLikeC4Details(options => options
-			.WithTechnology(".NET")
-			.WithDescription("Background job")
-			.WithAutoIcon(false));
+		resourceBuilder.WithLikeC4Details(options =>
+			options.WithTechnology(".NET").WithDescription("Background job").WithAutoIcon(false)
+		);
 
 		var annotation = resourceBuilder.Resource.Annotations.OfType<LikeC4NodeDetailsAnnotation>().Last();
 
@@ -108,3 +112,41 @@ public sealed class LikeC4DetailsOptionsTests
 	}
 }
 
+public sealed class LikeC4RelationshipOptionsTests
+{
+	[Test]
+	public async Task FluentMethods_SetConfiguredValues()
+	{
+		var options = new LikeC4RelationshipOptions()
+			.WithLabel("calls")
+			.WithTechnology("gRPC")
+			.WithDescription("bidirectional streaming")
+			.WithKind("async");
+
+		await Assert.That(options.Label).IsEqualTo("calls");
+		await Assert.That(options.Technology).IsEqualTo("gRPC");
+		await Assert.That(options.Description).IsEqualTo("bidirectional streaming");
+		await Assert.That(options.Kind).IsEqualTo("async");
+	}
+
+	[Test]
+	public async Task WithKind_SetToNull_KindIsNull()
+	{
+		var options = new LikeC4RelationshipOptions().WithKind(null);
+
+		await Assert.That(options.Kind).IsNull();
+	}
+
+	[Test]
+	public async Task WithLikeC4Reference_WithKind_PropagatesKindToAnnotation()
+	{
+		var appBuilder = DistributedApplication.CreateBuilder([]);
+		var api = appBuilder.AddExecutable("api", "dotnet", ".");
+		var queue = appBuilder.AddExecutable("queue", "node", ".");
+
+		api.WithLikeC4Reference(queue, opts => opts.WithKind("async"));
+
+		var annotation = api.Resource.Annotations.OfType<LikeC4RelationshipDetailsAnnotation>().Last();
+		await Assert.That(annotation.Kind).IsEqualTo("async");
+	}
+}

@@ -137,6 +137,78 @@ model {
 }
 ```
 
+## Complete Style Properties Reference
+
+### Element / Node Style Properties
+
+| Property        | Values                                                             | Notes                                           |
+| --------------- | ------------------------------------------------------------------ | ----------------------------------------------- |
+| `color`         | Semantic token or custom token (see above)                         | Required: define custom tokens in specification |
+| `shape`         | `rectangle` (default), `component`, `storage`, `cylinder`, `browser`, `mobile`, `person`, `queue`, `bucket`, `document` | |
+| `size`          | `xsmall`/`xs`, `small`/`sm`, `medium`/`md`, `large`/`lg`, `xlarge`/`xl` | Default: `medium`. At `xsmall`, only title is shown |
+| `padding`       | Same values as `size`                                              | Space around element's title area               |
+| `textSize`      | Same values as `size`                                              | Font size of element's title                    |
+| `opacity`       | `0%` – `100%` (percentage)                                         | Useful for container/group elements             |
+| `border`        | `dashed` (default), `dotted`, `solid`, `none`                      | Container border style                          |
+| `multiple`      | `true` / `false`                                                   | Renders element as multiple stacked instances   |
+| `icon`          | `group:name`, URL, relative path, `none`                           | `none` unsets icon; can also be top-level property |
+| `iconColor`     | Semantic token or custom token                                     | Overrides icon color; only applies to `bootstrap:*` icons |
+| `iconSize`      | Same values as `size`                                              | Resizes icon without changing element size      |
+| `iconPosition`  | `left` (default), `right`, `top`, `bottom`                        | Places icon relative to element text            |
+
+### Relationship Style Properties
+
+| Property | Values | Notes |
+| -------- | ------ | ----- |
+| `color`  | Semantic token | Line and label color |
+| `line`   | `dashed` (default), `solid`, `dotted` | Line style |
+| `head`   | `normal` (default), `onormal`, `diamond`, `odiamond`, `crow`, `vee`, `open`, `none` | Arrow head shape; `onormal`/`odiamond` = outlined |
+| `tail`   | `none` (default), `normal`, `onormal`, `diamond`, `odiamond`, `crow`, `vee`, `open` | Arrow tail shape |
+
+### Notation Property
+
+The `notation` property labels an element kind in the diagram legend. It can be set:
+
+- In `specification` (applies globally to all views with that kind)
+- In view `style` predicates (applies to specific views)
+- In `include ... with { notation "..." }` (highest priority, per-include override)
+
+```likec4
+specification {
+  element customer {
+    notation "Person, Customer"
+    style { shape person; color green }
+  }
+}
+```
+
+```likec4
+// In a view style rule:
+view {
+  style webApp1, webApp2 {
+    notation "Application under development"
+    color amber
+  }
+  style element.tag = #deprecated {
+    notation "Deprecated"
+    color muted
+  }
+}
+```
+
+```likec4
+// In include with override (highest priority):
+view {
+  include *
+    where kind is microservice and tag is #deprecated
+    with {
+      notation "Deprecated microservice"
+      shape rectangle
+      color muted
+    }
+}
+```
+
 ## Summary
 
 | Use case              | Correct                                                                              | Incorrect                   |
@@ -146,5 +218,9 @@ model {
 | Async/queue pattern   | `style { color amber }`                                                              | `style { color "#FFC107" }` |
 | Custom brand color    | Define in spec + use token: `color my-brand #XXXXXX` then `style { color my-brand }` | Use raw hex in style        |
 | Theme-aware styling   | Use semantic tokens (`primary`, `secondary`, etc.)                                   | Use fixed hex values        |
+| Icon without changing size | `style { icon tech:docker; iconSize sm }` | Separate `icon` and `iconSize` |
+| Icon color override   | `style { icon bootstrap:gear; iconColor indigo }` | Only works for `bootstrap:*` icons |
+| Multiple instances    | `style { multiple true }` | Renders stacked effect |
+| Container opacity     | `style { opacity 20% }` | Useful for group/container elements |
 
 **Best practice:** Use semantic color tokens for all element and relationship coloring. Define custom named colors in specification only for brand compliance, never use raw hex in styles.

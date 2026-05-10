@@ -17,4 +17,11 @@ public sealed record LikeC4Relationship
 
 	/// <summary>Optional longer description of the relationship.</summary>
 	public string? Description { get; init; }
+
+	/// <summary>
+	/// Optional LikeC4 relationship kind (e.g. "async", "sync", "grpc"). When set, the kind is
+	/// declared in the <c>specification</c> block and the relationship is emitted with the
+	/// <c>-[KIND]-&gt;</c> typed syntax.
+	/// </summary>
+	public string? Kind { get; init; }
 }

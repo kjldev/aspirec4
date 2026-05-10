@@ -28,7 +28,15 @@ public sealed class LikeC4DslGeneratorTests
 	{
 		var model = new LikeC4Model
 		{
-			Elements = [new LikeC4Element { Name = "api", Label = "API", Kind = LikeC4ElementKind.Component }],
+			Elements =
+			[
+				new LikeC4Element
+				{
+					Name = "api",
+					Label = "API",
+					Kind = LikeC4ElementKind.Component,
+				},
+			],
 			Relationships = [],
 		};
 
@@ -44,9 +52,24 @@ public sealed class LikeC4DslGeneratorTests
 		{
 			Elements =
 			[
-				new LikeC4Element { Name = "api", Label = "API", Kind = LikeC4ElementKind.Component },
-				new LikeC4Element { Name = "db", Label = "DB", Kind = LikeC4ElementKind.Database },
-				new LikeC4Element { Name = "cache", Label = "Cache", Kind = LikeC4ElementKind.Container },
+				new LikeC4Element
+				{
+					Name = "api",
+					Label = "API",
+					Kind = LikeC4ElementKind.Component,
+				},
+				new LikeC4Element
+				{
+					Name = "db",
+					Label = "DB",
+					Kind = LikeC4ElementKind.Database,
+				},
+				new LikeC4Element
+				{
+					Name = "cache",
+					Label = "Cache",
+					Kind = LikeC4ElementKind.Container,
+				},
 			],
 			Relationships = [],
 		};
@@ -65,8 +88,18 @@ public sealed class LikeC4DslGeneratorTests
 		{
 			Elements =
 			[
-				new LikeC4Element { Name = "api1", Label = "API 1", Kind = LikeC4ElementKind.Component },
-				new LikeC4Element { Name = "api2", Label = "API 2", Kind = LikeC4ElementKind.Component },
+				new LikeC4Element
+				{
+					Name = "api1",
+					Label = "API 1",
+					Kind = LikeC4ElementKind.Component,
+				},
+				new LikeC4Element
+				{
+					Name = "api2",
+					Label = "API 2",
+					Kind = LikeC4ElementKind.Component,
+				},
 			],
 			Relationships = [],
 		};
@@ -154,7 +187,12 @@ public sealed class LikeC4DslGeneratorTests
 		{
 			Elements =
 			[
-				new LikeC4Element { Name = "api", Label = "O'Brien's API", Kind = LikeC4ElementKind.Component },
+				new LikeC4Element
+				{
+					Name = "api",
+					Label = "O'Brien's API",
+					Kind = LikeC4ElementKind.Component,
+				},
 			],
 			Relationships = [],
 		};
@@ -171,7 +209,12 @@ public sealed class LikeC4DslGeneratorTests
 		{
 			Elements =
 			[
-				new LikeC4Element { Name = "my-api.service", Label = "API", Kind = LikeC4ElementKind.Component },
+				new LikeC4Element
+				{
+					Name = "my-api.service",
+					Label = "API",
+					Kind = LikeC4ElementKind.Component,
+				},
 			],
 			Relationships = [],
 		};
@@ -188,13 +231,20 @@ public sealed class LikeC4DslGeneratorTests
 		{
 			Elements =
 			[
-				new LikeC4Element { Name = "api", Label = "API", Kind = LikeC4ElementKind.Component },
-				new LikeC4Element { Name = "db", Label = "DB", Kind = LikeC4ElementKind.Database },
+				new LikeC4Element
+				{
+					Name = "api",
+					Label = "API",
+					Kind = LikeC4ElementKind.Component,
+				},
+				new LikeC4Element
+				{
+					Name = "db",
+					Label = "DB",
+					Kind = LikeC4ElementKind.Database,
+				},
 			],
-			Relationships =
-			[
-				new LikeC4Relationship { SourceName = "api", TargetName = "db" },
-			],
+			Relationships = [new LikeC4Relationship { SourceName = "api", TargetName = "db" }],
 		};
 
 		var dsl = LikeC4DslGenerator.Generate(model, DefaultOptions);
@@ -209,12 +259,27 @@ public sealed class LikeC4DslGeneratorTests
 		{
 			Elements =
 			[
-				new LikeC4Element { Name = "api", Label = "API", Kind = LikeC4ElementKind.Component },
-				new LikeC4Element { Name = "queue", Label = "Queue", Kind = LikeC4ElementKind.System },
+				new LikeC4Element
+				{
+					Name = "api",
+					Label = "API",
+					Kind = LikeC4ElementKind.Component,
+				},
+				new LikeC4Element
+				{
+					Name = "queue",
+					Label = "Queue",
+					Kind = LikeC4ElementKind.System,
+				},
 			],
 			Relationships =
 			[
-				new LikeC4Relationship { SourceName = "api", TargetName = "queue", Label = "Publishes" },
+				new LikeC4Relationship
+				{
+					SourceName = "api",
+					TargetName = "queue",
+					Label = "Publishes",
+				},
 			],
 		};
 
@@ -232,12 +297,27 @@ public sealed class LikeC4DslGeneratorTests
 		{
 			Elements =
 			[
-				new LikeC4Element { Name = "api", Label = "API", Kind = LikeC4ElementKind.Component },
-				new LikeC4Element { Name = "db", Label = "DB", Kind = LikeC4ElementKind.Database },
+				new LikeC4Element
+				{
+					Name = "api",
+					Label = "API",
+					Kind = LikeC4ElementKind.Component,
+				},
+				new LikeC4Element
+				{
+					Name = "db",
+					Label = "DB",
+					Kind = LikeC4ElementKind.Database,
+				},
 			],
 			Relationships =
 			[
-				new LikeC4Relationship { SourceName = "api", TargetName = "db", Technology = "PostgreSQL" },
+				new LikeC4Relationship
+				{
+					SourceName = "api",
+					TargetName = "db",
+					Technology = "PostgreSQL",
+				},
 			],
 		};
 
@@ -254,12 +334,27 @@ public sealed class LikeC4DslGeneratorTests
 		{
 			Elements =
 			[
-				new LikeC4Element { Name = "api", Label = "API", Kind = LikeC4ElementKind.Component },
-				new LikeC4Element { Name = "db", Label = "DB", Kind = LikeC4ElementKind.Database },
+				new LikeC4Element
+				{
+					Name = "api",
+					Label = "API",
+					Kind = LikeC4ElementKind.Component,
+				},
+				new LikeC4Element
+				{
+					Name = "db",
+					Label = "DB",
+					Kind = LikeC4ElementKind.Database,
+				},
 			],
 			Relationships =
 			[
-				new LikeC4Relationship { SourceName = "api", TargetName = "db", Description = "Stores user data" },
+				new LikeC4Relationship
+				{
+					SourceName = "api",
+					TargetName = "db",
+					Description = "Stores user data",
+				},
 			],
 		};
 
@@ -277,12 +372,28 @@ public sealed class LikeC4DslGeneratorTests
 		{
 			Elements =
 			[
-				new LikeC4Element { Name = "api", Label = "API", Kind = LikeC4ElementKind.Component },
-				new LikeC4Element { Name = "cache", Label = "Cache", Kind = LikeC4ElementKind.Container },
+				new LikeC4Element
+				{
+					Name = "api",
+					Label = "API",
+					Kind = LikeC4ElementKind.Component,
+				},
+				new LikeC4Element
+				{
+					Name = "cache",
+					Label = "Cache",
+					Kind = LikeC4ElementKind.Container,
+				},
 			],
 			Relationships =
 			[
-				new LikeC4Relationship { SourceName = "api", TargetName = "cache", Label = "Caches data", Technology = "Redis Protocol" },
+				new LikeC4Relationship
+				{
+					SourceName = "api",
+					TargetName = "cache",
+					Label = "Caches data",
+					Technology = "Redis Protocol",
+				},
 			],
 		};
 
@@ -290,6 +401,370 @@ public sealed class LikeC4DslGeneratorTests
 
 		await Assert.That(dsl).Contains("api -> cache 'Caches data' {");
 		await Assert.That(dsl).Contains("technology 'Redis Protocol'");
+	}
+
+	[Test]
+	public async Task Generate_RelationshipWithKind_EmitsTypedSyntaxInModel()
+	{
+		var model = new LikeC4Model
+		{
+			Elements =
+			[
+				new LikeC4Element
+				{
+					Name = "api",
+					Label = "API",
+					Kind = LikeC4ElementKind.Component,
+				},
+				new LikeC4Element
+				{
+					Name = "queue",
+					Label = "Queue",
+					Kind = LikeC4ElementKind.System,
+				},
+			],
+			Relationships =
+			[
+				new LikeC4Relationship
+				{
+					SourceName = "api",
+					TargetName = "queue",
+					Kind = "async",
+				},
+			],
+		};
+
+		var dsl = LikeC4DslGenerator.Generate(model, DefaultOptions);
+
+		await Assert.That(dsl).Contains("api .async queue");
+	}
+
+	[Test]
+	public async Task Generate_RelationshipWithKind_DeclaredInSpecification()
+	{
+		var model = new LikeC4Model
+		{
+			Elements =
+			[
+				new LikeC4Element
+				{
+					Name = "api",
+					Label = "API",
+					Kind = LikeC4ElementKind.Component,
+				},
+				new LikeC4Element
+				{
+					Name = "queue",
+					Label = "Queue",
+					Kind = LikeC4ElementKind.System,
+				},
+			],
+			Relationships =
+			[
+				new LikeC4Relationship
+				{
+					SourceName = "api",
+					TargetName = "queue",
+					Kind = "async",
+				},
+			],
+		};
+
+		var dsl = LikeC4DslGenerator.Generate(model, DefaultOptions);
+
+		await Assert.That(dsl).Contains("relationship async");
+	}
+
+	[Test]
+	public async Task Generate_RelationshipWithKindAndLabel_EmitsTypedSyntaxWithLabel()
+	{
+		var model = new LikeC4Model
+		{
+			Elements =
+			[
+				new LikeC4Element
+				{
+					Name = "api",
+					Label = "API",
+					Kind = LikeC4ElementKind.Component,
+				},
+				new LikeC4Element
+				{
+					Name = "queue",
+					Label = "Queue",
+					Kind = LikeC4ElementKind.System,
+				},
+			],
+			Relationships =
+			[
+				new LikeC4Relationship
+				{
+					SourceName = "api",
+					TargetName = "queue",
+					Kind = "async",
+					Label = "Publishes",
+				},
+			],
+		};
+
+		var dsl = LikeC4DslGenerator.Generate(model, DefaultOptions);
+
+		await Assert.That(dsl).Contains("api .async queue 'Publishes'");
+	}
+
+	[Test]
+	public async Task Generate_RelationshipWithKind_BracketSyntax_EmitsBracketForm()
+	{
+		var model = new LikeC4Model
+		{
+			Elements =
+			[
+				new LikeC4Element
+				{
+					Name = "api",
+					Label = "API",
+					Kind = LikeC4ElementKind.Component,
+				},
+				new LikeC4Element
+				{
+					Name = "queue",
+					Label = "Queue",
+					Kind = LikeC4ElementKind.System,
+				},
+			],
+			Relationships =
+			[
+				new LikeC4Relationship
+				{
+					SourceName = "api",
+					TargetName = "queue",
+					Kind = "async",
+				},
+			],
+		};
+		var opts = new LikeC4DiagramOptions
+		{
+			Title = "Test",
+			OutputDirectory = ".",
+			RelationshipKindSyntax = LikeC4RelationshipKindSyntax.Bracket,
+		};
+
+		var dsl = LikeC4DslGenerator.Generate(model, opts);
+
+		await Assert.That(dsl).Contains("api -[async]-> queue");
+	}
+
+	[Test]
+	public async Task Generate_RelationshipWithKindAndLabel_BracketSyntax_EmitsBracketForm()
+	{
+		var model = new LikeC4Model
+		{
+			Elements =
+			[
+				new LikeC4Element
+				{
+					Name = "api",
+					Label = "API",
+					Kind = LikeC4ElementKind.Component,
+				},
+				new LikeC4Element
+				{
+					Name = "queue",
+					Label = "Queue",
+					Kind = LikeC4ElementKind.System,
+				},
+			],
+			Relationships =
+			[
+				new LikeC4Relationship
+				{
+					SourceName = "api",
+					TargetName = "queue",
+					Kind = "async",
+					Label = "Publishes",
+				},
+			],
+		};
+		var opts = new LikeC4DiagramOptions
+		{
+			Title = "Test",
+			OutputDirectory = ".",
+			RelationshipKindSyntax = LikeC4RelationshipKindSyntax.Bracket,
+		};
+
+		var dsl = LikeC4DslGenerator.Generate(model, opts);
+
+		await Assert.That(dsl).Contains("api -[async]-> queue 'Publishes'");
+	}
+
+	[Test]
+	public async Task Generate_MultipleRelationshipsWithSameKind_KindAppearsOnceInSpecification()
+	{
+		var model = new LikeC4Model
+		{
+			Elements =
+			[
+				new LikeC4Element
+				{
+					Name = "api",
+					Label = "API",
+					Kind = LikeC4ElementKind.Component,
+				},
+				new LikeC4Element
+				{
+					Name = "queue1",
+					Label = "Queue 1",
+					Kind = LikeC4ElementKind.System,
+				},
+				new LikeC4Element
+				{
+					Name = "queue2",
+					Label = "Queue 2",
+					Kind = LikeC4ElementKind.System,
+				},
+			],
+			Relationships =
+			[
+				new LikeC4Relationship
+				{
+					SourceName = "api",
+					TargetName = "queue1",
+					Kind = "async",
+				},
+				new LikeC4Relationship
+				{
+					SourceName = "api",
+					TargetName = "queue2",
+					Kind = "async",
+				},
+			],
+		};
+
+		var dsl = LikeC4DslGenerator.Generate(model, DefaultOptions);
+
+		var count = CountOccurrences(dsl, "relationship async");
+		await Assert.That(count).IsEqualTo(1);
+	}
+
+	[Test]
+	public async Task Generate_MultipleRelationshipsWithDifferentKinds_AllKindsDeclaredInSpecification()
+	{
+		var model = new LikeC4Model
+		{
+			Elements =
+			[
+				new LikeC4Element
+				{
+					Name = "api",
+					Label = "API",
+					Kind = LikeC4ElementKind.Component,
+				},
+				new LikeC4Element
+				{
+					Name = "db",
+					Label = "DB",
+					Kind = LikeC4ElementKind.Database,
+				},
+				new LikeC4Element
+				{
+					Name = "queue",
+					Label = "Queue",
+					Kind = LikeC4ElementKind.System,
+				},
+			],
+			Relationships =
+			[
+				new LikeC4Relationship
+				{
+					SourceName = "api",
+					TargetName = "db",
+					Kind = "sql",
+				},
+				new LikeC4Relationship
+				{
+					SourceName = "api",
+					TargetName = "queue",
+					Kind = "async",
+				},
+			],
+		};
+
+		var dsl = LikeC4DslGenerator.Generate(model, DefaultOptions);
+
+		await Assert.That(dsl).Contains("relationship async");
+		await Assert.That(dsl).Contains("relationship sql");
+	}
+
+	[Test]
+	public async Task Generate_RelationshipWithoutKind_DoesNotAddRelationshipSpecification()
+	{
+		var model = new LikeC4Model
+		{
+			Elements =
+			[
+				new LikeC4Element
+				{
+					Name = "api",
+					Label = "API",
+					Kind = LikeC4ElementKind.Component,
+				},
+				new LikeC4Element
+				{
+					Name = "db",
+					Label = "DB",
+					Kind = LikeC4ElementKind.Database,
+				},
+			],
+			Relationships = [new LikeC4Relationship { SourceName = "api", TargetName = "db" }],
+		};
+
+		var dsl = LikeC4DslGenerator.Generate(model, DefaultOptions);
+
+		await Assert.That(dsl).DoesNotContain("relationship ");
+		await Assert.That(dsl).Contains("api -> db");
+	}
+
+	[Test]
+	public async Task Generate_RelationshipKindSpecification_AppearsInsideSpecificationBlock()
+	{
+		var model = new LikeC4Model
+		{
+			Elements =
+			[
+				new LikeC4Element
+				{
+					Name = "api",
+					Label = "API",
+					Kind = LikeC4ElementKind.Component,
+				},
+				new LikeC4Element
+				{
+					Name = "queue",
+					Label = "Queue",
+					Kind = LikeC4ElementKind.System,
+				},
+			],
+			Relationships =
+			[
+				new LikeC4Relationship
+				{
+					SourceName = "api",
+					TargetName = "queue",
+					Kind = "async",
+				},
+			],
+		};
+
+		var dsl = LikeC4DslGenerator.Generate(model, DefaultOptions);
+
+		var specIdx = dsl.IndexOf("specification {", StringComparison.Ordinal);
+		var specCloseIdx = dsl.IndexOf('}', specIdx);
+		var relKindIdx = dsl.IndexOf("relationship async", StringComparison.Ordinal);
+		var modelIdx = dsl.IndexOf("model {", StringComparison.Ordinal);
+
+		await Assert.That(relKindIdx).IsGreaterThan(specIdx);
+		await Assert.That(relKindIdx).IsLessThan(specCloseIdx);
+		await Assert.That(relKindIdx).IsLessThan(modelIdx);
 	}
 
 	[Test]
@@ -317,7 +792,12 @@ public sealed class LikeC4DslGeneratorTests
 		{
 			Elements =
 			[
-				new LikeC4Element { Name = "api", Label = "API", Kind = LikeC4ElementKind.Component },
+				new LikeC4Element
+				{
+					Name = "api",
+					Label = "API",
+					Kind = LikeC4ElementKind.Component,
+				},
 			],
 			Relationships = [],
 		};
@@ -334,8 +814,19 @@ public sealed class LikeC4DslGeneratorTests
 		{
 			Elements =
 			[
-				new LikeC4Element { Name = "postgres", Label = "Postgres", Kind = LikeC4ElementKind.Container },
-				new LikeC4Element { Name = "appdb", Label = "App DB", Kind = LikeC4ElementKind.Database, ParentName = "postgres" },
+				new LikeC4Element
+				{
+					Name = "postgres",
+					Label = "Postgres",
+					Kind = LikeC4ElementKind.Container,
+				},
+				new LikeC4Element
+				{
+					Name = "appdb",
+					Label = "App DB",
+					Kind = LikeC4ElementKind.Database,
+					ParentName = "postgres",
+				},
 			],
 			Relationships = [],
 		};
@@ -367,7 +858,10 @@ public sealed class LikeC4DslGeneratorTests
 	[Test]
 	[MethodDataSource(nameof(StateStyleMappings))]
 	public async Task Generate_ElementWithState_RendersExpectedStyle(
-		LikeC4ResourceState state, string? expectedColor, int? expectedOpacity)
+		LikeC4ResourceState state,
+		string? expectedColor,
+		int? expectedOpacity
+	)
 	{
 		var model = new LikeC4Model
 		{
@@ -532,9 +1026,27 @@ public sealed class LikeC4DslGeneratorTests
 		{
 			Elements =
 			[
-				new LikeC4Element { Name = "api", Label = "API", Kind = LikeC4ElementKind.Component, State = LikeC4ResourceState.Running },
-				new LikeC4Element { Name = "db", Label = "DB", Kind = LikeC4ElementKind.Database, State = LikeC4ResourceState.Running },
-				new LikeC4Element { Name = "cache", Label = "Cache", Kind = LikeC4ElementKind.Container, State = LikeC4ResourceState.Error },
+				new LikeC4Element
+				{
+					Name = "api",
+					Label = "API",
+					Kind = LikeC4ElementKind.Component,
+					State = LikeC4ResourceState.Running,
+				},
+				new LikeC4Element
+				{
+					Name = "db",
+					Label = "DB",
+					Kind = LikeC4ElementKind.Database,
+					State = LikeC4ResourceState.Running,
+				},
+				new LikeC4Element
+				{
+					Name = "cache",
+					Label = "Cache",
+					Kind = LikeC4ElementKind.Container,
+					State = LikeC4ResourceState.Error,
+				},
 			],
 			Relationships = [],
 		};

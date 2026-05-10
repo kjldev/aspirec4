@@ -445,6 +445,7 @@ public static class LikeC4ModelBuilder
 					Label = details?.Label ?? inferredLabel,
 					Technology = details?.Technology,
 					Description = details?.Description,
+					Kind = details?.Kind,
 				}
 			);
 		}
@@ -474,6 +475,7 @@ public static class LikeC4ModelBuilder
 					Label = details.Label,
 					Technology = details.Technology,
 					Description = details.Description,
+					Kind = details.Kind,
 				}
 			);
 		}

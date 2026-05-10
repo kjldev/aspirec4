@@ -1,5 +1,5 @@
-using System.Net.WebSockets;
 using System.Globalization;
+using System.Net.WebSockets;
 using System.Text.RegularExpressions;
 using Aspire.Hosting.ApplicationModel;
 using Aspire.Hosting.Testing;
@@ -158,7 +158,8 @@ public sealed class LikeC4VisualizationHostTests : IAsyncDisposable
 
 		await Assert.That(tokenMatch.Success).IsTrue();
 		await Assert.That(portMatch.Success).IsTrue();
-		await Assert.That(int.Parse(portMatch.Groups[1].Value, CultureInfo.InvariantCulture))
+		await Assert
+			.That(int.Parse(portMatch.Groups[1].Value, CultureInfo.InvariantCulture))
 			.IsEqualTo(LikeC4ServerResource.DefaultContainerUpdatePort);
 
 		using var socket = new ClientWebSocket();
@@ -168,7 +169,9 @@ public sealed class LikeC4VisualizationHostTests : IAsyncDisposable
 		linkedCts.CancelAfter(TimeSpan.FromSeconds(10));
 
 		await socket.ConnectAsync(
-			new Uri($"ws://127.0.0.1:{LikeC4ServerResource.DefaultContainerUpdatePort}/?token={tokenMatch.Groups[1].Value}"),
+			new Uri(
+				$"ws://127.0.0.1:{LikeC4ServerResource.DefaultContainerUpdatePort}/?token={tokenMatch.Groups[1].Value}"
+			),
 			linkedCts.Token
 		);
 
@@ -177,13 +180,15 @@ public sealed class LikeC4VisualizationHostTests : IAsyncDisposable
 
 	async Task WaitForLikeC4ServerRunningAsync(CancellationToken cancellationToken)
 	{
-		await _app!.ResourceNotifications.WaitForResourceAsync(
+		await _app!
+			.ResourceNotifications.WaitForResourceAsync(
 				LikeC4ResourceName,
 				KnownResourceStates.Running,
 				cancellationToken
 			)
 			.WaitAsync(LikeC4StartupTimeout, cancellationToken);
 	}
+
 	public async ValueTask DisposeAsync()
 	{
 		if (_app is not null)

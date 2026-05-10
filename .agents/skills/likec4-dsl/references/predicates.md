@@ -127,6 +127,64 @@ If filter applies to relationship expressions, you can filter source/target elem
 - `* -> * where target.tag is #primary` - filters relationships by tag on target element
 - `* -> * where source.kind is component or target.kind is component` - filters relationships by source or target kind
 
+## Metadata Filters
+
+`where` can also filter by element or relationship metadata values using `metadata.KEY` syntax:
+
+```likec4
+// Include elements where environment="production"
+include cloud.*
+  where metadata.environment is "production"
+
+// Exclude elements without a version metadata key (existence check)
+exclude *
+  where not metadata.version
+
+// Boolean metadata values — use true/false without quotes
+include *
+  where metadata.critical is true
+
+// Array metadata containment — checks if value is contained in the array
+// e.g. if element has metadata { regions ['us-east-1', 'eu-west-1'] }
+// the predicate below matches it
+include *
+  where metadata.regions is "us-east-1"
+
+// Combine with other filters
+include cloud.*
+  where
+    metadata.environment is "production"
+    and kind is not database
+```
+
+For **relationship** predicates, filter by the relationship's own metadata or by endpoints' metadata:
+
+```likec4
+include
+  // Only relationships with protocol="grpc"
+  cloud.* -> amazon.*
+    where metadata.protocol is "grpc",
+
+  // Only relations from elements with env="production"
+  cloud.* -> *
+    where source.metadata.environment is "production",
+
+  // Only relations to staging targets
+  * -> *
+    where target.metadata.environment is "staging"
+```
+
+**Metadata filter reference:**
+
+| Pattern | Meaning |
+|---------|---------|
+| `where metadata.KEY is "VALUE"` | String equality; for arrays, checks containment |
+| `where not metadata.KEY` | Existence check — exclude if key is absent |
+| `where metadata.KEY is true` | Boolean match (no quotes) |
+| `where metadata.KEY is false` | Boolean match |
+| `where source.metadata.KEY is "VALUE"` | Filter by source element metadata (relationship predicate only) |
+| `where target.metadata.KEY is "VALUE"` | Filter by target element metadata (relationship predicate only) |
+
 ## Customize Predicates
 
 Customize predicates allow you to override properties of selected elements/relationships per view (for example, in different diagrams).

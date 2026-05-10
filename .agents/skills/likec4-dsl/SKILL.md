@@ -130,21 +130,24 @@ Example output:
 
 ```json
 {
-  "valid": false,
-  "errors": [
-    {
-      "message": "...",
-      "file": "/abs/path.c4",
-      "line": 5,
-      "range": { "start": { "line": 5, "character": 2 }, "end": { "line": 5, "character": 20 } }
-    }
-  ],
-  "stats": {
-    "totalFiles": 100, // Total number of files in the project
-    "totalErrors": 500, // Total number of errors in the project
-    "filteredFiles": 1, // Number of files that match the --file filter
-    "filteredErrors": 1 // Number of errors in the filtered files
-  }
+	"valid": false,
+	"errors": [
+		{
+			"message": "...",
+			"file": "/abs/path.c4",
+			"line": 5,
+			"range": {
+				"start": { "line": 5, "character": 2 },
+				"end": { "line": 5, "character": 20 }
+			}
+		}
+	],
+	"stats": {
+		"totalFiles": 100, // Total number of files in the project
+		"totalErrors": 500, // Total number of errors in the project
+		"filteredFiles": 1, // Number of files that match the --file filter
+		"filteredErrors": 1 // Number of errors in the filtered files
+	}
 }
 ```
 
@@ -231,9 +234,9 @@ Config file (`likec4.config.json`, `.likec4rc`, or `likec4.config.{ts,js}`) defi
 
 ```json
 {
-  "$schema": "https://likec4.dev/schemas/config.json",
-  "name": "my-project",
-  "title": "Project Title"
+	"$schema": "https://likec4.dev/schemas/config.json",
+	"name": "my-project",
+	"title": "Project Title"
 }
 ```
 
@@ -275,6 +278,82 @@ Named vs. anonymous instances, multi-environment fixture, deployment relationshi
 Three view types: element views (`view id` or `view id of element`), dynamic views (`dynamic view id`), deployment views (`deployment view id`). View properties: `title`, `description`, `metadata`, `link`.
 
 Include/exclude predicates, view-level style rules, groups, `autoLayout`, `extends`, `navigateTo`, and global predicate groups → `references/views.md`
+
+## View Notations (Legend Labels)
+
+The `notation` property attaches a human-readable legend label to an element or relationship kind. It appears in the diagram legend. There are three levels — later levels override earlier:
+
+1. **Specification-level** (global default) — set in the `specification` block on an element or relationship kind:
+
+   ```likec4
+   specification {
+     element service { notation "Microservice" }
+     relationship async { notation "Async Message" }
+   }
+   ```
+
+2. **View-level** (view-wide override) — set inside a `view` using a `style` rule:
+
+   ```likec4
+   views {
+     view context {
+       include *
+       style service { notation "Service (this context)" }
+     }
+   }
+   ```
+
+3. **Include-with** (per-include override, highest priority) — set in an `include ... with { }` block:
+   ```likec4
+   views {
+     view prod {
+       include cloud.backend.* with {
+         notation "Backend Services (Prod)"
+       }
+     }
+   }
+   ```
+
+Priority: `include ... with { notation }` > view `style` notation > specification default notation.
+
+## Multi-Project Import
+
+Use `import` to bring top-level elements from another project in the same workspace into the current project's model:
+
+```likec4
+import { authService, apiGateway } from 'backend-project'
+
+model {
+  app = component "My App" {
+    -> authService "authenticates via"
+    -> apiGateway "calls"
+  }
+}
+```
+
+Key rules:
+
+- Only **top-level** model elements can be imported.
+- Referenced project must be in the same workspace (listed in `likec4.config.ts`).
+- Imported elements are read-only in the importing project.
+- Use the project `name` (from config), not a file path.
+
+Full import reference → `references/model.md`
+
+## Rank Constraints (Layout)
+
+Use `rank` blocks inside a view to hint the layout engine about element positioning:
+
+```likec4
+view pipeline {
+  include *
+  rank source { customer }           // Start of diagram
+  rank same { api, billingApi }      // Same horizontal/vertical level
+  rank sink { analytics }            // End of diagram
+}
+```
+
+Values: `same` (default), `min`, `max`, `source`, `sink`. Full reference → `references/views.md`
 
 ## Quick Decision Trees
 
@@ -363,12 +442,15 @@ Return-arrow precision:
 
 ## Anti-Patterns to Avoid in Strict Prompts
 
-| Anti-pattern                                                       | Why it fails                                   | Correct behavior                                          |
-| ------------------------------------------------------------------ | ---------------------------------------------- | --------------------------------------------------------- |
-| Substituting command families (`check`/`build`) for `validate`     | Breaks exact command contract                  | Keep `likec4 validate`                                    |
-| Inventing/guessing flags                                           | Creates non-portable invalid commands          | Use canonical documented flags only                       |
-| Multiple alternative snippets for one strict ask                   | Reduces precision; fails strict-output grading | Output one final answer unless alternatives are requested |
-| Extending typed relationship without kind/title in ambiguous graph | Can target wrong relationship                  | Match with source + target + kind (+ title when needed)   |
+| Anti-pattern                                                       | Why it fails                                   | Correct behavior                                            |
+| ------------------------------------------------------------------ | ---------------------------------------------- | ----------------------------------------------------------- |
+| Substituting command families (`check`/`build`) for `validate`     | Breaks exact command contract                  | Keep `likec4 validate`                                      |
+| Inventing/guessing flags                                           | Creates non-portable invalid commands          | Use canonical documented flags only                         |
+| Multiple alternative snippets for one strict ask                   | Reduces precision; fails strict-output grading | Output one final answer unless alternatives are requested   |
+| Extending typed relationship without kind/title in ambiguous graph | Can target wrong relationship                  | Match with source + target + kind (+ title when needed)     |
+| Writing `where metadata.KEY == "VALUE"` (double equals)            | Invalid syntax; LikeC4 uses `is` keyword       | Use `where metadata.KEY is "VALUE"`                         |
+| Adding `rank` constraints outside a view block                     | `rank` is only valid inside a view definition  | Move `rank` blocks inside the relevant `view { }` body      |
+| Importing nested elements directly: `import { api.v2 } from 'x'`   | Only top-level elements can be imported        | Import the top-level ancestor; reference descendants by FQN |
 
 ## Common Mistakes & Debugging
 
@@ -388,20 +470,20 @@ When a model errors or an eval answer seems wrong, load `references/troubleshoot
 
 Load a reference file when the task involves the corresponding topic. Claude reads SKILL.md first; these files are loaded on demand only when needed.
 
-| File                                         | Purpose — load when...                                                                                   |
-| -------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
-| `references/specification.md`                | Writing/editing `specification { }` blocks, defining element/deploymentNode/relationship/tag/color kinds |
-| `references/model.md`                        | Writing/editing `model { }` blocks, element hierarchy, relationships, `extend` patterns, property names  |
-| `references/deployment.md`                   | Writing/editing `deployment { }` blocks, `instanceOf`, named instances, multi-environment topology       |
-| `references/style-tokens-colors.md`          | Applying colors, shapes, icons, or relationship line styles; need exact token names                      |
-| `references/views.md`                        | Writing views, include/exclude rules, style rules in views, groups, autoLayout, global predicates        |
-| `references/predicates.md`                   | Complex `where` conditions, `with` overrides, global predicate groups, reusable predicates               |
-| `references/include-predicates-wildcards.md` | Wildcard confusion suspected (`*` vs `_` vs `**`); need exact scoped-view semantics                      |
-| `references/dynamic-views.md`                | Writing dynamic views: steps, return arrows, chained steps, parallel blocks, `variant sequence`          |
-| `references/identifier-validity.md`          | Identifier vs FQN confusion; "dots in names" errors; understanding FQN construction                      |
-| `references/relationships-bidirectional.md`  | Bidirectional relationship syntax and `<->` view predicate patterns                                      |
-| `references/bridge-leanix-drawio.md`         | LeanIX bridge · `drawio --profile leanix` · round-trip · mapping · MCP vs bridge · sync/artifacts/managed cells |
-| `references/cli.md`                          | Full CLI reference: serve, build, export, codegen, mcp, format; flag disambiguation                      |
-| `references/configuration.md`                | Project config options, multi-project setup, include/exclude paths, generators                           |
-| `references/examples.md`                     | Compact real-world examples: extend, groups, globals, dynamic views, deployment, rank                    |
-| `references/troubleshooting.md`              | Errors, unexpected output, eval failures — 6 error tables, 5-step debug workflow, 7 best practices       |
+| File                                         | Purpose — load when...                                                                                                 |
+| -------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| `references/specification.md`                | Writing/editing `specification { }` blocks, defining element/deploymentNode/relationship/tag/color kinds               |
+| `references/model.md`                        | Writing/editing `model { }` blocks, element hierarchy, relationships, `extend` patterns, property names                |
+| `references/deployment.md`                   | Writing/editing `deployment { }` blocks, `instanceOf`, named instances, multi-environment topology                     |
+| `references/style-tokens-colors.md`          | Applying colors, shapes, icons, or relationship line styles; need exact token names                                    |
+| `references/views.md`                        | Writing views, include/exclude rules, style rules in views, groups, autoLayout, global predicates                      |
+| `references/predicates.md`                   | Complex `where` conditions, `with` overrides, global predicate groups, reusable predicates                             |
+| `references/include-predicates-wildcards.md` | Wildcard confusion suspected (`*` vs `_` vs `**`); need exact scoped-view semantics                                    |
+| `references/dynamic-views.md`                | Writing dynamic views: steps, return arrows, chained steps, parallel blocks, `variant sequence`                        |
+| `references/identifier-validity.md`          | Identifier vs FQN confusion; "dots in names" errors; understanding FQN construction                                    |
+| `references/relationships-bidirectional.md`  | Bidirectional relationship syntax and `<->` view predicate patterns                                                    |
+| `references/bridge-leanix-drawio.md`         | LeanIX bridge · `drawio --profile leanix` · round-trip · mapping · MCP vs bridge · sync/artifacts/managed cells        |
+| `references/cli.md`                          | Full CLI reference: serve, build, export, codegen, mcp, format (--check, --files, --project), lsp; flag disambiguation |
+| `references/configuration.md`                | Project config options, multi-project setup, include/exclude paths, generators                                         |
+| `references/examples.md`                     | Compact real-world examples: extend, groups, globals, dynamic views, deployment, rank                                  |
+| `references/troubleshooting.md`              | Errors, unexpected output, eval failures — 6 error tables, 5-step debug workflow, 7 best practices                     |

@@ -43,6 +43,10 @@ lintcheck:
 [group('dotnet')]
 lintfix:
     dotnet csharpier format src
+# Build and produce NuGet packages into artifacts/nuget
+[group('dotnet')]
+pack configuration=config_default: (build configuration)
+    dotnet pack {{ _solution }} --no-build --no-restore --configuration {{ configuration }} --output artifacts/nuget
 # ── LikeC4 diagram viewer ─────────────────────────────────────────────────────
 
 # View all LikeC4 diagrams in this repository

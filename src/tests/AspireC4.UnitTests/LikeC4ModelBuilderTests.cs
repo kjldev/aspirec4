@@ -39,11 +39,9 @@ public sealed class LikeC4ModelBuilderTests
 	public async Task Build_ExecutableResource_MapsToExecutableKind()
 	{
 		var resource = new ExecutableResource("worker", "dotnet", ".");
-		resource.Annotations.Add(new ResourceSnapshotAnnotation(new CustomResourceSnapshot
-		{
-			ResourceType = "Executable",
-			Properties = [],
-		}));
+		resource.Annotations.Add(
+			new ResourceSnapshotAnnotation(new CustomResourceSnapshot { ResourceType = "Executable", Properties = [] })
+		);
 
 		var model = LikeC4ModelBuilder.Build([resource]);
 
@@ -85,12 +83,16 @@ public sealed class LikeC4ModelBuilderTests
 	public async Task Build_HiddenResource_IsSkipped()
 	{
 		var resource = new TestSystemResource("hidden");
-		resource.Annotations.Add(new ResourceSnapshotAnnotation(new CustomResourceSnapshot
-		{
-			ResourceType = "System",
-			Properties = [],
-			IsHidden = true,
-		}));
+		resource.Annotations.Add(
+			new ResourceSnapshotAnnotation(
+				new CustomResourceSnapshot
+				{
+					ResourceType = "System",
+					Properties = [],
+					IsHidden = true,
+				}
+			)
+		);
 
 		var model = LikeC4ModelBuilder.Build([resource]);
 
@@ -101,7 +103,9 @@ public sealed class LikeC4ModelBuilderTests
 	public async Task Build_ResourceWithNodeDetailsAnnotation_UsesAnnotationValues()
 	{
 		var resource = CreateProjectResource("api");
-		resource.Annotations.Add(new LikeC4NodeDetailsAnnotation("API Service", "ASP.NET Core", "Handles HTTP requests", "bootstrap:gear"));
+		resource.Annotations.Add(
+			new LikeC4NodeDetailsAnnotation("API Service", "ASP.NET Core", "Handles HTTP requests", "bootstrap:gear")
+		);
 
 		var model = LikeC4ModelBuilder.Build([resource]);
 
@@ -136,11 +140,9 @@ public sealed class LikeC4ModelBuilderTests
 	public async Task Build_AzureResource_InfersBundledAzureIcon()
 	{
 		var resource = new TestSystemResource("redis");
-		resource.Annotations.Add(new ResourceSnapshotAnnotation(new CustomResourceSnapshot
-		{
-			ResourceType = "Azure.Redis",
-			Properties = [],
-		}));
+		resource.Annotations.Add(
+			new ResourceSnapshotAnnotation(new CustomResourceSnapshot { ResourceType = "Azure.Redis", Properties = [] })
+		);
 
 		var model = LikeC4ModelBuilder.Build([resource]);
 
@@ -193,7 +195,9 @@ public sealed class LikeC4ModelBuilderTests
 	public async Task Build_WithPerResourceAutoIconDisabled_DoesNotInferIcon()
 	{
 		var resource = CreateProjectResource("api");
-		resource.Annotations.Add(new LikeC4NodeDetailsAnnotation("API", ".NET", "HTTP API", icon: null, autoIconEnabled: false));
+		resource.Annotations.Add(
+			new LikeC4NodeDetailsAnnotation("API", ".NET", "HTTP API", icon: null, autoIconEnabled: false)
+		);
 
 		var model = LikeC4ModelBuilder.Build([resource]);
 
@@ -204,7 +208,9 @@ public sealed class LikeC4ModelBuilderTests
 	public async Task Build_WithPerResourceAutoIconEnabled_OverridesProjectSetting()
 	{
 		var resource = CreateProjectResource("api");
-		resource.Annotations.Add(new LikeC4NodeDetailsAnnotation("API", ".NET", "HTTP API", icon: null, autoIconEnabled: true));
+		resource.Annotations.Add(
+			new LikeC4NodeDetailsAnnotation("API", ".NET", "HTTP API", icon: null, autoIconEnabled: true)
+		);
 
 		var model = LikeC4ModelBuilder.Build([resource], autoIconsEnabled: false);
 
@@ -215,7 +221,9 @@ public sealed class LikeC4ModelBuilderTests
 	public async Task Build_ExplicitIcon_IsUsedWhenAutoIconsDisabled()
 	{
 		var resource = CreateProjectResource("api");
-		resource.Annotations.Add(new LikeC4NodeDetailsAnnotation("API", ".NET", "HTTP API", "bootstrap:gear", autoIconEnabled: false));
+		resource.Annotations.Add(
+			new LikeC4NodeDetailsAnnotation("API", ".NET", "HTTP API", "bootstrap:gear", autoIconEnabled: false)
+		);
 
 		var model = LikeC4ModelBuilder.Build([resource], autoIconsEnabled: false);
 
@@ -293,7 +301,9 @@ public sealed class LikeC4ModelBuilderTests
 		var api = CreateProjectResource("api");
 		var db = CreateContainerResource("db");
 		api.Annotations.Add(new ResourceRelationshipAnnotation(db, "Reference"));
-		api.Annotations.Add(new LikeC4RelationshipDetailsAnnotation("db", label: "Reads from", technology: null, description: null));
+		api.Annotations.Add(
+			new LikeC4RelationshipDetailsAnnotation("db", label: "Reads from", technology: null, description: null)
+		);
 
 		var model = LikeC4ModelBuilder.Build([api, db]);
 
@@ -306,7 +316,14 @@ public sealed class LikeC4ModelBuilderTests
 		var api = CreateProjectResource("api");
 		var db = CreateContainerResource("db");
 		api.Annotations.Add(new ResourceRelationshipAnnotation(db, "Reference"));
-		api.Annotations.Add(new LikeC4RelationshipDetailsAnnotation("db", label: null, technology: "PostgreSQL", description: "Stores user records"));
+		api.Annotations.Add(
+			new LikeC4RelationshipDetailsAnnotation(
+				"db",
+				label: null,
+				technology: "PostgreSQL",
+				description: "Stores user records"
+			)
+		);
 
 		var model = LikeC4ModelBuilder.Build([api, db]);
 
@@ -322,18 +339,29 @@ public sealed class LikeC4ModelBuilderTests
 		// The WithLikeC4Reference target name is the hidden Azure resource name;
 		// the effective target is the surrogate container — both share the same name "redis".
 		var hiddenAzureRedis = new TestSystemResource("redis");
-		hiddenAzureRedis.Annotations.Add(new ResourceSnapshotAnnotation(new CustomResourceSnapshot
-		{
-			ResourceType = "Azure.Redis",
-			Properties = [],
-			IsHidden = true,
-		}));
+		hiddenAzureRedis.Annotations.Add(
+			new ResourceSnapshotAnnotation(
+				new CustomResourceSnapshot
+				{
+					ResourceType = "Azure.Redis",
+					Properties = [],
+					IsHidden = true,
+				}
+			)
+		);
 
 		var visibleContainerRedis = CreateContainerResource("redis");
 
 		var nodeApp = new ExecutableResource("node-app", "node", ".");
 		nodeApp.Annotations.Add(new ResourceRelationshipAnnotation(hiddenAzureRedis, "Reference"));
-		nodeApp.Annotations.Add(new LikeC4RelationshipDetailsAnnotation("redis", label: "Caches sessions", technology: "Redis Protocol", description: null));
+		nodeApp.Annotations.Add(
+			new LikeC4RelationshipDetailsAnnotation(
+				"redis",
+				label: "Caches sessions",
+				technology: "Redis Protocol",
+				description: null
+			)
+		);
 
 		var model = LikeC4ModelBuilder.Build([hiddenAzureRedis, visibleContainerRedis, nodeApp]);
 
@@ -348,8 +376,12 @@ public sealed class LikeC4ModelBuilderTests
 		var api = CreateProjectResource("api");
 		var db = CreateContainerResource("db");
 		api.Annotations.Add(new ResourceRelationshipAnnotation(db, "Reference"));
-		api.Annotations.Add(new LikeC4RelationshipDetailsAnnotation("db", label: "First", technology: null, description: null));
-		api.Annotations.Add(new LikeC4RelationshipDetailsAnnotation("db", label: "Last", technology: null, description: null));
+		api.Annotations.Add(
+			new LikeC4RelationshipDetailsAnnotation("db", label: "First", technology: null, description: null)
+		);
+		api.Annotations.Add(
+			new LikeC4RelationshipDetailsAnnotation("db", label: "Last", technology: null, description: null)
+		);
 
 		var model = LikeC4ModelBuilder.Build([api, db]);
 
@@ -376,12 +408,16 @@ public sealed class LikeC4ModelBuilderTests
 		// - A container surrogate with the same name "redis" is visible
 		// - The node-app's WithReference points to the hidden Azure resource
 		var hiddenAzureRedis = new TestSystemResource("redis");
-		hiddenAzureRedis.Annotations.Add(new ResourceSnapshotAnnotation(new CustomResourceSnapshot
-		{
-			ResourceType = "Azure.Redis",
-			Properties = [],
-			IsHidden = true,
-		}));
+		hiddenAzureRedis.Annotations.Add(
+			new ResourceSnapshotAnnotation(
+				new CustomResourceSnapshot
+				{
+					ResourceType = "Azure.Redis",
+					Properties = [],
+					IsHidden = true,
+				}
+			)
+		);
 
 		var visibleContainerRedis = CreateContainerResource("redis");
 
@@ -401,12 +437,16 @@ public sealed class LikeC4ModelBuilderTests
 		// WaitFor relationships to a hidden Azure resource should still be skipped,
 		// not accidentally resolved and included via the surrogate.
 		var hiddenAzureRedis = new TestSystemResource("redis");
-		hiddenAzureRedis.Annotations.Add(new ResourceSnapshotAnnotation(new CustomResourceSnapshot
-		{
-			ResourceType = "Azure.Redis",
-			Properties = [],
-			IsHidden = true,
-		}));
+		hiddenAzureRedis.Annotations.Add(
+			new ResourceSnapshotAnnotation(
+				new CustomResourceSnapshot
+				{
+					ResourceType = "Azure.Redis",
+					Properties = [],
+					IsHidden = true,
+				}
+			)
+		);
 		var visibleContainerRedis = CreateContainerResource("redis");
 
 		var nodeApp = new ExecutableResource("node-app", "node", ".");
@@ -423,12 +463,16 @@ public sealed class LikeC4ModelBuilderTests
 		// If the Azure resource is hidden and there is no visible surrogate with the same
 		// name, the relationship should be dropped entirely (not produce a broken edge).
 		var hiddenResource = new TestSystemResource("orphaned-azure-resource");
-		hiddenResource.Annotations.Add(new ResourceSnapshotAnnotation(new CustomResourceSnapshot
-		{
-			ResourceType = "Azure.Something",
-			Properties = [],
-			IsHidden = true,
-		}));
+		hiddenResource.Annotations.Add(
+			new ResourceSnapshotAnnotation(
+				new CustomResourceSnapshot
+				{
+					ResourceType = "Azure.Something",
+					Properties = [],
+					IsHidden = true,
+				}
+			)
+		);
 
 		var nodeApp = new ExecutableResource("node-app", "node", ".");
 		nodeApp.Annotations.Add(new ResourceRelationshipAnnotation(hiddenResource, "Reference"));
@@ -444,12 +488,16 @@ public sealed class LikeC4ModelBuilderTests
 		// Both a WaitFor (hidden) and a Reference (hidden) to the same Azure resource should
 		// produce exactly one relationship to the surrogate (WaitFor is filtered; Reference resolves).
 		var hiddenAzureRedis = new TestSystemResource("redis");
-		hiddenAzureRedis.Annotations.Add(new ResourceSnapshotAnnotation(new CustomResourceSnapshot
-		{
-			ResourceType = "Azure.Redis",
-			Properties = [],
-			IsHidden = true,
-		}));
+		hiddenAzureRedis.Annotations.Add(
+			new ResourceSnapshotAnnotation(
+				new CustomResourceSnapshot
+				{
+					ResourceType = "Azure.Redis",
+					Properties = [],
+					IsHidden = true,
+				}
+			)
+		);
 		var visibleContainerRedis = CreateContainerResource("redis");
 
 		var nodeApp = new ExecutableResource("node-app", "node", ".");
@@ -514,12 +562,16 @@ public sealed class LikeC4ModelBuilderTests
 		var visible = CreateProjectResource("api");
 
 		var hidden = new TestSystemResource("infra");
-		hidden.Annotations.Add(new ResourceSnapshotAnnotation(new CustomResourceSnapshot
-		{
-			ResourceType = "Internal",
-			Properties = [],
-			IsHidden = true,
-		}));
+		hidden.Annotations.Add(
+			new ResourceSnapshotAnnotation(
+				new CustomResourceSnapshot
+				{
+					ResourceType = "Internal",
+					Properties = [],
+					IsHidden = true,
+				}
+			)
+		);
 
 		var excluded = CreateContainerResource("excluded");
 		excluded.Annotations.Add(new ExcludeFromLikeC4Annotation());
@@ -538,7 +590,14 @@ public sealed class LikeC4ModelBuilderTests
 		// WithReference was called — a purely diagram-level relationship.
 		var local = CreateContainerResource("postgres");
 		var azure = CreateContainerResource("azure-postgres");
-		local.Annotations.Add(new LikeC4RelationshipDetailsAnnotation("azure-postgres", label: "syncs with", technology: "PostgreSQL / JDBC", description: null));
+		local.Annotations.Add(
+			new LikeC4RelationshipDetailsAnnotation(
+				"azure-postgres",
+				label: "syncs with",
+				technology: "PostgreSQL / JDBC",
+				description: null
+			)
+		);
 
 		var model = LikeC4ModelBuilder.Build([local, azure]);
 
@@ -557,7 +616,9 @@ public sealed class LikeC4ModelBuilderTests
 		var api = CreateProjectResource("api");
 		var db = CreateContainerResource("db");
 		api.Annotations.Add(new ResourceRelationshipAnnotation(db, "Reference"));
-		api.Annotations.Add(new LikeC4RelationshipDetailsAnnotation("db", label: "Queries", technology: "SQL", description: null));
+		api.Annotations.Add(
+			new LikeC4RelationshipDetailsAnnotation("db", label: "Queries", technology: "SQL", description: null)
+		);
 
 		var model = LikeC4ModelBuilder.Build([api, db]);
 
@@ -565,7 +626,58 @@ public sealed class LikeC4ModelBuilderTests
 		await Assert.That(model.Relationships[0].Label).IsEqualTo("Queries");
 	}
 
-	// --- Helpers ---
+	[Test]
+	public async Task Build_RelationshipDetailsAnnotation_SetsKind()
+	{
+		var api = CreateProjectResource("api");
+		var queue = new TestSystemResource("queue");
+		api.Annotations.Add(new ResourceRelationshipAnnotation(queue, "Reference"));
+		api.Annotations.Add(
+			new LikeC4RelationshipDetailsAnnotation(
+				"queue",
+				label: null,
+				technology: null,
+				description: null,
+				kind: "async"
+			)
+		);
+
+		var model = LikeC4ModelBuilder.Build([api, queue]);
+
+		await Assert.That(model.Relationships[0].Kind).IsEqualTo("async");
+	}
+
+	[Test]
+	public async Task Build_DiagramOnlyRelationship_PropagatesKind()
+	{
+		var api = CreateProjectResource("api");
+		var queue = new TestSystemResource("queue");
+		api.Annotations.Add(
+			new LikeC4RelationshipDetailsAnnotation(
+				"queue",
+				label: "Publishes",
+				technology: "AMQP",
+				description: null,
+				kind: "async"
+			)
+		);
+
+		var model = LikeC4ModelBuilder.Build([api, queue]);
+
+		await Assert.That(model.Relationships[0].Kind).IsEqualTo("async");
+	}
+
+	[Test]
+	public async Task Build_RelationshipWithNoKind_KindIsNull()
+	{
+		var api = CreateProjectResource("api");
+		var db = new TestDatabaseResource("db");
+		api.Annotations.Add(new ResourceRelationshipAnnotation(db, "Reference"));
+
+		var model = LikeC4ModelBuilder.Build([api, db]);
+
+		await Assert.That(model.Relationships[0].Kind).IsNull();
+	}
 
 	static ProjectResource CreateProjectResource(string name)
 	{
@@ -579,17 +691,14 @@ public sealed class LikeC4ModelBuilderTests
 		return resource;
 	}
 
-	sealed class TestDatabaseResource(string name)
-		: Resource(name), IResourceWithConnectionString
+	sealed class TestDatabaseResource(string name) : Resource(name), IResourceWithConnectionString
 	{
-		public ReferenceExpression ConnectionStringExpression =>
-			ReferenceExpression.Create($"host=localhost");
+		public ReferenceExpression ConnectionStringExpression => ReferenceExpression.Create($"host=localhost");
 	}
 
 	sealed class TestSystemResource(string name) : Resource(name);
 
-	sealed class TestChildResource(string name, IResource parent)
-		: Resource(name), IResourceWithParent
+	sealed class TestChildResource(string name, IResource parent) : Resource(name), IResourceWithParent
 	{
 		public IResource Parent { get; } = parent;
 	}

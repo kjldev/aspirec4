@@ -74,5 +74,4 @@ public sealed class LikeC4PublishModeTests
 				"AspireC4.TestAppHost.csproj"
 			)
 		);
-
 }

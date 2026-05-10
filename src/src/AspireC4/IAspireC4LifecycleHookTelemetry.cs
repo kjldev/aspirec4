@@ -3,7 +3,7 @@
 namespace Aspire.Hosting.AspireC4;
 
 [Logger]
-interface ILikeC4VisualizationLifecycleHookTelemetry
+interface IAspireC4LifecycleHookTelemetry
 {
 	[Info]
 	void GeneratingLikeC4Model(int resourceCount);

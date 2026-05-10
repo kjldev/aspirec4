@@ -17,7 +17,7 @@ sealed class LikeC4VisualizationLifecycleHook(
 	IOptions<LikeC4DiagramOptions> options,
 	IOptions<LikeC4ContainerWorkspaceOptions> workspaceOptions,
 	ResourceNotificationService resourceNotificationService,
-	ILikeC4VisualizationLifecycleHookTelemetry telemetry
+	IAspireC4LifecycleHookTelemetry telemetry
 ) : IDistributedApplicationEventingSubscriber, IDisposable
 {
 	readonly ConcurrentDictionary<string, LikeC4ResourceState> _resourceStates = new(StringComparer.OrdinalIgnoreCase);
@@ -38,9 +38,11 @@ sealed class LikeC4VisualizationLifecycleHook(
 		eventing.Subscribe<BeforeStartEvent>(
 			async (evt, ct) =>
 			{
-				var syncContainerWorkspace = evt.Model.Resources
-					.OfType<LikeC4ServerResource>()
-					.Any(resource => resource.Name == LikeC4VisualizationExtensions.ServerResourceName);
+				var syncContainerWorkspace = evt
+					.Model.Resources.OfType<LikeC4ServerResource>()
+					.Any(resource =>
+						resource.Name == AspireC4DistributedApplicationBuilderExtensions.ServerResourceName
+					);
 
 				if (executionContext.IsPublishMode)
 				{
@@ -75,10 +77,15 @@ sealed class LikeC4VisualizationLifecycleHook(
 
 	// ── Dashboard integration (hide & surface URL/command on project resources) ──
 
-	void SetupDashboardIntegration(DistributedApplicationModel appModel, string displayName, CancellationToken cancellationToken)
+	void SetupDashboardIntegration(
+		DistributedApplicationModel appModel,
+		string displayName,
+		CancellationToken cancellationToken
+	)
 	{
-		var serverResource = appModel.Resources
-			.FirstOrDefault(r => r.Name == LikeC4VisualizationExtensions.ServerResourceName);
+		var serverResource = appModel.Resources.FirstOrDefault(r =>
+			r.Name == AspireC4DistributedApplicationBuilderExtensions.ServerResourceName
+		);
 
 		if (serverResource is null)
 		{
@@ -91,65 +98,75 @@ sealed class LikeC4VisualizationLifecycleHook(
 		{
 			// ResourceUrlsCallbackAnnotation: called once when the project resource's
 			// endpoints are first allocated. Adds the diagram URL if LikeC4 is already up.
-			projectResource.Annotations.Add(new ResourceUrlsCallbackAnnotation(ctx =>
-			{
-				var ep = serverResource.Annotations
-					.OfType<EndpointAnnotation>()
-					.FirstOrDefault(e => e.Name == LikeC4ServerResource.HttpEndpointName)
-					?.AllocatedEndpoint;
-
-				if (ep is { Port: > 0 })
+			projectResource.Annotations.Add(
+				new ResourceUrlsCallbackAnnotation(ctx =>
 				{
-					var host = ep.Address is "0.0.0.0" ? "localhost" : ep.Address;
-					ctx.Urls.Add(new ResourceUrlAnnotation { Url = $"http://{host}:{ep.Port}", DisplayText = displayName });
-				}
-			}));
+					var ep = serverResource
+						.Annotations.OfType<EndpointAnnotation>()
+						.FirstOrDefault(e => e.Name == LikeC4ServerResource.HttpEndpointName)
+						?.AllocatedEndpoint;
+
+					if (ep is { Port: > 0 })
+					{
+						var host = ep.Address is "0.0.0.0" ? "localhost" : ep.Address;
+						ctx.Urls.Add(
+							new ResourceUrlAnnotation { Url = $"http://{host}:{ep.Port}", DisplayText = displayName }
+						);
+					}
+				})
+			);
 
 			// ResourceCommandAnnotation: re-evaluated on every state update via UpdateCommands.
 			// The executeCommand callback returns a Markdown link that the dashboard renders
 			// as a clickable dialog (displayImmediately: true).
-			projectResource.Annotations.Add(new ResourceCommandAnnotation(
-				name: "likec4-architecture-diagram",
-				displayName: displayName,
-				updateState: _ =>
-				{
-					var ep = serverResource.Annotations
-						.OfType<EndpointAnnotation>()
-						.FirstOrDefault(e => e.Name == LikeC4ServerResource.HttpEndpointName)
-						?.AllocatedEndpoint;
-					return ep is { Port: > 0 } ? ResourceCommandState.Enabled : ResourceCommandState.Disabled;
-				},
-				executeCommand: _ =>
-				{
-					var ep = serverResource.Annotations
-						.OfType<EndpointAnnotation>()
-						.FirstOrDefault(e => e.Name == LikeC4ServerResource.HttpEndpointName)
-						?.AllocatedEndpoint;
-
-					if (ep is null or { Port: 0 })
+			projectResource.Annotations.Add(
+				new ResourceCommandAnnotation(
+					name: "likec4-architecture-diagram",
+					displayName: displayName,
+					updateState: _ =>
 					{
-						return Task.FromResult(CommandResults.Failure("The architecture diagram is not yet available."));
-					}
+						var ep = serverResource
+							.Annotations.OfType<EndpointAnnotation>()
+							.FirstOrDefault(e => e.Name == LikeC4ServerResource.HttpEndpointName)
+							?.AllocatedEndpoint;
+						return ep is { Port: > 0 } ? ResourceCommandState.Enabled : ResourceCommandState.Disabled;
+					},
+					executeCommand: _ =>
+					{
+						var ep = serverResource
+							.Annotations.OfType<EndpointAnnotation>()
+							.FirstOrDefault(e => e.Name == LikeC4ServerResource.HttpEndpointName)
+							?.AllocatedEndpoint;
 
-					var host = ep.Address is "0.0.0.0" ? "localhost" : ep.Address;
-					var url = $"http://{host}:{ep.Port}";
-					return Task.FromResult(CommandResults.Success(
-						$"[Open {displayName}]({url})",
-						new CommandResultData
+						if (ep is null or { Port: 0 })
 						{
-							Value = $"[Open {displayName}]({url})",
-							Format = CommandResultFormat.Markdown,
-							DisplayImmediately = true,
+							return Task.FromResult(
+								CommandResults.Failure("The architecture diagram is not yet available.")
+							);
 						}
-					));
-				},
-				displayDescription: "View the live LikeC4 architecture diagram",
-				parameter: null,
-				confirmationMessage: null,
-				iconName: "PlugConnected",
-				iconVariant: IconVariant.Filled,
-				isHighlighted: false
-			));
+
+						var host = ep.Address is "0.0.0.0" ? "localhost" : ep.Address;
+						var url = $"http://{host}:{ep.Port}";
+						return Task.FromResult(
+							CommandResults.Success(
+								$"[Open {displayName}]({url})",
+								new CommandResultData
+								{
+									Value = $"[Open {displayName}]({url})",
+									Format = CommandResultFormat.Markdown,
+									DisplayImmediately = true,
+								}
+							)
+						);
+					},
+					displayDescription: "View the live LikeC4 architecture diagram",
+					parameter: null,
+					confirmationMessage: null,
+					iconName: "PlugConnected",
+					iconVariant: IconVariant.Filled,
+					isHighlighted: false
+				)
+			);
 		}
 
 		// Fire-and-forget background tasks.
@@ -173,37 +190,42 @@ sealed class LikeC4VisualizationLifecycleHook(
 		{
 			await foreach (var notification in resourceNotificationService.WatchAsync(cancellationToken))
 			{
-				if (notification.Resource.Name != serverResource.Name) continue;
-				if (notification.Snapshot.State?.Text != KnownResourceStates.Running) continue;
+				if (notification.Resource.Name != serverResource.Name)
+					continue;
+				if (notification.Snapshot.State?.Text != KnownResourceStates.Running)
+					continue;
 
-				var url = notification.Snapshot.Urls
-					.FirstOrDefault(u => u.Name == LikeC4ServerResource.HttpEndpointName && !u.IsInternal)?.Url;
+				var url = notification
+					.Snapshot.Urls.FirstOrDefault(u => u.Name == LikeC4ServerResource.HttpEndpointName && !u.IsInternal)
+					?.Url;
 
-				if (url is null) continue;
+				if (url is null)
+					continue;
 
 				var capturedUrl = url;
 				foreach (var resource in appModel.Resources.OfType<ProjectResource>())
 				{
-					await resourceNotificationService.PublishUpdateAsync(resource, s =>
-					{
-						// Avoid duplicates if the callback already injected this URL.
-						if (s.Urls.Any(u => u.Name == "architecture-diagram"))
+					await resourceNotificationService.PublishUpdateAsync(
+						resource,
+						s =>
 						{
-							return s;
-						}
-
-						return s with
-						{
-							Urls = s.Urls.Add(new UrlSnapshot(
-								Name: "architecture-diagram",
-								Url: capturedUrl,
-								IsInternal: false
-							)
+							// Avoid duplicates if the callback already injected this URL.
+							if (s.Urls.Any(u => u.Name == "architecture-diagram"))
 							{
-								DisplayProperties = new UrlDisplayPropertiesSnapshot(displayName),
-							})
-						};
-					});
+								return s;
+							}
+
+							return s with
+							{
+								Urls = s.Urls.Add(
+									new UrlSnapshot(Name: "architecture-diagram", Url: capturedUrl, IsInternal: false)
+									{
+										DisplayProperties = new UrlDisplayPropertiesSnapshot(displayName),
+									}
+								),
+							};
+						}
+					);
 				}
 
 				break; // Only inject once — the URL persists in the snapshot.
@@ -231,8 +253,10 @@ sealed class LikeC4VisualizationLifecycleHook(
 		{
 			await foreach (var notification in resourceNotificationService.WatchAsync(cancellationToken))
 			{
-				if (notification.Resource.Name != serverResource.Name) continue;
-				if (notification.Snapshot.IsHidden) continue;
+				if (notification.Resource.Name != serverResource.Name)
+					continue;
+				if (notification.Snapshot.IsHidden)
+					continue;
 
 				await resourceNotificationService.PublishUpdateAsync(serverResource, s => s with { IsHidden = true });
 			}
@@ -313,7 +337,12 @@ sealed class LikeC4VisualizationLifecycleHook(
 				{
 					await Task.Delay(TimeSpan.FromMilliseconds(300), newCts.Token);
 					telemetry.RegeneratingDiagramDueToStateChange();
-					await WriteC4FileAsync(appModel, syncContainerWorkspace, resetContainerWorkspace: false, cancellationToken);
+					await WriteC4FileAsync(
+						appModel,
+						syncContainerWorkspace,
+						resetContainerWorkspace: false,
+						cancellationToken
+					);
 				}
 				catch (OperationCanceledException)
 				{
@@ -389,7 +418,8 @@ sealed class LikeC4VisualizationLifecycleHook(
 		startInfo.ArgumentList.Add(syncScript);
 		startInfo.ArgumentList.Add(containerFilePath);
 
-		using var process = Process.Start(startInfo)
+		using var process =
+			Process.Start(startInfo)
 			?? throw new DistributedApplicationException(
 				$"Failed to start '{workspace.ContainerRuntimeExecutable}' to sync the LikeC4 workspace volume."
 			);
@@ -581,12 +611,12 @@ sealed class LikeC4VisualizationLifecycleHook(
 	{
 		for (var attempt = 0; attempt < 300; attempt++)
 		{
-			var endpoint = appModel.Resources
-				.OfType<LikeC4ServerResource>()
-				.Where(resource => resource.Name == LikeC4VisualizationExtensions.ServerResourceName)
+			var endpoint = appModel
+				.Resources.OfType<LikeC4ServerResource>()
+				.Where(resource => resource.Name == AspireC4DistributedApplicationBuilderExtensions.ServerResourceName)
 				.SelectMany(resource => resource.Annotations.OfType<EndpointAnnotation>())
-				.FirstOrDefault(annotation => annotation.Name == LikeC4ServerResource.HmrEndpointName)?
-				.AllocatedEndpoint;
+				.FirstOrDefault(annotation => annotation.Name == LikeC4ServerResource.HmrEndpointName)
+				?.AllocatedEndpoint;
 
 			if (endpoint is { Address.Length: > 0, Port: > 0 })
 			{
@@ -596,7 +626,12 @@ sealed class LikeC4VisualizationLifecycleHook(
 					_ => endpoint.Address,
 				};
 
-				if (!(address == IPAddress.Loopback.ToString() && endpoint.Port == LikeC4ServerResource.DefaultContainerUpdatePort))
+				if (
+					!(
+						address == IPAddress.Loopback.ToString()
+						&& endpoint.Port == LikeC4ServerResource.DefaultContainerUpdatePort
+					)
+				)
 				{
 					return (address, endpoint.Port);
 				}
@@ -605,7 +640,9 @@ sealed class LikeC4VisualizationLifecycleHook(
 			await Task.Delay(TimeSpan.FromMilliseconds(100), cancellationToken);
 		}
 
-		throw new DistributedApplicationException("The LikeC4 HMR endpoint was not allocated before the browser connected.");
+		throw new DistributedApplicationException(
+			"The LikeC4 HMR endpoint was not allocated before the browser connected."
+		);
 	}
 
 	// ── IDisposable ───────────────────────────────────────────────────────────
@@ -655,9 +692,7 @@ sealed class LikeC4VisualizationLifecycleHook(
 			"FailedToStart" or "RuntimeUnhealthy" => LikeC4ResourceState.Error,
 			// Use ExitCode to distinguish a clean stop (0 / unknown) from a crash (non-zero).
 			// This handles cases where Aspire does not set the "success" style reliably.
-			"Exited" => snapshot.ExitCode is null or 0
-				? LikeC4ResourceState.Exited
-				: LikeC4ResourceState.Failed,
+			"Exited" => snapshot.ExitCode is null or 0 ? LikeC4ResourceState.Exited : LikeC4ResourceState.Failed,
 			"Finished" => LikeC4ResourceState.Exited,
 			_ => LikeC4ResourceState.Unknown,
 		};

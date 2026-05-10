@@ -20,7 +20,9 @@ static class LikeC4HmrPortCompatibility
 			return LikeC4HmrPortMode.FixedPort;
 		}
 
-		return TryParseVersion(loadedVersionTag, out var loadedVersion) && loadedVersion >= configurableHmrPortMinimumVersion
+		return
+			TryParseVersion(loadedVersionTag, out var loadedVersion)
+			&& loadedVersion >= configurableHmrPortMinimumVersion
 			? LikeC4HmrPortMode.Configurable
 			: LikeC4HmrPortMode.FixedPort;
 	}

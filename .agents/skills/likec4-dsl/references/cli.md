@@ -132,8 +132,56 @@ Icon groups: `aws` (~307 icons), `azure` (~614), `gcp` (~216), `tech` (~2000), `
 
 ## `format`
 
-Format LikeC4 source files in-place.
+Format LikeC4 source files in-place. Supports CI-friendly check mode.
 
 ```bash
+# Format all files in current workspace
 bunx likec4 format [workspace]
+bunx likec4 fmt [workspace]          # alias
+
+# Format only specific project(s) in a multi-project workspace
+bunx likec4 format --project alpha --project beta [workspace]
+
+# Format only specific files
+bunx likec4 format --files src/model.c4 --files src/views.c4 [workspace]
+
+# CI check mode: exits with code 1 if any file needs formatting (no writes)
+bunx likec4 format --check [workspace]
+```
+
+| Option | Description |
+| ------ | ----------- |
+| `path` | Path to workspace (default: current dir; falls back to `LIKEC4_WORKSPACE` env) |
+| `--project, -p` | Format only specific project(s) by name (repeatable) |
+| `--files` | Format only specific files (repeatable) |
+| `--check` | Check mode — exits with code 1 if files need formatting, no writes |
+
+## `lsp`
+
+Start the LikeC4 Language Server for editors supporting LSP (Language Server Protocol).
+
+```bash
+bunx likec4 lsp --stdio
+bunx likec4 lsp --node-ipc
+bunx likec4 lsp --socket 3000
+bunx likec4 lsp --pipe /tmp/likec4.pipe
+```
+
+One transport option is **required**:
+
+| Option | Description |
+| ------ | ----------- |
+| `--stdio` | Use stdio transport |
+| `--node-ipc` | Use node-ipc transport |
+| `--socket <port>` | Use socket transport on specified port |
+| `--pipe <name>` | Use pipe transport with specified pipe name |
+| `--watch, -w` | Enable built-in file watcher (disabled by default) |
+| `--no-manual-layouts` | Disable manual layouts (enabled by default) |
+| `--use-dot` | Use local Graphviz (`dot`) instead of bundled WASM |
+
+**Standalone LSP binary** (for non-VSCode editors like Neovim, Emacs, Zed):
+
+```bash
+npm install -g @likec4/lsp
+likec4-lsp --stdio   # auto-detects transport from args
 ```

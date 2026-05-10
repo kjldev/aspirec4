@@ -1,6 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
-
 	<PropertyGroup>
+		<IsPackable>true</IsPackable>
 		<AssemblyTitle>AspireC4 LikeC4 Core</AssemblyTitle>
 		<Description>Core model types, DSL generator, and annotations for the AspireC4 LikeC4 plugin.</Description>
 	</PropertyGroup>
@@ -8,5 +8,4 @@
 	<ItemGroup>
 		<PackageReference Include="Aspire.Hosting" />
 	</ItemGroup>
-
 </Project>

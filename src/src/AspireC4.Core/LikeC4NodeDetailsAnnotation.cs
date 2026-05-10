@@ -13,7 +13,13 @@ public sealed class LikeC4NodeDetailsAnnotation : IResourceAnnotation
 	public LikeC4NodeDetailsAnnotation(string label, string? technology, string? description, string? icon)
 		: this(label, technology, description, summary: null, icon, autoIconEnabled: null) { }
 
-	public LikeC4NodeDetailsAnnotation(string label, string? technology, string? description, string? icon, bool? autoIconEnabled)
+	public LikeC4NodeDetailsAnnotation(
+		string label,
+		string? technology,
+		string? description,
+		string? icon,
+		bool? autoIconEnabled
+	)
 		: this(label, technology, description, summary: null, icon, autoIconEnabled) { }
 
 	public LikeC4NodeDetailsAnnotation(

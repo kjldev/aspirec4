@@ -1,7 +1,7 @@
 var builder = DistributedApplication.CreateBuilder(args);
 
 // Add LikeC4 visualization to the application. This will allow us to visualize the components and their relationships in a C4 model.
-builder.AddLikeC4Visualization(configure: opts =>
+builder.AddAspireC4(configure: opts =>
 {
 	var title = builder.Configuration["LikeC4:Title"];
 	if (!string.IsNullOrWhiteSpace(title))
@@ -58,7 +58,7 @@ var postgres = builder
 		summary: "Local Postgres for development"
 	);
 
-builder
+var nodeApp = builder
 	.AddNodeApp("node-app", "../../../samples/node-app", "index.js")
 	// Add LikeC4 details to the component for better visualization in the C4 model.
 	.WithLikeC4Details(
@@ -72,31 +72,33 @@ builder
 	// These references will be used to generate the connections in the C4 model and also ensure that the application waits for these dependencies to be ready before starting.
 	.WithLikeC4Reference(
 		azureManagerRedis,
-		opts => opts.WithLabel("Caches sessions").WithTechnology("Redis Protocol"),
-		withAspireReference: true
+		opts => opts.WithLabel("Caches sessions").WithTechnology("Redis Protocol").WithKind("RESP")
 	)
 	.WaitFor(azureManagerRedis)
 	.WithLikeC4Reference(
 		redis,
-		opts => opts.WithLabel("Caches  sessions (local)").WithTechnology("Redis Protocol"),
-		withAspireReference: true
+		opts => opts.WithLabel("Caches  sessions (local)").WithTechnology("Redis Protocol").WithKind("RESP")
 	)
 	.WaitFor(redis)
 	.WithLikeC4Reference(
 		azurePostgres,
-		opts => opts.WithLabel("Persists data").WithTechnology("PostgreSQL / JDBC"),
-		withAspireReference: true
+		opts => opts.WithLabel("Persists data").WithTechnology("PostgreSQL / JDBC").WithKind("tcp-ip")
 	)
 	.WaitFor(azurePostgres)
 	.WithLikeC4Reference(
 		postgres,
-		opts => opts.WithLabel("Persists data (local)").WithTechnology("PostgreSQL / JDBC"),
-		withAspireReference: true
+		opts => opts.WithLabel("Persists data (local)").WithTechnology("PostgreSQL / JDBC").WithKind("tcp-ip")
 	)
 	.WaitFor(postgres);
 
-postgres.WithLikeC4Reference(azurePostgres, opts => opts.WithLabel("syncs with").WithTechnology("PostgreSQL / JDBC"));
-redis.WithLikeC4Reference(azureManagerRedis, opts => opts.WithLabel("syncs with").WithTechnology("Redis Protocol"));
+postgres.WithLikeC4Reference(
+	azurePostgres,
+	opts => opts.WithLabel("syncs with").WithTechnology("PostgreSQL / JDBC").WithKind("tcp-ip")
+);
+redis.WithLikeC4Reference(
+	azureManagerRedis,
+	opts => opts.WithLabel("syncs with").WithTechnology("Redis Protocol").WithKind("RESP")
+);
 
 var app = builder.Build();
 

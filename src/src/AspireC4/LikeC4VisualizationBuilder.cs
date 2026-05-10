@@ -7,7 +7,7 @@ sealed class LikeC4VisualizationBuilder(
 	IDistributedApplicationBuilder applicationBuilder,
 	IResourceBuilder<IResource> serverResourceBuilder,
 	string outputDirectory
-) : ILikeC4VisualizationBuilder
+) : IAspireC4Builder
 {
 	public IDistributedApplicationBuilder ApplicationBuilder { get; } = applicationBuilder;
 
@@ -15,7 +15,7 @@ sealed class LikeC4VisualizationBuilder(
 
 	internal string OutputDirectory { get; } = outputDirectory;
 
-	public ILikeC4VisualizationBuilder WithLocalCli(LikeC4LocalCliRuntime runtime = LikeC4LocalCliRuntime.Auto)
+	public IAspireC4Builder WithLocalCli(LikeC4LocalCliRuntime runtime = LikeC4LocalCliRuntime.Auto)
 	{
 		// Remove the existing server resource (container by default) from the app model.
 		ApplicationBuilder.Resources.Remove(ServerResourceBuilder.Resource);
@@ -29,7 +29,7 @@ sealed class LikeC4VisualizationBuilder(
 		);
 
 		var localResource = new LikeC4LocalServerResource(
-			LikeC4VisualizationExtensions.ServerResourceName,
+			AspireC4DistributedApplicationBuilderExtensions.ServerResourceName,
 			command,
 			OutputDirectory
 		);
@@ -47,7 +47,7 @@ sealed class LikeC4VisualizationBuilder(
 		return new LikeC4VisualizationBuilder(ApplicationBuilder, localBuilder, OutputDirectory);
 	}
 
-	public ILikeC4VisualizationBuilder WithHideFromDashboard(string displayName = "Architecture Diagram")
+	public IAspireC4Builder WithHideFromDashboard(string displayName = "Architecture Diagram")
 	{
 		ArgumentException.ThrowIfNullOrWhiteSpace(displayName);
 
@@ -85,6 +85,11 @@ sealed class LikeC4VisualizationBuilder(
 		);
 	}
 
+	[System.Diagnostics.CodeAnalysis.SuppressMessage(
+		"Design",
+		"CA1031:Do not catch general exception types",
+		Justification = "If the exe isn't there or isn't correctly installed, it's not appropriate for use"
+	)]
 	static bool IsExecutableOnPath(string executable)
 	{
 		try

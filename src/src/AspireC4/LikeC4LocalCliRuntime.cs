@@ -2,7 +2,7 @@ namespace Aspire.Hosting.AspireC4;
 
 /// <summary>
 /// Specifies which local JavaScript package manager CLI is used to run
-/// <c>likec4 serve</c> when <see cref="ILikeC4VisualizationBuilder.WithLocalCli"/> is called.
+/// <c>likec4 serve</c> when <see cref="IAspireC4Builder.WithLocalCli"/> is called.
 /// </summary>
 public enum LikeC4LocalCliRuntime
 {

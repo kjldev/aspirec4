@@ -3,6 +3,7 @@
 The `model` block defines the logical architecture: elements (systems, containers, components, actors) organized in a hierarchy, with relationships between them. Views project from this model.
 
 **Key rules:**
+
 - Elements MUST have a kind (from specification) and an identifier unique within their parent.
 - Relationships cannot exist directly between parent and child — move them outside the parent element.
 - `this` and `it` are aliases for the current element inside a nested relationship.
@@ -138,4 +139,47 @@ extend cloud.ui.dashboard -[http]-> cloud.backend.api "calls" {
 
 // Wrong: if a typed relationship exists, this silently targets the wrong relation
 // extend cloud.ui.dashboard -> cloud.backend.api "calls" { ... }
+```
+
+## Multi-Project Import
+
+When a workspace contains multiple LikeC4 projects (see `references/configuration.md`), elements can be referenced across projects using `import`.
+
+```likec4
+// In project 'frontend', import top-level elements from 'shared' and 'backend' projects
+import { designSystem } from 'shared'
+import { authService, apiGateway } from 'backend'
+
+model {
+  app = component 'Web App' {
+    // Use imported elements directly
+    -> authService "authenticates via"
+    -> apiGateway "calls"
+  }
+}
+```
+
+**Rules and limitations:**
+
+- Only **top-level model elements** can be imported (no deeply nested elements via import; access them via FQN after importing the top-level ancestor).
+- The referenced project must be in the **same workspace** (listed in `likec4.config.ts`).
+- Imported elements are read-only — you cannot `extend` them in the importing project (use `extend` in the defining project or via model augmentation in your own namespace).
+- Import paths use the project `name` defined in `likec4.config.ts`, not file paths.
+- Circular imports across projects are not supported.
+
+```likec4
+// Multi-project workspace example — likec4.config.ts:
+//   projects: [{ name: 'shared', ... }, { name: 'backend', ... }, { name: 'frontend', ... }]
+
+// frontend/model.c4
+import { designSystem, sharedAuth } from 'shared'
+import { usersService } from 'backend'
+
+model {
+  frontend = component 'Frontend' {
+    -> usersService "fetches users"
+    -> sharedAuth "authenticates"
+    -> designSystem "uses components from"
+  }
+}
 ```
