@@ -1437,6 +1437,104 @@ public sealed class LikeC4ModelBuilderTests
 		await Assert.That(matchingLinks[0].Title).IsEqualTo("My custom link");
 	}
 
+	// ── Snapshot URL endpoint link tests ─────────────────────────────────────
+
+	[Test]
+	public async Task Build_SnapshotEndpointUrls_UsedInsteadOfAllocatedEndpoint()
+	{
+		// When resourceSnapshotUrls are provided they should take precedence over
+		// EndpointAnnotation.AllocatedEndpoint (which may reflect an internal/wrong port).
+		var resource = CreateProjectResource("api");
+		var endpoint = new EndpointAnnotation(System.Net.Sockets.ProtocolType.Tcp, uriScheme: "http", name: "http");
+		endpoint.AllocatedEndpoint = new AllocatedEndpoint(endpoint, "localhost", 9999); // wrong port
+		resource.Annotations.Add(endpoint);
+
+		var snapshotUrls = new Dictionary<string, IReadOnlyList<(string Url, string Name)>>(
+			StringComparer.OrdinalIgnoreCase
+		)
+		{
+			["api"] = [("http://localhost:5000", "http")],
+		};
+
+		var model = LikeC4ModelBuilder.Build([resource], resourceSnapshotUrls: snapshotUrls);
+
+		var links = model.Elements[0].Links;
+		await Assert.That(links.Any(l => l.Uri == "http://localhost:5000")).IsTrue();
+		await Assert.That(links.Any(l => l.Uri == "http://localhost:9999")).IsFalse();
+		await Assert.That(links.First(l => l.Uri == "http://localhost:5000").Title).IsEqualTo("Endpoint: http");
+	}
+
+	[Test]
+	public async Task Build_SnapshotEndpointUrls_MultipleEndpoints_AllInjected()
+	{
+		var resource = CreateProjectResource("api");
+
+		var snapshotUrls = new Dictionary<string, IReadOnlyList<(string Url, string Name)>>(
+			StringComparer.OrdinalIgnoreCase
+		)
+		{
+			["api"] = [("http://localhost:5000", "http"), ("https://localhost:5001", "https")],
+		};
+
+		var model = LikeC4ModelBuilder.Build([resource], resourceSnapshotUrls: snapshotUrls);
+
+		var links = model.Elements[0].Links;
+		await Assert.That(links.Any(l => l.Uri == "http://localhost:5000" && l.Title == "Endpoint: http")).IsTrue();
+		await Assert.That(links.Any(l => l.Uri == "https://localhost:5001" && l.Title == "Endpoint: https")).IsTrue();
+	}
+
+	[Test]
+	public async Task Build_SnapshotEndpointUrls_WhenNull_FallsBackToAllocatedEndpoint()
+	{
+		// No snapshot URLs → should fall back to EndpointAnnotation as before.
+		var resource = CreateProjectResource("api");
+		var endpoint = new EndpointAnnotation(System.Net.Sockets.ProtocolType.Tcp, uriScheme: "http", name: "http");
+		endpoint.AllocatedEndpoint = new AllocatedEndpoint(endpoint, "localhost", 5000);
+		resource.Annotations.Add(endpoint);
+
+		var model = LikeC4ModelBuilder.Build([resource], resourceSnapshotUrls: null);
+
+		var links = model.Elements[0].Links;
+		await Assert.That(links.Any(l => l.Uri == "http://localhost:5000")).IsTrue();
+	}
+
+	[Test]
+	public async Task Build_SnapshotEndpointUrls_DeduplicatesWithUserLinks()
+	{
+		// If the user manually added the same URL via WithLink, it should not appear twice.
+		var resource = CreateProjectResource("api");
+		resource.Annotations.Add(new LikeC4NodeDetailsAnnotation("API").WithLink("http://localhost:5000", "My link"));
+
+		var snapshotUrls = new Dictionary<string, IReadOnlyList<(string Url, string Name)>>(
+			StringComparer.OrdinalIgnoreCase
+		)
+		{
+			["api"] = [("http://localhost:5000", "http")],
+		};
+
+		var model = LikeC4ModelBuilder.Build([resource], resourceSnapshotUrls: snapshotUrls);
+
+		var matchingLinks = model.Elements[0].Links.Where(l => l.Uri == "http://localhost:5000").ToList();
+		await Assert.That(matchingLinks).Count().IsEqualTo(1);
+		await Assert.That(matchingLinks[0].Title).IsEqualTo("My link");
+	}
+
+	// ── NodeAppResource duplicate-token regression tests ──────────────────────
+
+	[Test]
+	public async Task Build_NodeAppResource_FullNamespace_InfersNodejsIcon()
+	{
+		// Regression: Aspire.Hosting.JavaScript.NodeAppResource tokenises as
+		// "aspire" + "hosting" + "javascript"→"node" + "node" + "app" + "resource".
+		// After stop-token removal that gave ["node", "node"] — duplicate tokens inflated
+		// the node-sass score above nodejs.  After .Distinct(), query is ["node"] → nodejs wins.
+		var resource = new NodeAppResource("my-node-app");
+
+		var model = LikeC4ModelBuilder.Build([resource]);
+
+		await Assert.That(model.Elements[0].Icon).IsEqualTo("tech:nodejs");
+	}
+
 	static ProjectResource CreateProjectResource(string name)
 	{
 		var resource = new ProjectResource(name);
@@ -1474,4 +1572,9 @@ public sealed class LikeC4ModelBuilderTests
 	// Generic Java app — "java" appears without a following "script" token, so tech:java
 	// should still be inferred.
 	sealed class TestJavaAppResource(string name) : Resource(name);
+
+	// Named to match the real Aspire.Hosting.JavaScript.NodeAppResource so that the icon
+	// matcher tokenises "Node" + "App" separately, and "JavaScript" in the parent namespace
+	// is tokenised separately too — producing duplicate "node" tokens before the Distinct() fix.
+	sealed class NodeAppResource(string name) : Resource(name);
 }

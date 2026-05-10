@@ -44,6 +44,12 @@ public static class LikeC4ModelBuilder
 	/// <see cref="LikeC4ResourceState.HasErrorLogs"/> state, the most recent lines are appended to the element
 	/// description so the error context is visible directly in the diagram.
 	/// </param>
+	/// <param name="resourceSnapshotUrls">
+	/// Optional mapping of resource name to externally-accessible endpoint URLs captured from Aspire resource
+	/// snapshots. When present for a resource, these URLs are used for endpoint links in preference to reading
+	/// <see cref="Aspire.Hosting.ApplicationModel.EndpointAnnotation.AllocatedEndpoint"/> directly, ensuring
+	/// the correct public port is used (the same source the Aspire dashboard uses).
+	/// </param>
 	[System.Diagnostics.CodeAnalysis.SuppressMessage(
 		"Design",
 		"CA1054:URI-like parameters should not be strings",
@@ -59,7 +65,8 @@ public static class LikeC4ModelBuilder
 		bool includeDashboardLinks = true,
 		string? dashboardBaseUrl = null,
 		string? dashboardBrowserToken = null,
-		IReadOnlyDictionary<string, IReadOnlyList<string>>? errorLogLines = null
+		IReadOnlyDictionary<string, IReadOnlyList<string>>? errorLogLines = null,
+		IReadOnlyDictionary<string, IReadOnlyList<(string Url, string Name)>>? resourceSnapshotUrls = null
 	)
 	{
 		ArgumentNullException.ThrowIfNull(resources);
@@ -111,7 +118,8 @@ public static class LikeC4ModelBuilder
 					includeDashboardLinks,
 					dashboardBaseUrl,
 					dashboardBrowserToken,
-					resourceErrorLines
+					resourceErrorLines,
+					resourceSnapshotUrls?.GetValueOrDefault(resource.Name)
 				)
 			);
 			CollectRelationships(
@@ -180,7 +188,8 @@ public static class LikeC4ModelBuilder
 		bool includeDashboardLinks = true,
 		string? dashboardBaseUrl = null,
 		string? dashboardBrowserToken = null,
-		IReadOnlyList<string>? errorLogLines = null
+		IReadOnlyList<string>? errorLogLines = null,
+		IReadOnlyList<(string Url, string Name)>? snapshotEndpointUrls = null
 	)
 	{
 		var details = resource.Annotations.OfType<LikeC4NodeDetailsAnnotation>().LastOrDefault();
@@ -202,7 +211,8 @@ public static class LikeC4ModelBuilder
 			userLinks,
 			includeDashboardLinks,
 			dashboardBaseUrl,
-			dashboardBrowserToken
+			dashboardBrowserToken,
+			snapshotEndpointUrls
 		);
 
 		// When the resource is in the HasErrorLogs state, append the captured error log lines
@@ -244,7 +254,8 @@ public static class LikeC4ModelBuilder
 		IReadOnlyList<LikeC4Link> existingLinks,
 		bool includeDashboardLinks = true,
 		string? dashboardBaseUrl = null,
-		string? dashboardBrowserToken = null
+		string? dashboardBrowserToken = null,
+		IReadOnlyList<(string Url, string Name)>? snapshotEndpointUrls = null
 	)
 	{
 		var metadata = new List<LikeC4Metadata>();
@@ -274,24 +285,40 @@ public static class LikeC4ModelBuilder
 		{
 			var existingUris = existingLinks.Select(l => l.Uri).ToHashSet(StringComparer.OrdinalIgnoreCase);
 
-			foreach (var endpoint in resource.Annotations.OfType<EndpointAnnotation>())
+			// Prefer snapshot URLs (same source as Aspire dashboard, correct public port).
+			// Fall back to EndpointAnnotation when no snapshot data is available yet
+			// (e.g. initial generation before resources start, or in unit tests).
+			if (snapshotEndpointUrls is not null)
 			{
-				if (endpoint.UriScheme != "http" && endpoint.UriScheme != "https")
+				foreach (var (url, name) in snapshotEndpointUrls)
 				{
-					continue;
+					if (existingUris.Add(url))
+					{
+						links.Add(new LikeC4Link(url, $"Endpoint: {name}"));
+					}
 				}
-
-				if (endpoint.AllocatedEndpoint is not { } ep || ep.Port <= 0)
+			}
+			else
+			{
+				foreach (var endpoint in resource.Annotations.OfType<EndpointAnnotation>())
 				{
-					continue;
-				}
+					if (endpoint.UriScheme != "http" && endpoint.UriScheme != "https")
+					{
+						continue;
+					}
 
-				var host = ep.Address is "0.0.0.0" ? "localhost" : ep.Address;
-				var uri = $"{endpoint.UriScheme}://{host}:{ep.Port}";
+					if (endpoint.AllocatedEndpoint is not { } ep || ep.Port <= 0)
+					{
+						continue;
+					}
 
-				if (existingUris.Add(uri))
-				{
-					links.Add(new LikeC4Link(uri, $"Endpoint: {endpoint.Name}"));
+					var host = ep.Address is "0.0.0.0" ? "localhost" : ep.Address;
+					var uri = $"{endpoint.UriScheme}://{host}:{ep.Port}";
+
+					if (existingUris.Add(uri))
+					{
+						links.Add(new LikeC4Link(uri, $"Endpoint: {endpoint.Name}"));
+					}
 				}
 			}
 

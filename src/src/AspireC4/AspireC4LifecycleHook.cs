@@ -37,6 +37,13 @@ sealed class AspireC4LifecycleHook(
 		StringComparer.OrdinalIgnoreCase
 	);
 
+	// Maps resource name → externally-accessible endpoint URLs (from resource snapshots).
+	// Populated by WatchResourceStatesAsync; used by WriteC4FileAsync to pass the correct
+	// public-port URLs to LikeC4ModelBuilder.Build() instead of reading AllocatedEndpoint.
+	readonly ConcurrentDictionary<string, ImmutableArray<(string Url, string Name)>> _resourceExternalUrls = new(
+		StringComparer.OrdinalIgnoreCase
+	);
+
 	// Discovered at runtime once the aspire-dashboard resource starts.
 	volatile string? _dashboardBaseUrl;
 
@@ -345,6 +352,24 @@ sealed class AspireC4LifecycleHook(
 					continue;
 				}
 
+				// Always capture external URLs from the snapshot (updates on every notification
+				// so that once endpoints are allocated the correct public-port URLs are stored).
+				var externalUrls = notification
+					.Snapshot.Urls.Where(u =>
+						!u.IsInternal
+						&& (
+							u.Url.StartsWith("http://", StringComparison.OrdinalIgnoreCase)
+							|| u.Url.StartsWith("https://", StringComparison.OrdinalIgnoreCase)
+						)
+					)
+					.Select(u => (Url: u.Url, Name: u.Name ?? "endpoint"))
+					.ToImmutableArray();
+
+				if (!externalUrls.IsEmpty)
+				{
+					_resourceExternalUrls[notification.Resource.Name] = externalUrls;
+				}
+
 				var newState = MapAspireState(notification.Snapshot);
 
 				if (_resourceStates.TryGetValue(notification.Resource.Name, out var current) && current == newState)
@@ -529,6 +554,18 @@ sealed class AspireC4LifecycleHook(
 			);
 		}
 
+		// Build a snapshot of external endpoint URLs (resource name → [(url, name)]) so that
+		// the model builder uses the correct public-port URLs from resource snapshots.
+		IReadOnlyDictionary<string, IReadOnlyList<(string Url, string Name)>>? resourceSnapshotUrls = null;
+		if (!_resourceExternalUrls.IsEmpty)
+		{
+			resourceSnapshotUrls = _resourceExternalUrls.ToDictionary(
+				kvp => kvp.Key,
+				kvp => (IReadOnlyList<(string Url, string Name)>)[.. kvp.Value],
+				StringComparer.OrdinalIgnoreCase
+			);
+		}
+
 		var model = LikeC4ModelBuilder.Build(
 			[.. appModel.Resources],
 			mergedStates,
@@ -539,7 +576,8 @@ sealed class AspireC4LifecycleHook(
 			opts.IncludeAspireDashboardLinks,
 			_dashboardBaseUrl,
 			configuration["AppHost:BrowserToken"],
-			errorLogLines
+			errorLogLines,
+			resourceSnapshotUrls
 		);
 		var dsl = LikeC4DSLGenerator.Generate(model, opts);
 

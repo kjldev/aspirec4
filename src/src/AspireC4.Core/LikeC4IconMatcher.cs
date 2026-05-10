@@ -103,8 +103,12 @@ static class LikeC4IconMatcher
 					continue;
 				}
 
-				// Remove cloud markers and generic stop-tokens from the query.
-				var queryTokens = tokens.Where(t => !markers.Contains(t) && !QueryStopTokens.Contains(t)).ToArray();
+				// Remove cloud markers and generic stop-tokens from the query. Deduplicate to prevent
+				// repeated alias tokens (e.g. "node"+"node" from "JavaScript.NodeAppResource") from inflating scores.
+				var queryTokens = tokens
+					.Where(t => !markers.Contains(t) && !QueryStopTokens.Contains(t))
+					.Distinct()
+					.ToArray();
 
 				if (queryTokens.Length == 0)
 				{
@@ -148,7 +152,8 @@ static class LikeC4IconMatcher
 				continue;
 			}
 
-			var queryTokens = tokens.Where(t => !QueryStopTokens.Contains(t)).ToArray();
+			// Deduplicate to prevent inflated scores from repeated alias tokens.
+			var queryTokens = tokens.Where(t => !QueryStopTokens.Contains(t)).Distinct().ToArray();
 			if (queryTokens.Length == 0)
 			{
 				continue;
