@@ -32,9 +32,19 @@ static class LikeC4IconMatcher
 		("gcp", new HashSet<string>(StringComparer.Ordinal) { "gcp", "google" }),
 	];
 
+	// Penalty multiplier applied when a query token is found inside an icon token but not at
+	// the start (infix/suffix containment is weaker evidence than prefix containment).
+	const float InfixPenalty = 0.75f;
+
 	// Tokens that are never meaningful discriminators for icon matching (appear in .NET class
-	// names but not in icon names).
-	static readonly HashSet<string> QueryStopTokens = new(StringComparer.Ordinal) { "resource" };
+	// names, Docker image paths, or container tags but not in icon names).
+	static readonly HashSet<string> QueryStopTokens = new(StringComparer.Ordinal)
+	{
+		"resource", // e.g. "AzureRedisResource" → strip "resource"
+		"library", // e.g. "library/redis" Docker image namespace
+		"latest", // e.g. ":latest" Docker image tag
+		"app", // e.g. "NodeAppResource" → strip "app"
+	};
 
 	// Canonical form for tokens that normalise to an ambiguous short string.
 	// ".NET" → token "net" → preferred canonical icon token "dotnet".
@@ -170,8 +180,11 @@ static class LikeC4IconMatcher
 				matchSum += best;
 			}
 
-			// Jaccard-style score: matched weight / union size.
-			var score = matchSum / Math.Max(queryTokens.Length, iconTokens.Length);
+			// Penalise icons that have tokens matched by no query token.
+			var unmatchedIconTokens = iconTokens.Count(it => queryTokens.All(qt => TokenSimilarity(qt, it) == 0f));
+
+			// score = matched weight / (query size + unmatched icon tokens)
+			var score = matchSum / (queryTokens.Length + unmatchedIconTokens);
 			if (score > bestScore)
 			{
 				bestScore = score;
@@ -189,18 +202,22 @@ static class LikeC4IconMatcher
 			return ExactMatchScore;
 		}
 
-		// Containment handles common abbreviation/stem mismatches:
-		//   "node"     ↔ "nodejs"      (query contained in icon)
-		//   "postgres" ↔ "postgresql"  (query contained in icon)
-		//   "net"      ↔ "dotnet"      (query contained in icon)
+		// Containment handles abbreviation/stem mismatches with length-proportional scoring:
+		//   "node"     in "nodejs"      -> prefix match:  0.8 * 4/6        = 0.533
+		//   "node"     in "linode"      -> infix match:   0.8 * 4/6 * 0.75 = 0.400
+		//   "postgres" in "postgresql"  -> prefix match:  0.8 * 8/10       = 0.640
+		//   "postgres" in "postgraphile"-> not prefix:    0.8 * 8/12 * 0.75= 0.400
 		if (qt.Length >= MinContainmentLength && it.Contains(qt, StringComparison.Ordinal))
 		{
-			return ContainmentMatchScore;
+			var ratio = (float)qt.Length / it.Length;
+			return it.StartsWith(qt, StringComparison.Ordinal)
+				? ContainmentMatchScore * ratio
+				: ContainmentMatchScore * ratio * InfixPenalty;
 		}
 
 		if (it.Length >= MinContainmentLength && qt.Contains(it, StringComparison.Ordinal))
 		{
-			return ContainmentMatchScore;
+			return ContainmentMatchScore * (float)it.Length / qt.Length * InfixPenalty;
 		}
 
 		return 0f;
@@ -216,10 +233,12 @@ static class LikeC4IconMatcher
 			return [];
 		}
 
-		return normalized
-			.Split(' ', StringSplitOptions.RemoveEmptyEntries)
-			.Select(t => TokenAliases.TryGetValue(t, out var alias) ? alias : t)
-			.ToArray();
+		return
+		[
+			.. normalized
+				.Split(' ', StringSplitOptions.RemoveEmptyEntries)
+				.Select(t => TokenAliases.TryGetValue(t, out var alias) ? alias : t),
+		];
 	}
 
 	// Splits PascalCase / kebab-case / dotted strings into lowercase space-delimited tokens.

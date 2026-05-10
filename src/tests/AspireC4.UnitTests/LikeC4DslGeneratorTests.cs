@@ -1259,7 +1259,7 @@ public sealed partial class LikeC4DslGeneratorTests
 				{
 					SourceName = "a",
 					TargetName = "b",
-					Metadata = new Dictionary<string, string> { { "retries", "3" } },
+					Metadata = [new LikeC4Metadata("retries", "3")],
 				},
 			],
 		};

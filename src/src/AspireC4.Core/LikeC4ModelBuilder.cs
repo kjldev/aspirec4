@@ -276,8 +276,8 @@ public static class LikeC4ModelBuilder
 	/// Returns a new dictionary with all keys normalised according to <paramref name="behaviour"/>.
 	/// When two keys normalise to the same value, the first occurrence is kept.
 	/// </summary>
-	static IReadOnlyDictionary<string, string> NormaliseMetadataKeys(
-		IReadOnlyDictionary<string, string> metadata,
+	static IReadOnlyList<LikeC4Metadata> NormaliseMetadataKeys(
+		IReadOnlyList<LikeC4Metadata> metadata,
 		NormaliseMetadataBehaviour behaviour
 	)
 	{
@@ -286,13 +286,13 @@ public static class LikeC4ModelBuilder
 			return metadata;
 		}
 
-		var result = new Dictionary<string, string>(metadata.Count, StringComparer.OrdinalIgnoreCase);
+		List<LikeC4Metadata> results = [];
 		foreach (var (key, value) in metadata)
 		{
-			result.TryAdd(NormaliseMetadataKey(key, behaviour), value);
+			results.Add(new LikeC4Metadata(NormaliseMetadataKey(key, behaviour), value));
 		}
 
-		return result;
+		return results;
 	}
 
 	static bool IsValidMetadataKey(string key)
@@ -427,10 +427,7 @@ public static class LikeC4ModelBuilder
 					Kind = details?.Kind,
 					Tags = details?.Tags ?? [],
 					Links = details?.Links ?? [],
-					Metadata = NormaliseMetadataKeys(
-						details?.Metadata ?? new Dictionary<string, string>(),
-						normaliseMetadataBehaviour
-					),
+					Metadata = NormaliseMetadataKeys(details?.Metadata ?? [], normaliseMetadataBehaviour),
 				}
 			);
 		}

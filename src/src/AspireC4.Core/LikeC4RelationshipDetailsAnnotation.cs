@@ -28,16 +28,7 @@ public sealed class LikeC4RelationshipDetailsAnnotation : IResourceAnnotation
 		string? description,
 		string? kind = null
 	)
-		: this(
-			targetName,
-			label,
-			technology,
-			description,
-			kind,
-			tags: [],
-			links: [],
-			metadata: new Dictionary<string, string>()
-		) { }
+		: this(targetName, label, technology, description, kind, tags: [], links: [], metadata: []) { }
 
 	public LikeC4RelationshipDetailsAnnotation(
 		string targetName,
@@ -47,7 +38,7 @@ public sealed class LikeC4RelationshipDetailsAnnotation : IResourceAnnotation
 		string? kind,
 		IReadOnlyList<string> tags,
 		IReadOnlyList<LikeC4Link> links,
-		IReadOnlyDictionary<string, string> metadata
+		IReadOnlyList<LikeC4Metadata> metadata
 	)
 	{
 		ArgumentException.ThrowIfNullOrWhiteSpace(targetName);
@@ -59,7 +50,7 @@ public sealed class LikeC4RelationshipDetailsAnnotation : IResourceAnnotation
 		Kind = kind;
 		Tags = tags ?? [];
 		Links = links ?? [];
-		Metadata = metadata ?? new Dictionary<string, string>();
+		Metadata = metadata ?? [];
 	}
 
 	/// <summary>The <see cref="IResource.Name"/> of the relationship target resource.</summary>
@@ -87,5 +78,5 @@ public sealed class LikeC4RelationshipDetailsAnnotation : IResourceAnnotation
 	public IReadOnlyList<LikeC4Link> Links { get; }
 
 	/// <summary>Metadata key-value pairs for this relationship.</summary>
-	public IReadOnlyDictionary<string, string> Metadata { get; }
+	public IReadOnlyList<LikeC4Metadata> Metadata { get; }
 }

@@ -8,7 +8,7 @@ public sealed class LikeC4RelationshipOptions
 {
 	readonly List<string> _tags = [];
 	readonly List<LikeC4Link> _links = [];
-	readonly Dictionary<string, string> _metadata = [];
+	readonly List<LikeC4Metadata> _metadata = [];
 
 	/// <summary>Short label shown on the relationship arrow.</summary>
 	public string? Label { get; private set; }
@@ -33,7 +33,7 @@ public sealed class LikeC4RelationshipOptions
 	public IReadOnlyList<LikeC4Link> Links => _links;
 
 	/// <summary>Metadata key-value pairs for this relationship.</summary>
-	public IReadOnlyDictionary<string, string> Metadata => _metadata;
+	public IReadOnlyList<LikeC4Metadata> Metadata => _metadata;
 
 	/// <summary>Sets the short label shown on the relationship arrow.</summary>
 	public LikeC4RelationshipOptions WithLabel(string label)
@@ -94,7 +94,29 @@ public sealed class LikeC4RelationshipOptions
 	public LikeC4RelationshipOptions WithMetadata(string key, string value)
 	{
 		ArgumentException.ThrowIfNullOrWhiteSpace(key);
-		_metadata[key] = value;
+		_metadata.Add(new LikeC4Metadata(key, value));
+		return this;
+	}
+
+	/// <summary>Adds a metadata key-value pair to this element.</summary>
+	public LikeC4RelationshipOptions WithMetadata(params (string key, string value)[] metadata)
+	{
+		ArgumentNullException.ThrowIfNull(metadata);
+
+		foreach (var (key, value) in metadata)
+			WithMetadata(key, value);
+
+		return this;
+	}
+
+	/// <summary>Adds a metadata key-value pair to this element.</summary>
+	public LikeC4RelationshipOptions WithMetadata(IDictionary<string, string> metadata)
+	{
+		ArgumentNullException.ThrowIfNull(metadata);
+
+		foreach (var (key, value) in metadata)
+			WithMetadata(key, value);
+
 		return this;
 	}
 }

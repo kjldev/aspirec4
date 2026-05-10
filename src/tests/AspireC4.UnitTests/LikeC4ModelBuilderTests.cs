@@ -182,6 +182,47 @@ public sealed class LikeC4ModelBuilderTests
 	}
 
 	[Test]
+	public async Task Build_ContainerWithLibraryRedisImage_InfersRedisIcon()
+	{
+		// Regression: "library/redis" was matching "heroku-redis" due to Jaccard tie-breaking.
+		// "library" is a stop token, leaving query ["redis"] which should score "redis" at 1.0
+		// and "heroku-redis" at 0.5 (unmatched "heroku" token penalty).
+		var resource = CreateContainerResource("myredis");
+		resource.Annotations.Add(new ContainerImageAnnotation { Image = "library/redis" });
+
+		var model = LikeC4ModelBuilder.Build([resource]);
+
+		await Assert.That(model.Elements[0].Icon).IsEqualTo("tech:redis");
+	}
+
+	[Test]
+	public async Task Build_ContainerWithLibraryPostgresImage_InfersPostgresqlIcon()
+	{
+		// Regression: "library/postgres" was matching "testing-library" because "library"
+		// dominated the score. Stop tokens now strip "library", leaving query ["postgres"]
+		// which prefix-matches "postgresql" at 0.64 and non-prefix-matches "postgraphile" at 0.40.
+		var resource = CreateContainerResource("mypostgres");
+		resource.Annotations.Add(new ContainerImageAnnotation { Image = "library/postgres" });
+
+		var model = LikeC4ModelBuilder.Build([resource]);
+
+		await Assert.That(model.Elements[0].Icon).IsEqualTo("tech:postgresql");
+	}
+
+	[Test]
+	public async Task Build_NodeAppExecutable_InfersNodejsIcon()
+	{
+		// Regression: "node-app" was matching "node-sass" because both "node" and "sass" (unmatched)
+		// gave a lower score than the corrected unmatched-token penalty.
+		// After stop tokens strip "app", query is ["node"]; "nodejs" wins at 0.533 over "node-sass" at 0.5.
+		var resource = new ExecutableResource("node-app", "node", ".");
+
+		var model = LikeC4ModelBuilder.Build([resource]);
+
+		await Assert.That(model.Elements[0].Icon).IsEqualTo("tech:nodejs");
+	}
+
+	[Test]
 	public async Task Build_WithProjectAutoIconsDisabled_DoesNotInferIcon()
 	{
 		var resource = CreateProjectResource("api");

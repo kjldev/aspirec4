@@ -7,6 +7,8 @@ builder.AddAspireC4(configure: opts =>
 	// HMR is typically used in development to allow live updates without restarting the application, but it can
 	// add overhead that is not desirable in a production environment.
 	opts.DisableHMR = builder.ExecutionContext.IsPublishMode;
+	// Validate the C4 model before starting the application to catch any issues early.
+	opts.ValidateBeforeStart = true;
 });
 
 var azureManagerRedis = builder
@@ -89,10 +91,10 @@ var nodeApp = builder
 	.AddNodeApp("node-app", "../../../samples/node-app", "index.js")
 	// Add LikeC4 details to the component for better visualization in the C4 model.
 	.WithLikeC4Details(
-		label: "Node App",
-		technology: "Node.js",
-		description: "A sample Node.js application that connects to Azure Redis and Azure Postgres",
-		icon: "tech:nodejs"
+		label: "Sample Node App",
+		//technology: "Node.js",
+		description: "A sample Node.js application that connects to Azure Redis and Azure Postgres"
+	//icon: "tech:nodejs"
 	)
 	.WithPnpm(install: true)
 	.WithHttpEndpoint(env: "PORT")
