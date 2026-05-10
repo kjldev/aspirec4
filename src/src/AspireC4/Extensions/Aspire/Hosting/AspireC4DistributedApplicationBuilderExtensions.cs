@@ -65,7 +65,7 @@ public static class AspireC4DistributedApplicationBuilderExtensions
 			// races between container restarts. The relay owns port 24678 on the host side and
 			// bridges incoming HMR connections to whatever dynamic port Docker happened to allocate.
 			var useHmrRelay = hmrPortMode == LikeC4HMRPortMode.FixedPort || OperatingSystem.IsWindows();
-			var workspaceVolumeName = ResolveWorkspaceVolumeName(builder.AppHostDirectory, AspireC4ResourceName);
+			var workspaceVolumeName = ResolveWorkspaceVolumeName(builder.AppHostDirectory, name);
 
 			builder
 				.Services.AddOptions<LikeC4ContainerWorkspaceOptions>()

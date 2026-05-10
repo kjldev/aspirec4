@@ -39,11 +39,7 @@ sealed class AspireC4LifecycleHook(
 		eventing.Subscribe<BeforeStartEvent>(
 			async (evt, ct) =>
 			{
-				var syncContainerWorkspace = evt
-					.Model.Resources.OfType<LikeC4ServerResource>()
-					.Any(resource =>
-						resource.Name == AspireC4DistributedApplicationBuilderExtensions.AspireC4ResourceName
-					);
+				var syncContainerWorkspace = evt.Model.Resources.OfType<LikeC4ServerResource>().Any();
 
 				if (executionContext.IsPublishMode)
 				{
@@ -85,7 +81,7 @@ sealed class AspireC4LifecycleHook(
 	)
 	{
 		var serverResource = appModel.Resources.FirstOrDefault(r =>
-			r.Name == AspireC4DistributedApplicationBuilderExtensions.AspireC4ResourceName
+			r is LikeC4ServerResource or LikeC4LocalServerResource
 		);
 
 		if (serverResource is null)
@@ -716,9 +712,6 @@ sealed class AspireC4LifecycleHook(
 		{
 			var endpoint = appModel
 				.Resources.OfType<LikeC4ServerResource>()
-				.Where(resource =>
-					resource.Name == AspireC4DistributedApplicationBuilderExtensions.AspireC4ResourceName
-				)
 				.SelectMany(resource => resource.Annotations.OfType<EndpointAnnotation>())
 				.FirstOrDefault(annotation => annotation.Name == LikeC4ServerResource.HmrEndpointName)
 				?.AllocatedEndpoint;

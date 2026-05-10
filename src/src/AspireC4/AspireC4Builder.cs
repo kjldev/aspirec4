@@ -29,7 +29,7 @@ sealed class AspireC4Builder(
 		);
 
 		var localResource = new LikeC4LocalServerResource(
-			AspireC4DistributedApplicationBuilderExtensions.AspireC4ResourceName,
+			LikeC4ResourceBuilder.Resource.Name,
 			command,
 			OutputDirectory
 		);
