@@ -222,4 +222,74 @@ public sealed class LikeC4VisualizationBuilderTests
 			}
 		}
 	}
+
+	[Test]
+	public async Task WithAdditionalDSLFile_AddsBindMountForSourceDirectory()
+	{
+		var appBuilder = DistributedApplication.CreateBuilder([]);
+
+		// Create a temp file so Path.GetFullPath has a realistic absolute path.
+		var tempDir = Path.Combine(Path.GetTempPath(), "likec4-unit-" + Guid.NewGuid().ToString("N")[..8]);
+		Directory.CreateDirectory(tempDir);
+		var tempFile = Path.Combine(tempDir, "extra.c4");
+
+		try
+		{
+			await File.WriteAllTextAsync(tempFile, "// extra");
+
+			var visualization = appBuilder.AddAspireC4();
+			visualization.WithAdditionalDSLFile(tempFile);
+
+			var mounts = visualization
+				.LikeC4ResourceBuilder.Resource.Annotations.OfType<ContainerMountAnnotation>()
+				.ToArray();
+
+			// 1 named volume (workspace) + 1 bind mount (extra.c4 directory).
+			await Assert.That(mounts).HasCount().EqualTo(2);
+
+			var bindMount = mounts.FirstOrDefault(m => m.Type == ContainerMountType.BindMount);
+			await Assert.That(bindMount).IsNotNull();
+			await Assert.That(bindMount!.Source).IsEqualTo(tempDir);
+			await Assert.That(bindMount.Target).StartsWith($"{LikeC4ServerResource.WorkspacePath}/ext/");
+			await Assert.That(bindMount.IsReadOnly).IsTrue();
+		}
+		finally
+		{
+			if (Directory.Exists(tempDir))
+				Directory.Delete(tempDir, recursive: true);
+		}
+	}
+
+	[Test]
+	public async Task WithAdditionalDSLFile_SameDirectoryTwice_OnlyOneBindMount()
+	{
+		var appBuilder = DistributedApplication.CreateBuilder([]);
+
+		var tempDir = Path.Combine(Path.GetTempPath(), "likec4-unit-" + Guid.NewGuid().ToString("N")[..8]);
+		Directory.CreateDirectory(tempDir);
+
+		try
+		{
+			await File.WriteAllTextAsync(Path.Combine(tempDir, "a.c4"), "// a");
+			await File.WriteAllTextAsync(Path.Combine(tempDir, "b.c4"), "// b");
+
+			var visualization = appBuilder.AddAspireC4();
+			visualization
+				.WithAdditionalDSLFile(Path.Combine(tempDir, "a.c4"))
+				.WithAdditionalDSLFile(Path.Combine(tempDir, "b.c4"));
+
+			var bindMounts = visualization
+				.LikeC4ResourceBuilder.Resource.Annotations.OfType<ContainerMountAnnotation>()
+				.Where(m => m.Type == ContainerMountType.BindMount)
+				.ToArray();
+
+			// Both files are in the same directory — only one bind mount should be added.
+			await Assert.That(bindMounts).HasSingleItem();
+		}
+		finally
+		{
+			if (Directory.Exists(tempDir))
+				Directory.Delete(tempDir, recursive: true);
+		}
+	}
 }

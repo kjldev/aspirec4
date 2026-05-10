@@ -16,9 +16,9 @@ public sealed class AspireC4DiagramOptions
 
 	/// <summary>
 	/// Name of the generated <c>.c4</c> file (without extension).
-	/// Defaults to "model".
+	/// Defaults to "model.gen".
 	/// </summary>
-	public string FileName { get; set; } = "model";
+	public string FileName { get; set; } = "model.gen";
 
 	/// <summary>
 	/// Disables the Hot Module Replacement (HMR) channel between the LikeC4 server and the browser, which provides

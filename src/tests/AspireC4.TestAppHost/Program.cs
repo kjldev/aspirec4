@@ -27,11 +27,28 @@ var azureManagerRedis = builder
 	// Run as container when local
 	.RunAsContainer()
 	// Add LikeC4 details to the component for better visualization in the C4 model.
-	.WithLikeC4Details(
-		label: "Redis",
-		technology: "Azure Redis",
-		description: "A **Managed Azure** Redis instance for testing",
-		summary: "Azure Managed Redis"
+	.WithLikeC4Details(opts =>
+		opts.WithLabel("Redis")
+			.WithTechnology("Azure Redis")
+			.WithDescription(
+				@"A **Managed Azure** Redis instance allowing fast access to previously cached data and values.
+
+Used with the **Cache Aside** pattern, where the application can check Redis for cached data before falling back to the primary data store (Postgres in this case).
+
+Cache usage will be non-critical and short-lived, ideal for session caching or caching frequently accessed data that doesn't require strong consistency.
+
+Callers must:
+
+- Assume cache is empty
+- Populate with a TTL (Time To Live) to prevent stale data
+- Ensure keys follow the pattern: `{service}:{key}`
+"
+			)
+			.WithSummary("Short term caching, used for cross-instance caching")
+			.WithLink(
+				"https://learn.microsoft.com/azure/azure-cache-for-redis/cache-overview",
+				"Learn more about Azure Redis"
+			)
 	);
 
 var azurePostgres = builder
@@ -43,6 +60,12 @@ var azurePostgres = builder
 		c4.WithLabel("Postgres")
 			.WithSummary("Azure Managed Postgres Flexible Server")
 			.WithDescription("An **Azure Managed** Postgres instance for testing")
+			.WithLink(
+				"https://learn.microsoft.com/azure/postgresql/flexible-server/overview",
+				"Learn more about Azure Postgres Flexible Server"
+			)
+			.WithMetadata("Azure SKU", "Flexible Server")
+			.WithMetadata("Use Case", "Primary data store")
 	);
 
 var redis = builder
@@ -51,14 +74,14 @@ var redis = builder
 		description: "For testing **locally**, uses Redis as a container",
 		summary: "Local redis for development"
 	)
-	.WithLikeC4Group("local-dev-sync");
+	.WithLikeC4Group("Local Dev/ Sync Group");
 var postgres = builder
 	.AddPostgres("postgres")
 	.WithLikeC4Details(
 		description: "For testing Azure Postgres vs. local Postgres",
 		summary: "Local Postgres for development"
 	)
-	.WithLikeC4Group("local-dev-sync");
+	.WithLikeC4Group("Local Dev/ Sync Group");
 
 var nodeApp = builder
 	.AddNodeApp("node-app", "../../../samples/node-app", "index.js")

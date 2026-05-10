@@ -63,10 +63,10 @@ public sealed partial class LikeC4VisualizationHostTests : IAsyncDisposable
 		await Assert.That(await IsDockerAvailableAsync(cancellationToken)).IsTrue();
 
 		_outputDir = Path.Combine(Path.GetTempPath(), "likec4-integration-" + Guid.NewGuid().ToString("N")[..8]);
-		_modelPath = Path.Combine(_outputDir, "model.c4");
+		_modelPath = Path.Combine(_outputDir, "model.gen.c4");
 		_containerRuntimeScope = new EnvironmentVariableScope("ASPIRE_CONTAINER_RUNTIME", "docker");
 		_outputDirectoryScope = new EnvironmentVariableScope("LikeC4__OutputDirectory", _outputDir);
-		_fileNameScope = new EnvironmentVariableScope("LikeC4__FileName", "model");
+		_fileNameScope = new EnvironmentVariableScope("LikeC4__FileName", "model.gen");
 		_titleScope = new EnvironmentVariableScope("LikeC4__Title", "Integration Test Architecture");
 
 		var appBuilder = await DistributedApplicationTestingBuilder.CreateAsync<TestAppHostProgram>(cancellationToken);

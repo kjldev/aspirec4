@@ -16,4 +16,11 @@ sealed class LikeC4ContainerWorkspaceOptions
 	/// Always true for FixedPort images; also true on Windows to avoid Hyper-V port reservation issues.
 	/// </summary>
 	public bool UseHMRRelay { get; set; }
+
+	/// <summary>
+	/// Absolute paths of additional DSL files that are covered by a container bind mount.
+	/// The lifecycle hook skips volume-syncing these files to avoid duplicate definitions
+	/// in the container (the bind mount already makes the files accessible).
+	/// </summary>
+	public HashSet<string> BindMountedSourceFiles { get; } = new(StringComparer.OrdinalIgnoreCase);
 }

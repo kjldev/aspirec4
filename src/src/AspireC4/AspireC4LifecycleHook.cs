@@ -384,6 +384,7 @@ sealed class AspireC4LifecycleHook(
 		}
 
 		// Copy and optionally sync additional user-provided DSL files.
+		var bindMountedFiles = workspaceOptions.Value.BindMountedSourceFiles;
 		foreach (var sourcePath in opts.AdditionalDslFiles)
 		{
 			var absoluteSource = Path.GetFullPath(sourcePath);
@@ -399,7 +400,9 @@ sealed class AspireC4LifecycleHook(
 			var fileNameWithoutExtension = Path.GetFileNameWithoutExtension(absoluteSource);
 			telemetry.AdditionalDSLFileSynced(fileNameWithoutExtension);
 
-			if (syncContainerWorkspace)
+			// Files covered by a container bind mount are already visible inside the container;
+			// syncing them to the named volume would create duplicate definitions.
+			if (syncContainerWorkspace && !bindMountedFiles.Contains(absoluteSource))
 			{
 				var additionalContent = await File.ReadAllTextAsync(destPath, cancellationToken);
 				await WriteContainerWorkspaceFileAsync(

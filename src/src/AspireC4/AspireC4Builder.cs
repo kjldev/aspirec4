@@ -1,3 +1,5 @@
+using System.Security.Cryptography;
+using System.Text;
 using Aspire.Hosting.ApplicationModel;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -64,7 +66,38 @@ sealed class AspireC4Builder(
 	{
 		ArgumentException.ThrowIfNullOrWhiteSpace(sourcePath);
 
-		ApplicationBuilder.Services.Configure<AspireC4DiagramOptions>(opts => opts.AdditionalDslFiles.Add(sourcePath));
+		var absoluteSource = Path.GetFullPath(sourcePath);
+		ApplicationBuilder.Services.Configure<AspireC4DiagramOptions>(opts =>
+			opts.AdditionalDslFiles.Add(absoluteSource)
+		);
+
+		// For container resources, bind-mount the source directory directly into the container
+		// so the LikeC4 server sees live edits without Aspire restarting.
+		if (LikeC4ResourceBuilder.Resource is ContainerResource containerResource)
+		{
+			var sourceDir = Path.GetDirectoryName(absoluteSource)!;
+			var hashBytes = SHA256.HashData(Encoding.UTF8.GetBytes(sourceDir));
+			var hash = Convert.ToHexString(hashBytes)[..8].ToLowerInvariant();
+			var mountTarget = $"{LikeC4ServerResource.WorkspacePath}/ext/{hash}";
+
+			// De-duplicate: only add the bind mount once per unique source directory.
+			var alreadyMounted = containerResource
+				.Annotations.OfType<ContainerMountAnnotation>()
+				.Any(a => a.Target == mountTarget);
+
+			if (!alreadyMounted)
+			{
+				containerResource.Annotations.Add(
+					new ContainerMountAnnotation(sourceDir, mountTarget, ContainerMountType.BindMount, isReadOnly: true)
+				);
+			}
+
+			// Tell the lifecycle hook not to also sync this file into the named Docker volume,
+			// which would create a duplicate definition visible to LikeC4.
+			ApplicationBuilder.Services.Configure<LikeC4ContainerWorkspaceOptions>(wsOpts =>
+				wsOpts.BindMountedSourceFiles.Add(absoluteSource)
+			);
+		}
 
 		return this;
 	}
