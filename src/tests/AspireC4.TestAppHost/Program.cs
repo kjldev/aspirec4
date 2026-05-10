@@ -50,13 +50,15 @@ var redis = builder
 	.WithLikeC4Details(
 		description: "For testing **locally**, uses Redis as a container",
 		summary: "Local redis for development"
-	);
+	)
+	.WithLikeC4Group("local-dev-sync");
 var postgres = builder
 	.AddPostgres("postgres")
 	.WithLikeC4Details(
 		description: "For testing Azure Postgres vs. local Postgres",
 		summary: "Local Postgres for development"
-	);
+	)
+	.WithLikeC4Group("local-dev-sync");
 
 var nodeApp = builder
 	.AddNodeApp("node-app", "../../../samples/node-app", "index.js")

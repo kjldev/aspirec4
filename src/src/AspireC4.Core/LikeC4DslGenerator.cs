@@ -401,9 +401,7 @@ public static class LikeC4DSLGenerator
 		}
 		else
 		{
-			sb.AppendLine("    include *");
-
-			// Emit view-level group blocks.
+			// Groups must be declared before `include *` or they will not render correctly.
 			var groups = model.Elements.Where(e => e.Group is not null).GroupBy(e => e.Group!).OrderBy(g => g.Key);
 
 			foreach (var group in groups)
@@ -413,6 +411,8 @@ public static class LikeC4DSLGenerator
 				sb.Append("      include ").AppendLine(members);
 				sb.AppendLine("    }");
 			}
+
+			sb.AppendLine("    include *");
 
 			// Emit style overrides grouped by (color, opacity) for elements with a non-default state.
 			// In LikeC4, element colors must be set via view-level style rules, not in the

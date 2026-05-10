@@ -1341,7 +1341,10 @@ public sealed class LikeC4DslGeneratorTests
 
 		var viewsIdx = dsl.IndexOf("views {", StringComparison.Ordinal);
 		var groupIdx = dsl.IndexOf("group 'Frontend'", StringComparison.Ordinal);
+		var includeStarIdx = dsl.IndexOf("include *", StringComparison.Ordinal);
 		await Assert.That(groupIdx).IsGreaterThan(viewsIdx);
+		// Groups must come before `include *` so LikeC4 renders them correctly.
+		await Assert.That(groupIdx).IsLessThan(includeStarIdx);
 
 		// db has no group — should NOT be inside a group block.
 		await Assert.That(dsl).DoesNotContain("include db");

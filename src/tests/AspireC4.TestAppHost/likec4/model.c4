@@ -73,7 +73,10 @@ A sample Node.js application that connects to Azure Redis and Azure Postgres
 views {
   view index {
     title 'Architecture'
-    include *
+    include node_app
+    group 'local-dev-sync' {
+      include redis, postgres
+    }
     style azure_redis, azure_postgres, redis, postgres, node_app {
       color green
     }
