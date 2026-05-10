@@ -244,7 +244,8 @@ public sealed class LikeC4ModelBuilderTests
 		// exactly matched tech:java at score 0.5.
 		// Fix: the tokeniser now merges adjacent "java"+"script" bigrams into "javascript"
 		// and a TokenAlias redirects "javascript" → "node", scoring tech:nodejs instead.
-		var resource = new JavaScriptInstallerResource("pnpm-installer");
+		// Using a neutral resource name ("js-tools") so the type-name path is the primary signal.
+		var resource = new JavaScriptInstallerResource("js-tools");
 		resource.Annotations.Add(
 			new ResourceSnapshotAnnotation(new CustomResourceSnapshot { ResourceType = "Executable", Properties = [] })
 		);
@@ -252,6 +253,23 @@ public sealed class LikeC4ModelBuilderTests
 		var model = LikeC4ModelBuilder.Build([resource]);
 
 		await Assert.That(model.Elements[0].Icon).IsEqualTo("tech:nodejs");
+	}
+
+	[Test]
+	public async Task Build_PnpmInstallerResource_InfersPnpmIcon()
+	{
+		// Best-overall scoring: when the resource name identifies a specific package manager
+		// (e.g. "pnpm-installer"), its exact match (score 1.0) correctly beats the generic
+		// type-name inference ("nodejs" at 0.533).  The result is more accurate — a pnpm
+		// installer really should show the pnpm icon.
+		var resource = new JavaScriptInstallerResource("pnpm-installer");
+		resource.Annotations.Add(
+			new ResourceSnapshotAnnotation(new CustomResourceSnapshot { ResourceType = "Executable", Properties = [] })
+		);
+
+		var model = LikeC4ModelBuilder.Build([resource]);
+
+		await Assert.That(model.Elements[0].Icon).IsEqualTo("tech:pnpm");
 	}
 
 	[Test]
@@ -1572,6 +1590,76 @@ public sealed class LikeC4ModelBuilderTests
 	// Generic Java app — "java" appears without a following "script" token, so tech:java
 	// should still be inferred.
 	sealed class TestJavaAppResource(string name) : Resource(name);
+
+	// ── Uppercase-run CamelCase + best-overall scoring regression tests ──────
+
+	[Test]
+	public async Task Build_RabbitMQTypeName_InfersRabbitmqIcon()
+	{
+		// Regression: "RabbitMQContainerResource" previously normalised to "rabbit mqcontainer resource"
+		// because the uppercase-uppercase-lowercase boundary (MQ→C) was not split.
+		// Fix: NormalizeForIconLookup now detects the transition and produces
+		// "rabbit mq container resource" → stop ["container","resource"] → queryTokens ["rabbit","mq"].
+		// effectiveQueryLength = 1 (only "rabbit" ≥ MinContainmentLength=3; "mq" is excluded from
+		// the denominator but "rabbit" prefix-matches "rabbitmq" at 0.6/1 = 0.6 → tech:rabbitmq.
+		var resource = new RabbitMQContainerResource("my-queue");
+
+		var model = LikeC4ModelBuilder.Build([resource]);
+
+		await Assert.That(model.Elements[0].Icon).IsEqualTo("tech:rabbitmq");
+	}
+
+	[Test]
+	public async Task Build_MySQLTypeName_InfersMysqlIcon()
+	{
+		// The CamelCase fix for uppercase-run boundaries produces "my sql database resource"
+		// from "MySQLDatabaseResource" (previously "my sqldatabase resource").
+		// In practice, MySQL resources are named "mysql" or similar — the resource name is the
+		// primary signal and produces an exact match for tech:mysql.
+		var resource = new MySQLDatabaseResource("mysql");
+
+		var model = LikeC4ModelBuilder.Build([resource]);
+
+		await Assert.That(model.Elements[0].Icon).IsEqualTo("tech:mysql");
+	}
+
+	[Test]
+	public async Task Build_BestOverallScoring_ResourceNameWinsOverNoisyTypeName()
+	{
+		// Best-overall scoring: even when a noisy early candidate (type FullName) produces
+		// query tokens that score marginally above MinScore for a wrong icon, the clean resource
+		// name candidate scores higher overall and wins.
+		// This resource has a generic type name but a clear resource name "mongodb".
+		var resource = new GenericDatabaseContainerResource("mongodb");
+
+		var model = LikeC4ModelBuilder.Build([resource]);
+
+		await Assert.That(model.Elements[0].Icon).IsEqualTo("tech:mongodb");
+	}
+
+	[Test]
+	public async Task Build_NumericOnlyTokensFiltered_FromIconMatching()
+	{
+		// Pure numeric tokens like "7" or "16" (e.g. from Docker tag tokenisation of
+		// "redis-7" or version-suffixed names) must not inflate queryTokens.Length
+		// and dilute the score of legitimate tokens.
+		// Resource name "redis-7" → tokens ["redis","7"] → filter "7" → ["redis"] → exact match.
+		var resource = CreateContainerResource("redis-7");
+		resource.Annotations.Add(new ContainerImageAnnotation { Image = "redis" });
+
+		var model = LikeC4ModelBuilder.Build([resource]);
+
+		await Assert.That(model.Elements[0].Icon).IsEqualTo("tech:redis");
+	}
+
+	// Named to simulate a RabbitMQ container resource so the type-name candidate path is exercised.
+	sealed class RabbitMQContainerResource(string name) : Resource(name);
+
+	// Named to simulate a MySQL database resource.
+	sealed class MySQLDatabaseResource(string name) : Resource(name);
+
+	// Generic type name — the resource name provides the icon signal.
+	sealed class GenericDatabaseContainerResource(string name) : Resource(name);
 
 	// Named to match the real Aspire.Hosting.JavaScript.NodeAppResource so that the icon
 	// matcher tokenises "Node" + "App" separately, and "JavaScript" in the parent namespace

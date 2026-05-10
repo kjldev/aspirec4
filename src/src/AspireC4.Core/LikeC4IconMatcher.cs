@@ -17,6 +17,11 @@ static class LikeC4IconMatcher
 	const float MinScore = 0.35f;
 	const float ExactMatchScore = 1.0f;
 	const float ContainmentMatchScore = 0.8f;
+
+	// Minimum token length for containment scoring.  Short tokens (< 3 chars) like "mq", "db",
+	// "go", and "js" are excluded from the effective denominator in BestMatch so they don't
+	// dilute scores when mixed with longer tokens.  They can still contribute to matchSum
+	// via exact match (e.g. a resource named "go" scores 1.0 for tech:go).
 	const int MinContainmentLength = 3;
 
 	static readonly Lazy<LikeC4IconManifest?> Manifest = new(
@@ -47,6 +52,12 @@ static class LikeC4IconMatcher
 		"installer", // e.g. "node-app-installer" → installer is not part of the icon name
 		"aspire", // e.g. "Aspire.Hosting.Azure.*" → namespace token, not an icon category
 		"hosting", // e.g. "Aspire.Hosting.Azure.*" → namespace token, not an icon category
+		"container", // e.g. "ContainerResource" class name → strip generic .NET Aspire term
+		"application", // e.g. "Aspire.Hosting.ApplicationModel" namespace → strip namespace segment
+		"model", // e.g. "ApplicationModel" → strip namespace segment
+		"alpine", // Docker image variant tag (e.g. "postgres:16-alpine" → strip base image name)
+		"slim", // Docker image variant tag (e.g. "debian:slim")
+		"database", // e.g. "MySQLDatabaseResource" → structural noise, not part of icon name
 	};
 
 	// Canonical form for tokens that normalise to an ambiguous short string.
@@ -80,19 +91,26 @@ static class LikeC4IconMatcher
 
 		var allCloudMarkers = CloudCollections.SelectMany(static c => c.Markers).ToHashSet(StringComparer.Ordinal);
 
-		// Phase 1: cloud collections — try every candidate that carries a cloud marker.
-		// Cloud matching runs first so a resource named "azure-redis" beats a plain tech match.
-		foreach (var (collection, markers) in CloudCollections)
+		// Phase 1: cloud collections — first-above-threshold in candidate priority order.
+		// We process candidates in the order they were supplied so that high-priority signals
+		// (e.g. inferred technology, hidden Azure resource type name) take precedence over
+		// low-priority ones (e.g. plain resource name).  Within each candidate we check every
+		// cloud collection and return the first icon that scores above MinScore.  Richer
+		// candidates (more tokens, e.g. "AzurePostgresFlexibleServerResource") yield more
+		// discriminative queries than terse ones (e.g. "azure-postgres") and must not be
+		// overridden by the higher raw scores that terse candidates can produce for ambiguous
+		// icons.
+		foreach (var candidate in candidates)
 		{
-			if (!manifest.Icons.TryGetValue(collection, out var collectionIcons))
+			var tokens = Tokenize(candidate);
+			if (tokens.Length == 0)
 			{
 				continue;
 			}
 
-			foreach (var candidate in candidates)
+			foreach (var (collection, markers) in CloudCollections)
 			{
-				var tokens = Tokenize(candidate);
-				if (tokens.Length == 0)
+				if (!manifest.Icons.TryGetValue(collection, out var collectionIcons))
 				{
 					continue;
 				}
@@ -103,10 +121,10 @@ static class LikeC4IconMatcher
 					continue;
 				}
 
-				// Remove cloud markers and generic stop-tokens from the query. Deduplicate to prevent
-				// repeated alias tokens (e.g. "node"+"node" from "JavaScript.NodeAppResource") from inflating scores.
+				// Remove cloud markers, generic stop-tokens, and pure numeric tokens.
+				// Deduplicate to prevent repeated alias tokens from inflating scores.
 				var queryTokens = tokens
-					.Where(t => !markers.Contains(t) && !QueryStopTokens.Contains(t))
+					.Where(t => !markers.Contains(t) && !QueryStopTokens.Contains(t) && !IsPurelyNumeric(t))
 					.Distinct()
 					.ToArray();
 
@@ -116,9 +134,8 @@ static class LikeC4IconMatcher
 				}
 
 				// Cloud icons have verbose, category-structured names (e.g. "azure-database-postgre-sql-server").
-				// Using queryTokens.Length as the sole denominator prevents those extra categorical tokens
-				// from burying the score below MinScore; within a cloud collection we pick the best
-				// match anyway, so false positives across providers are not a concern.
+				// Skipping the unmatched-icon-token penalty keeps the denominator predictable for these
+				// long icon names.  We return as soon as we find a confident match.
 				var (score, icon) = BestMatch(
 					queryTokens,
 					collectionIcons,
@@ -132,11 +149,14 @@ static class LikeC4IconMatcher
 			}
 		}
 
-		// Phase 2: tech collection — try candidates that contain no cloud markers.
+		// Phase 2: tech collection — collect the best-scoring icon across all non-cloud candidates.
 		if (!manifest.Icons.TryGetValue("tech", out var techIcons))
 		{
 			return null;
 		}
+
+		var bestTechScore = 0f;
+		var bestTechIcon = string.Empty;
 
 		foreach (var candidate in candidates)
 		{
@@ -152,22 +172,37 @@ static class LikeC4IconMatcher
 				continue;
 			}
 
-			// Deduplicate to prevent inflated scores from repeated alias tokens.
-			var queryTokens = tokens.Where(t => !QueryStopTokens.Contains(t)).Distinct().ToArray();
+			// Remove stop-tokens and pure numeric tokens; deduplicate.
+			var queryTokens = tokens
+				.Where(t => !QueryStopTokens.Contains(t) && !IsPurelyNumeric(t))
+				.Distinct()
+				.ToArray();
+
 			if (queryTokens.Length == 0)
 			{
 				continue;
 			}
 
 			var (score, icon) = BestMatch(queryTokens, techIcons, "tech");
-			if (score >= MinScore)
+			if (score > bestTechScore)
 			{
-				return icon;
+				bestTechScore = score;
+				bestTechIcon = icon;
 			}
+		}
+
+		if (bestTechScore >= MinScore)
+		{
+			return bestTechIcon;
 		}
 
 		return null;
 	}
+
+	// Returns true when the token consists entirely of digits (e.g. "16", "3", "2022").
+	// Such tokens originate from Docker image version tags (e.g. "postgres:16-alpine") and
+	// are never part of an icon name.
+	static bool IsPurelyNumeric(string t) => t.Length > 0 && t.All(char.IsDigit);
 
 	// ── Scoring ─────────────────────────────────────────────────────────────────────────────────
 
@@ -213,8 +248,14 @@ static class LikeC4IconMatcher
 				? iconTokens.Count(it => queryTokens.All(qt => TokenSimilarity(qt, it) == 0f))
 				: 0;
 
-			// score = matched weight / (query size + unmatched icon tokens)
-			var score = matchSum / (queryTokens.Length + unmatchedIconTokens);
+			// Short query tokens (len < MinContainmentLength) cannot score via containment, so
+			// they would only inflate the denominator without contributing.  Using the count of
+			// "effective" tokens (those long enough to participate in containment) prevents this
+			// while still letting short tokens score via exact match (e.g. "go" -> tech:go).
+			var effectiveQueryLength = Math.Max(1, queryTokens.Count(t => t.Length >= MinContainmentLength));
+
+			// score = matched weight / (effective query size + unmatched icon tokens)
+			var score = matchSum / (effectiveQueryLength + unmatchedIconTokens);
 			if (score > bestScore)
 			{
 				bestScore = score;
@@ -296,6 +337,8 @@ static class LikeC4IconMatcher
 	// E.g. "AzureRedisCacheResource" → "azure redis cache resource"
 	//      "Azure.Redis"             → "azure redis"
 	//      "library/postgres:latest" → "library postgres latest"
+	//      "RabbitMQContainerResource" → "rabbit mq container resource"  (uppercase-run boundary)
+	//      "MySQLDatabase"            → "my sql database"
 	static string NormalizeForIconLookup(string? value)
 	{
 		if (string.IsNullOrWhiteSpace(value))
@@ -313,8 +356,16 @@ static class LikeC4IconMatcher
 			if (
 				i > 0
 				&& char.IsUpper(current)
-				&& (char.IsLower(value[i - 1]) || char.IsDigit(value[i - 1]))
 				&& !previousWasSeparator
+				&& (
+					// Simple CamelCase: lowercase/digit → uppercase (e.g. "camelCase", "v2Beta")
+					char.IsLower(value[i - 1])
+					|| char.IsDigit(value[i - 1])
+					// Uppercase-run boundary: last uppercase before a new lowercase word
+					// (e.g. "RabbitMQContainer" → "Rabbit", "MQ", "Container"
+					//        "MySQLDatabase"     → "My", "SQL", "Database")
+					|| (char.IsUpper(value[i - 1]) && i + 1 < value.Length && char.IsLower(value[i + 1]))
+				)
 			)
 			{
 				sb.Append(' ');
