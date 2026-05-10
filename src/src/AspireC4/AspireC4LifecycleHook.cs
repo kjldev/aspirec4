@@ -281,20 +281,23 @@ sealed class AspireC4LifecycleHook(
 						s =>
 						{
 							// Avoid duplicates if the callback already injected this URL.
-							if (s.Urls.Any(u => u.Name == "architecture-diagram"))
-							{
-								return s;
-							}
-
-							return s with
-							{
-								Urls = s.Urls.Add(
-									new UrlSnapshot(Name: "architecture-diagram", Url: capturedUrl, IsInternal: false)
+							return s.Urls.Any(u => u.Name == "architecture-diagram")
+								? s
+								: (
+									s with
 									{
-										DisplayProperties = new UrlDisplayPropertiesSnapshot(displayName),
+										Urls = s.Urls.Add(
+											new UrlSnapshot(
+												Name: "architecture-diagram",
+												Url: capturedUrl,
+												IsInternal: false
+											)
+											{
+												DisplayProperties = new UrlDisplayPropertiesSnapshot(displayName),
+											}
+										),
 									}
-								),
-							};
+								);
 						}
 					);
 				}
@@ -442,9 +445,7 @@ sealed class AspireC4LifecycleHook(
 					addValueFactory: _ =>
 					{
 						isFirstError = true;
-						if (maxLines <= 0)
-							return ImmutableList<string>.Empty;
-						return [.. errorLines.TakeLast(maxLines)];
+						return maxLines <= 0 ? [] : [.. errorLines.TakeLast(maxLines)];
 					},
 					updateValueFactory: (_, existing) =>
 					{

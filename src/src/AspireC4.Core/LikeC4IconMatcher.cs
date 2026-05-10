@@ -19,7 +19,7 @@ static class LikeC4IconMatcher
 	const float ContainmentMatchScore = 0.8f;
 	const int MinContainmentLength = 3;
 
-	static readonly Lazy<LikeC4IconManifest?> _manifest = new(
+	static readonly Lazy<LikeC4IconManifest?> Manifest = new(
 		LoadManifest,
 		LazyThreadSafetyMode.ExecutionAndPublication
 	);
@@ -66,7 +66,7 @@ static class LikeC4IconMatcher
 	/// </returns>
 	public static string? TryInferIcon(string?[] candidates)
 	{
-		var manifest = _manifest.Value;
+		var manifest = Manifest.Value;
 		if (manifest is null)
 		{
 			return null;
@@ -250,17 +250,14 @@ static class LikeC4IconMatcher
 	static string[] Tokenize(string? value)
 	{
 		var normalized = NormalizeForIconLookup(value);
-		if (string.IsNullOrEmpty(normalized))
-		{
-			return [];
-		}
-
-		return
-		[
-			.. normalized
-				.Split(' ', StringSplitOptions.RemoveEmptyEntries)
-				.Select(t => TokenAliases.TryGetValue(t, out var alias) ? alias : t),
-		];
+		return string.IsNullOrEmpty(normalized)
+			? []
+			:
+			[
+				.. normalized
+					.Split(' ', StringSplitOptions.RemoveEmptyEntries)
+					.Select(t => TokenAliases.TryGetValue(t, out var alias) ? alias : t),
+			];
 	}
 
 	// Splits PascalCase / kebab-case / dotted strings into lowercase space-delimited tokens.
@@ -314,14 +311,11 @@ static class LikeC4IconMatcher
 	static LikeC4IconManifest? LoadManifest()
 	{
 		var assembly = typeof(LikeC4IconMatcher).Assembly;
-		const string ResourceName = "Aspire.Hosting.AspireC4.Resources.likec4-icons.json";
-		using var stream = assembly.GetManifestResourceStream(ResourceName);
-		if (stream is null)
-		{
-			return null;
-		}
-
-		return JsonSerializer.Deserialize(stream, LikeC4IconMatcherJsonContext.Default.LikeC4IconManifest);
+		const string resourceName = $"{AssemblyInfo.RootNamespace}.Resources.likec4-icons.json";
+		using var stream = assembly.GetManifestResourceStream(resourceName);
+		return stream is null
+			? null
+			: JsonSerializer.Deserialize(stream, LikeC4IconMatcherJsonContext.Default.LikeC4IconManifest);
 	}
 }
 

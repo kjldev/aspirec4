@@ -349,9 +349,10 @@ public sealed class LikeC4ModelBuilderTests
 	{
 		var resource = CreateProjectResource("api");
 
-		LikeC4IconResolver resolver = ctx => ctx.Resource is ProjectResource ? "tech:dotnet" : null;
+		static string? Resolver(LikeC4IconResolverContext ctx) =>
+			ctx.Resource is ProjectResource ? "tech:dotnet" : null;
 
-		var model = LikeC4ModelBuilder.Build([resource], iconResolvers: [resolver]);
+		var model = LikeC4ModelBuilder.Build([resource], iconResolvers: [Resolver]);
 
 		await Assert.That(model.Elements[0].Icon).IsEqualTo("tech:dotnet");
 	}
@@ -362,9 +363,9 @@ public sealed class LikeC4ModelBuilderTests
 		var resource = CreateContainerResource("redis");
 
 		// Resolver explicitly declines; auto-inference should still pick tech:redis.
-		LikeC4IconResolver resolver = _ => null;
+		static string? Resolver(LikeC4IconResolverContext _) => null;
 
-		var model = LikeC4ModelBuilder.Build([resource], iconResolvers: [resolver]);
+		var model = LikeC4ModelBuilder.Build([resource], iconResolvers: [Resolver]);
 
 		await Assert.That(model.Elements[0].Icon).IsEqualTo("tech:redis");
 	}
@@ -374,11 +375,11 @@ public sealed class LikeC4ModelBuilderTests
 	{
 		IResource? capturedHidden = null;
 
-		LikeC4IconResolver resolver = ctx =>
+		string? Resolver(LikeC4IconResolverContext ctx)
 		{
 			capturedHidden = ctx.HiddenOriginal;
 			return null;
-		};
+		}
 
 		var visibleContainer = CreateContainerResource("azure-redis");
 		var hiddenAzureResource = new AzureManagedRedisResource("azure-redis");
@@ -392,7 +393,7 @@ public sealed class LikeC4ModelBuilderTests
 		);
 		hiddenAzureResource.Annotations.Add(snapshot);
 
-		LikeC4ModelBuilder.Build([hiddenAzureResource, visibleContainer], iconResolvers: [resolver]);
+		LikeC4ModelBuilder.Build([hiddenAzureResource, visibleContainer], iconResolvers: [Resolver]);
 
 		await Assert.That(capturedHidden).IsTypeOf<AzureManagedRedisResource>();
 	}
@@ -403,23 +404,25 @@ public sealed class LikeC4ModelBuilderTests
 		var resource = CreateProjectResource("api");
 		var callOrder = new List<int>();
 
-		LikeC4IconResolver first = _ =>
+		string? First(LikeC4IconResolverContext _)
 		{
 			callOrder.Add(1);
 			return null;
-		};
-		LikeC4IconResolver second = _ =>
+		}
+
+		string? Second(LikeC4IconResolverContext _)
 		{
 			callOrder.Add(2);
 			return "tech:custom";
-		};
-		LikeC4IconResolver third = _ =>
+		}
+
+		string? Third(LikeC4IconResolverContext _)
 		{
 			callOrder.Add(3);
 			return "tech:should-not-reach";
-		};
+		}
 
-		var model = LikeC4ModelBuilder.Build([resource], iconResolvers: [first, second, third]);
+		var model = LikeC4ModelBuilder.Build([resource], iconResolvers: [First, Second, Third]);
 
 		await Assert.That(model.Elements[0].Icon).IsEqualTo("tech:custom");
 		await Assert.That(callOrder).IsEquivalentTo([1, 2]);

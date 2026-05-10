@@ -52,7 +52,7 @@ public sealed class LikeC4RelationshipDetailsAnnotation : IResourceAnnotation
 		Description = description;
 		Kind = kind;
 		NavigateTo = navigateTo;
-		Tags = (tags ?? []).Select(LikeC4TagHelper.Normalize).ToList();
+		Tags = [.. (tags ?? []).Select(LikeC4TagHelper.Normalize)];
 		Links = links ?? [];
 		Metadata = metadata ?? [];
 	}

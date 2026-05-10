@@ -914,7 +914,9 @@ public sealed partial class LikeC4DslGeneratorTests
 			await Assert.That(dsl).Contains($"color {expectedColor}");
 
 			var viewsIdx = dsl.IndexOf("views {", StringComparison.Ordinal);
-			var colorIdx = dsl.IndexOf($"color {expectedColor}", StringComparison.Ordinal);
+			// Search from viewsIdx to skip any spec-level color declaration (e.g. HasErrorLogs
+			// emits "color orange #F97316" in specification{} before views{}).
+			var colorIdx = dsl.IndexOf($"color {expectedColor}", viewsIdx, StringComparison.Ordinal);
 			await Assert.That(colorIdx).IsGreaterThan(viewsIdx);
 
 			// Opacity should be present for states that visually distinguish transitional
@@ -1045,8 +1047,9 @@ public sealed partial class LikeC4DslGeneratorTests
 	[Test]
 	public async Task Generate_ElementWithHasErrorLogsState_DeclaresOrangeColorInSpecification()
 	{
-		// `orange` is not a LikeC4 built-in colour, so the spec block must declare it
-		// as a custom colour when the HasErrorLogs state is used.
+		// `orange` is not a LikeC4 built-in colour token. The spec block must
+		// declare it with the LikeC4 syntax  `color IDENTIFIER #HEX`  (there is
+		// no `colors { }` sub-block in the DSL grammar).
 		var model = new LikeC4Model
 		{
 			Elements =
@@ -1066,19 +1069,20 @@ public sealed partial class LikeC4DslGeneratorTests
 
 		var specIdx = dsl.IndexOf("specification {", StringComparison.Ordinal);
 		var modelIdx = dsl.IndexOf("model {", StringComparison.Ordinal);
-		var colorsBlockIdx = dsl.IndexOf("colors {", StringComparison.Ordinal);
-		var orangeIdx = dsl.IndexOf("orange #", StringComparison.Ordinal);
-
-		// colors block must be inside specification, before model
-		await Assert.That(colorsBlockIdx).IsGreaterThan(specIdx);
-		await Assert.That(colorsBlockIdx).IsLessThan(modelIdx);
-		await Assert.That(orangeIdx).IsGreaterThan(colorsBlockIdx);
-		await Assert.That(orangeIdx).IsLessThan(modelIdx);
-
-		// style rule in views must reference orange
 		var viewsIdx = dsl.IndexOf("views {", StringComparison.Ordinal);
-		var colorOrangeIdx = dsl.IndexOf("color orange", StringComparison.Ordinal);
-		await Assert.That(colorOrangeIdx).IsGreaterThan(viewsIdx);
+
+		// `color orange #F97316` must appear inside specification, before model
+		var colorDeclIdx = dsl.IndexOf("color orange #F97316", StringComparison.Ordinal);
+		await Assert.That(colorDeclIdx).IsGreaterThan(specIdx);
+		await Assert.That(colorDeclIdx).IsLessThan(modelIdx);
+
+		// The generated view must also contain a `color orange` style rule
+		// (this is a different occurrence — the view-level style rule, not the declaration).
+		var colorStyleIdx = dsl.IndexOf("color orange", viewsIdx, StringComparison.Ordinal);
+		await Assert.That(colorStyleIdx).IsGreaterThan(viewsIdx);
+
+		// There must be NO `colors {` anywhere — that sub-block doesn't exist in LikeC4.
+		await Assert.That(dsl).DoesNotContain("colors {");
 	}
 
 	[Test]
