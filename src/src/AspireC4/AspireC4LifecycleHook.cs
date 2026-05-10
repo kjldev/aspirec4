@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using System.Collections.Immutable;
 using System.Diagnostics;
 using System.Net;
 using System.Net.Sockets;
@@ -28,7 +29,13 @@ sealed class AspireC4LifecycleHook(
 	const string AspireDashboardResourceName = "aspire-dashboard";
 
 	readonly ConcurrentDictionary<string, LikeC4ResourceState> _resourceStates = new(StringComparer.OrdinalIgnoreCase);
-	readonly ConcurrentDictionary<string, bool> _resourcesWithErrorLogs = new(StringComparer.OrdinalIgnoreCase);
+
+	// Maps resource name → the most recent error log lines (capped at ErrorLogLinesInDiagram).
+	// An empty list means "no error lines captured yet" — we still use its presence as the
+	// HasErrorLogs flag so that the state override fires even when capture is disabled (limit = 0).
+	readonly ConcurrentDictionary<string, ImmutableList<string>> _resourceErrorLogLines = new(
+		StringComparer.OrdinalIgnoreCase
+	);
 
 	// Discovered at runtime once the aspire-dashboard resource starts.
 	volatile string? _dashboardBaseUrl;
@@ -421,16 +428,38 @@ sealed class AspireC4LifecycleHook(
 	{
 		try
 		{
+			var maxLines = options.Value.ErrorLogLinesInDiagram;
+
 			await foreach (var batch in resourceLoggerService.WatchAsync(resource).WithCancellation(cancellationToken))
 			{
-				if (!batch.Any(l => l.IsErrorMessage))
+				var errorLines = batch.Where(l => l.IsErrorMessage).Select(l => l.Content).ToList();
+				if (errorLines.Count == 0)
 					continue;
 
-				// Only flag once — subsequent error lines don't need to trigger regeneration.
-				if (!_resourcesWithErrorLogs.TryAdd(resource.Name, true))
-					continue;
+				var isFirstError = false;
+				_resourceErrorLogLines.AddOrUpdate(
+					resource.Name,
+					addValueFactory: _ =>
+					{
+						isFirstError = true;
+						if (maxLines <= 0)
+							return ImmutableList<string>.Empty;
+						return [.. errorLines.TakeLast(maxLines)];
+					},
+					updateValueFactory: (_, existing) =>
+					{
+						if (maxLines <= 0)
+							return existing;
+						var combined = existing.AddRange(errorLines);
+						return combined.Count > maxLines
+							? combined.GetRange(combined.Count - maxLines, maxLines)
+							: combined;
+					}
+				);
 
-				telemetry.ResourceErrorLogDetected(resource.Name);
+				if (isFirstError)
+					telemetry.ResourceErrorLogDetected(resource.Name);
+
 				ScheduleRegeneration(appModel, syncContainerWorkspace, cancellationToken);
 			}
 		}
@@ -499,10 +528,21 @@ sealed class AspireC4LifecycleHook(
 		// Overlay error-log flags: resources that are Running but have error log entries
 		// are shown with HasErrorLogs state instead.
 		Dictionary<string, LikeC4ResourceState> mergedStates = new(_resourceStates, StringComparer.OrdinalIgnoreCase);
-		foreach (var name in _resourcesWithErrorLogs.Keys)
+		foreach (var name in _resourceErrorLogLines.Keys)
 		{
 			if (mergedStates.TryGetValue(name, out var state) && state == LikeC4ResourceState.Running)
 				mergedStates[name] = LikeC4ResourceState.HasErrorLogs;
+		}
+
+		// Build a snapshot of error log lines (resource name → lines) to pass to the model builder.
+		IReadOnlyDictionary<string, IReadOnlyList<string>>? errorLogLines = null;
+		if (opts.ErrorLogLinesInDiagram > 0 && !_resourceErrorLogLines.IsEmpty)
+		{
+			errorLogLines = _resourceErrorLogLines.ToDictionary(
+				kvp => kvp.Key,
+				kvp => (IReadOnlyList<string>)kvp.Value,
+				StringComparer.OrdinalIgnoreCase
+			);
 		}
 
 		var model = LikeC4ModelBuilder.Build(
@@ -514,7 +554,8 @@ sealed class AspireC4LifecycleHook(
 			opts.IconResolvers,
 			opts.IncludeAspireDashboardLinks,
 			_dashboardBaseUrl,
-			configuration["AppHost:BrowserToken"]
+			configuration["AppHost:BrowserToken"],
+			errorLogLines
 		);
 		var dsl = LikeC4DSLGenerator.Generate(model, opts);
 

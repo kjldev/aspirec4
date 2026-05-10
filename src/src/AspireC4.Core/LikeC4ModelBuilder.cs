@@ -39,6 +39,11 @@ public static class LikeC4ModelBuilder
 	/// dashboard links use a <c>/login?t=…&amp;returnUrl=…</c> redirect URL so clicking the link in LikeC4
 	/// authenticates the browser before navigating to the resource page.
 	/// </param>
+	/// <param name="errorLogLines">
+	/// Optional mapping of resource name → recent error log messages. When provided and a resource is in the
+	/// <see cref="LikeC4ResourceState.HasErrorLogs"/> state, the most recent lines are appended to the element
+	/// description so the error context is visible directly in the diagram.
+	/// </param>
 	[System.Diagnostics.CodeAnalysis.SuppressMessage(
 		"Design",
 		"CA1054:URI-like parameters should not be strings",
@@ -53,7 +58,8 @@ public static class LikeC4ModelBuilder
 		IReadOnlyList<LikeC4IconResolver>? iconResolvers = null,
 		bool includeDashboardLinks = true,
 		string? dashboardBaseUrl = null,
-		string? dashboardBrowserToken = null
+		string? dashboardBrowserToken = null,
+		IReadOnlyDictionary<string, IReadOnlyList<string>>? errorLogLines = null
 	)
 	{
 		ArgumentNullException.ThrowIfNull(resources);
@@ -90,6 +96,9 @@ public static class LikeC4ModelBuilder
 					? s
 					: LikeC4ResourceState.Unknown;
 
+			var resourceErrorLines =
+				errorLogLines is not null && errorLogLines.TryGetValue(resource.Name, out var lines) ? lines : null;
+
 			elements.Add(
 				BuildElement(
 					resource,
@@ -101,7 +110,8 @@ public static class LikeC4ModelBuilder
 					iconResolvers,
 					includeDashboardLinks,
 					dashboardBaseUrl,
-					dashboardBrowserToken
+					dashboardBrowserToken,
+					resourceErrorLines
 				)
 			);
 			CollectRelationships(
@@ -169,7 +179,8 @@ public static class LikeC4ModelBuilder
 		IReadOnlyList<LikeC4IconResolver>? iconResolvers = null,
 		bool includeDashboardLinks = true,
 		string? dashboardBaseUrl = null,
-		string? dashboardBrowserToken = null
+		string? dashboardBrowserToken = null,
+		IReadOnlyList<string>? errorLogLines = null
 	)
 	{
 		var details = resource.Annotations.OfType<LikeC4NodeDetailsAnnotation>().LastOrDefault();
@@ -177,8 +188,6 @@ public static class LikeC4ModelBuilder
 
 		var label = details?.Label ?? resource.Name;
 		var technology = details?.Technology ?? inferredTechnology;
-		var description = details?.Description;
-		var summary = details?.Summary;
 		var icon = ResolveIcon(resource, details, inferredTechnology, autoIconsEnabled, hiddenOriginal, iconResolvers);
 		var kind = details?.Kind ?? InferKind(resource);
 		var parentName = (resource as IResourceWithParent)?.Parent?.Name;
@@ -195,6 +204,16 @@ public static class LikeC4ModelBuilder
 			dashboardBaseUrl,
 			dashboardBrowserToken
 		);
+
+		// When the resource is in the HasErrorLogs state, append the captured error log lines
+		// to the description so the error context is visible directly in the diagram.
+		var description = details?.Description;
+		var summary = details?.Summary;
+		if (state == LikeC4ResourceState.HasErrorLogs && errorLogLines is { Count: > 0 })
+		{
+			var errorSection = "**Recent errors:**\n" + string.Join("\n", errorLogLines.Select(l => $"- {l}"));
+			description = string.IsNullOrWhiteSpace(description) ? errorSection : description + "\n\n" + errorSection;
+		}
 
 		return new()
 		{

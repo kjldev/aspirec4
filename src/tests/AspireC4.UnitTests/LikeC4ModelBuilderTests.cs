@@ -1364,6 +1364,91 @@ public sealed class LikeC4ModelBuilderTests
 	// ── Dashboard deep-link tests ─────────────────────────────────────────────
 
 	[Test]
+	public async Task Build_ErrorLogLines_HasErrorLogsState_AddsLinesToDescription()
+	{
+		var resource = CreateContainerResource("api");
+		var states = new Dictionary<string, LikeC4ResourceState> { { "api", LikeC4ResourceState.HasErrorLogs } };
+		var errorLines = new Dictionary<string, IReadOnlyList<string>>
+		{
+			{ "api", ["Error: connection refused", "Error: timeout"] },
+		};
+
+		var model = LikeC4ModelBuilder.Build([resource], resourceStates: states, errorLogLines: errorLines);
+
+		var element = model.Elements[0];
+		await Assert.That(element.State).IsEqualTo(LikeC4ResourceState.HasErrorLogs);
+		await Assert.That(element.Description).IsNotNull();
+		await Assert.That(element.Description!).Contains("Recent errors");
+		await Assert.That(element.Description).Contains("connection refused");
+		await Assert.That(element.Description).Contains("timeout");
+	}
+
+	[Test]
+	public async Task Build_ErrorLogLines_RunningState_DoesNotAddDescription()
+	{
+		var resource = CreateContainerResource("api");
+		var states = new Dictionary<string, LikeC4ResourceState> { { "api", LikeC4ResourceState.Running } };
+		var errorLines = new Dictionary<string, IReadOnlyList<string>>
+		{
+			// Lines supplied, but state is Running — should not appear in description.
+			{ "api", ["Error: something"] },
+		};
+
+		var model = LikeC4ModelBuilder.Build([resource], resourceStates: states, errorLogLines: errorLines);
+
+		var element = model.Elements[0];
+		await Assert.That(element.State).IsEqualTo(LikeC4ResourceState.Running);
+		await Assert.That(element.Description).IsNull();
+	}
+
+	[Test]
+	public async Task Build_ErrorLogLines_HasErrorLogsState_PreservesUserDescription()
+	{
+		var resource = CreateContainerResource("api");
+		resource.Annotations.Add(new LikeC4NodeDetailsAnnotation(label: "API", description: "My component"));
+
+		var states = new Dictionary<string, LikeC4ResourceState> { { "api", LikeC4ResourceState.HasErrorLogs } };
+		var errorLines = new Dictionary<string, IReadOnlyList<string>> { { "api", ["Error: disk full"] } };
+
+		var model = LikeC4ModelBuilder.Build([resource], resourceStates: states, errorLogLines: errorLines);
+
+		var element = model.Elements[0];
+		await Assert.That(element.Description).IsNotNull();
+		await Assert.That(element.Description!).Contains("My component");
+		await Assert.That(element.Description).Contains("Recent errors");
+		await Assert.That(element.Description).Contains("disk full");
+	}
+
+	[Test]
+	public async Task Build_ErrorLogLines_EmptyList_DoesNotAddDescription()
+	{
+		var resource = CreateContainerResource("api");
+		var states = new Dictionary<string, LikeC4ResourceState> { { "api", LikeC4ResourceState.HasErrorLogs } };
+		var errorLines = new Dictionary<string, IReadOnlyList<string>>
+		{
+			// Empty list — no lines to show.
+			{ "api", [] },
+		};
+
+		var model = LikeC4ModelBuilder.Build([resource], resourceStates: states, errorLogLines: errorLines);
+
+		var element = model.Elements[0];
+		await Assert.That(element.Description).IsNull();
+	}
+
+	[Test]
+	public async Task Build_ErrorLogLines_NullDictionary_DoesNotAddDescription()
+	{
+		var resource = CreateContainerResource("api");
+		var states = new Dictionary<string, LikeC4ResourceState> { { "api", LikeC4ResourceState.HasErrorLogs } };
+
+		var model = LikeC4ModelBuilder.Build([resource], resourceStates: states, errorLogLines: null);
+
+		var element = model.Elements[0];
+		await Assert.That(element.Description).IsNull();
+	}
+
+	[Test]
 	public async Task Build_DashboardLinks_WithBaseUrl_InjectsConsoleAndStructuredLogLinks()
 	{
 		var resource = CreateProjectResource("my-api");

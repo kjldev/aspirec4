@@ -124,6 +124,14 @@ public sealed class AspireC4DiagramOptions
 	public bool IncludeAspireDashboardLinks { get; set; } = true;
 
 	/// <summary>
+	/// Maximum number of recent error log lines to include in the description of a LikeC4 element
+	/// that is in the <see cref="LikeC4ResourceState.HasErrorLogs"/> state.
+	/// Set to <c>0</c> to disable log lines in the diagram.
+	/// Defaults to <c>5</c>.
+	/// </summary>
+	public int ErrorLogLinesInDiagram { get; set; } = 5;
+
+	/// <summary>
 	/// Custom icon resolvers that are evaluated before the built-in auto-icon inference.
 	/// Each resolver receives a <see cref="LikeC4IconResolverContext"/> and returns either
 	/// a LikeC4 icon string (e.g. <c>"tech:redis"</c>) or <see langword="null"/> to defer.

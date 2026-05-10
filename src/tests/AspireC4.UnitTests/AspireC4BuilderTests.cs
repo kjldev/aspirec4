@@ -6,7 +6,7 @@ namespace Aspire.Hosting.AspireC4;
 /// <summary>
 /// Unit tests for the local CLI command builder logic and the <see cref="LikeC4ServerResource"/> constants.
 /// </summary>
-public sealed class LikeC4VisualizationBuilderTests
+public sealed class AspireC4BuilderTests
 {
 	// --- BuildLocalCliCommand ---
 
