@@ -15,13 +15,10 @@ static class LikeC4TagHelper
 	{
 		ArgumentException.ThrowIfNullOrWhiteSpace(tag);
 
-		var normalized = tag.TrimStart('#');
+		var normalized = tag.TrimStart('#').TrimEnd();
 
-		if (string.IsNullOrWhiteSpace(normalized))
-		{
-			throw new ArgumentException("Tag name must not be empty or consist only of '#' characters.", nameof(tag));
-		}
-
-		return normalized;
+		return string.IsNullOrWhiteSpace(normalized)
+			? throw new ArgumentException("Tag name must not be empty or consist only of '#' characters.", nameof(tag))
+			: normalized;
 	}
 }

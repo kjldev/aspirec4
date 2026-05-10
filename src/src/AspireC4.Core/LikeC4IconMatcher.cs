@@ -44,6 +44,9 @@ static class LikeC4IconMatcher
 		"library", // e.g. "library/redis" Docker image namespace
 		"latest", // e.g. ":latest" Docker image tag
 		"app", // e.g. "NodeAppResource" → strip "app"
+		"installer", // e.g. "node-app-installer" → installer is not part of the icon name
+		"aspire", // e.g. "Aspire.Hosting.Azure.*" → namespace token, not an icon category
+		"hosting", // e.g. "Aspire.Hosting.Azure.*" → namespace token, not an icon category
 	};
 
 	// Canonical form for tokens that normalise to an ambiguous short string.
@@ -102,7 +105,16 @@ static class LikeC4IconMatcher
 					continue;
 				}
 
-				var (score, icon) = BestMatch(queryTokens, collectionIcons, collection);
+				// Cloud icons have verbose, category-structured names (e.g. "azure-database-postgre-sql-server").
+				// Using queryTokens.Length as the sole denominator prevents those extra categorical tokens
+				// from burying the score below MinScore; within a cloud collection we pick the best
+				// match anyway, so false positives across providers are not a concern.
+				var (score, icon) = BestMatch(
+					queryTokens,
+					collectionIcons,
+					collection,
+					penalizeUnmatchedIconTokens: false
+				);
 				if (score >= MinScore)
 				{
 					return icon;
@@ -148,7 +160,12 @@ static class LikeC4IconMatcher
 
 	// ── Scoring ─────────────────────────────────────────────────────────────────────────────────
 
-	static (float Score, string Icon) BestMatch(string[] queryTokens, string[] iconNames, string prefix)
+	static (float Score, string Icon) BestMatch(
+		string[] queryTokens,
+		string[] iconNames,
+		string prefix,
+		bool penalizeUnmatchedIconTokens = true
+	)
 	{
 		var bestScore = 0f;
 		var bestIcon = string.Empty;
@@ -181,7 +198,9 @@ static class LikeC4IconMatcher
 			}
 
 			// Penalise icons that have tokens matched by no query token.
-			var unmatchedIconTokens = iconTokens.Count(it => queryTokens.All(qt => TokenSimilarity(qt, it) == 0f));
+			var unmatchedIconTokens = penalizeUnmatchedIconTokens
+				? iconTokens.Count(it => queryTokens.All(qt => TokenSimilarity(qt, it) == 0f))
+				: 0;
 
 			// score = matched weight / (query size + unmatched icon tokens)
 			var score = matchSum / (queryTokens.Length + unmatchedIconTokens);
@@ -217,7 +236,10 @@ static class LikeC4IconMatcher
 
 		if (it.Length >= MinContainmentLength && qt.Contains(it, StringComparison.Ordinal))
 		{
-			return ContainmentMatchScore * (float)it.Length / qt.Length * InfixPenalty;
+			var ratio = (float)it.Length / qt.Length;
+			return qt.StartsWith(it, StringComparison.Ordinal)
+				? ContainmentMatchScore * ratio
+				: ContainmentMatchScore * ratio * InfixPenalty;
 		}
 
 		return 0f;

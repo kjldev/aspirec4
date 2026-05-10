@@ -171,14 +171,17 @@ public sealed class LikeC4ModelBuilderTests
 	}
 
 	[Test]
-	public async Task Build_PostgresResource_UsesGenericTechIcon()
+	public async Task Build_PostgresResource_WithAzureTechnology_InfersAzureIcon()
 	{
+		// When the user labels the technology "Azure Postgres", the cloud phase detects "azure"
+		// and infers an azure postgres icon instead of the generic tech:postgresql.
 		var resource = CreateContainerResource("postgres");
 		resource.Annotations.Add(new LikeC4NodeDetailsAnnotation("Postgres", "Azure Postgres", "Managed PostgreSQL"));
 
 		var model = LikeC4ModelBuilder.Build([resource]);
 
-		await Assert.That(model.Elements[0].Icon).IsEqualTo("tech:postgresql");
+		await Assert.That(model.Elements[0].Icon!).StartsWith("azure:");
+		await Assert.That(model.Elements[0].Icon!).Contains("postgre");
 	}
 
 	[Test]
@@ -207,6 +210,76 @@ public sealed class LikeC4ModelBuilderTests
 		var model = LikeC4ModelBuilder.Build([resource]);
 
 		await Assert.That(model.Elements[0].Icon).IsEqualTo("tech:postgresql");
+	}
+
+	[Test]
+	public async Task Build_NodeAppInstallerExecutable_InfersNodejsIcon()
+	{
+		// Regression: "node-app-installer" → queryTokens were ["node", "installer"] because
+		// "installer" was not a stop token. The 2-token query diluted the score: 0.533 / 2 = 0.267
+		// (below MinScore 0.35). Adding "installer" to QueryStopTokens leaves ["node"] → 0.533 ✓.
+		var resource = new ExecutableResource("node-app-installer", "node", ".");
+		resource.Annotations.Add(
+			new ResourceSnapshotAnnotation(new CustomResourceSnapshot { ResourceType = "Executable", Properties = [] })
+		);
+
+		var model = LikeC4ModelBuilder.Build([resource]);
+
+		await Assert.That(model.Elements[0].Icon).IsEqualTo("tech:nodejs");
+	}
+
+	[Test]
+	public async Task Build_AzurePostgresRunAsContainer_InfersAzurePostgresIcon()
+	{
+		// Regression: "azure-postgres" container (from RunAsContainer()) was matching tech:postgresql
+		// instead of an azure icon. The hidden Azure resource's type name provides additional query
+		// tokens ("flexible", "server") that allow the matcher to score the correct azure icon.
+		var visibleContainer = CreateContainerResource("azure-postgres");
+		visibleContainer.Annotations.Add(new ContainerImageAnnotation { Image = "library/postgres" });
+
+		var hiddenAzureResource = new AzurePostgresFlexibleServerResource("azure-postgres");
+		hiddenAzureResource.Annotations.Add(
+			new ResourceSnapshotAnnotation(
+				new CustomResourceSnapshot
+				{
+					ResourceType = "AzurePostgresFlexibleServer",
+					IsHidden = true,
+					Properties = [],
+				}
+			)
+		);
+
+		var model = LikeC4ModelBuilder.Build([visibleContainer, hiddenAzureResource]);
+
+		await Assert.That(model.Elements).Count().IsEqualTo(1);
+		await Assert.That(model.Elements[0].Icon).IsEqualTo("azure:azure-database-postgre-sql-server");
+	}
+
+	[Test]
+	public async Task Build_AzureManagedRedisRunAsContainer_InfersAzureManagedRedisIcon()
+	{
+		// Same pattern as Azure Postgres: visible ContainerResource backed by a hidden Azure resource.
+		// The hidden resource's type name ("AzureManagedRedisResource") contributes "managed" and "redis"
+		// as query tokens, scoring a perfect match against "azure-managed-redis".
+		var visibleContainer = CreateContainerResource("azure-redis");
+		visibleContainer.Annotations.Add(new ContainerImageAnnotation { Image = "library/redis" });
+
+		var hiddenAzureResource = new AzureManagedRedisResource("azure-redis");
+		hiddenAzureResource.Annotations.Add(
+			new ResourceSnapshotAnnotation(
+				new CustomResourceSnapshot
+				{
+					ResourceType = "AzureManagedRedis",
+					IsHidden = true,
+					Properties = [],
+				}
+			)
+		);
+
+		var model = LikeC4ModelBuilder.Build([visibleContainer, hiddenAzureResource]);
+
+		await Assert.That(model.Elements).Count().IsEqualTo(1);
+		await Assert.That(model.Elements[0].Icon).IsEqualTo("azure:azure-managed-redis");
 	}
 
 	[Test]
@@ -989,7 +1062,7 @@ public sealed class LikeC4ModelBuilderTests
 				kind: null,
 				tags: [],
 				links: [],
-				metadata: [new LikeC4Metadata("Azure SKU", "Standard")]
+				metadata: [new("Azure SKU", "Standard")]
 			)
 		);
 
@@ -997,6 +1070,35 @@ public sealed class LikeC4ModelBuilderTests
 
 		var meta = model.Elements[0].Metadata;
 		await Assert.That(meta.Any(m => m.Key == "Azure_SKU" && m.Value == "Standard")).IsTrue();
+	}
+
+	[Test]
+	public async Task Build_NormaliseMetadata_DuplicateKeysAreTurnedIntoArrays()
+	{
+		var resource = CreateProjectResource("api");
+		resource.Annotations.Add(
+			new LikeC4NodeDetailsAnnotation(
+				"API",
+				technology: null,
+				description: null,
+				summary: null,
+				icon: null,
+				autoIconEnabled: null,
+				kind: null,
+				tags: [],
+				links: [],
+				metadata: [new("Azure SKU", "Entry 1"), new("Azure SKU", "Entry 2")]
+			)
+		);
+
+		var model = LikeC4ModelBuilder.Build([resource]);
+
+		await Assert.That(model.Elements.Count).IsEqualTo(1);
+
+		var meta = model.Elements[0].Metadata;
+		// Both keys normalise to "Azure_SKU"; the builder deduplicates keeping the first value.
+		await Assert.That(meta.Where(m => m.Key == "Azure_SKU").Count()).IsEqualTo(1);
+		await Assert.That(meta.Any(m => m.Key == "Azure_SKU" && m.Value == "Entry 1")).IsTrue();
 	}
 
 	[Test]
@@ -1166,7 +1268,7 @@ public sealed class LikeC4ModelBuilderTests
 				tags: [],
 				links: [],
 				// "Azure SKU" and "Azure_SKU" both normalise to "Azure_SKU"
-				metadata: [new LikeC4Metadata("Azure SKU", "first"), new LikeC4Metadata("Azure_SKU", "second")]
+				metadata: [new("Azure SKU", "first"), new("Azure_SKU", "second")]
 			)
 		);
 
@@ -1201,4 +1303,10 @@ public sealed class LikeC4ModelBuilderTests
 	{
 		public IResource Parent { get; } = parent;
 	}
+
+	// Named to match real Aspire Azure resource class names so the icon matcher
+	// receives the correct type tokens via the hidden-original lookup.
+	sealed class AzurePostgresFlexibleServerResource(string name) : Resource(name);
+
+	sealed class AzureManagedRedisResource(string name) : Resource(name);
 }

@@ -42,6 +42,15 @@ public static class LikeC4ModelBuilder
 			.GroupBy(r => r.Name, StringComparer.OrdinalIgnoreCase)
 			.ToDictionary(g => g.Key, g => g.First(), StringComparer.OrdinalIgnoreCase);
 
+		// Hidden resources (e.g. AzurePostgresFlexibleServerResource) carry richer type info
+		// than the visible surrogate (e.g. a generic ContainerResource). We pass the hidden
+		// original to the element builder so the icon matcher can use its type name to select
+		// the correct azure icon (e.g. azure:azure-database-postgre-sql-server).
+		var hiddenByName = resources
+			.Where(r => !visibleResources.Contains(r))
+			.GroupBy(r => r.Name, StringComparer.OrdinalIgnoreCase)
+			.ToDictionary(g => g.Key, g => g.First(), StringComparer.OrdinalIgnoreCase);
+
 		var elements = new List<LikeC4Element>(visibleResources.Count);
 		var relationships = new List<LikeC4Relationship>();
 		var visitedRelationships = new HashSet<(string Source, string Target)>();
@@ -54,7 +63,14 @@ public static class LikeC4ModelBuilder
 					: LikeC4ResourceState.Unknown;
 
 			elements.Add(
-				BuildElement(resource, state, autoIconsEnabled, aspireMetadataInclusion, normaliseMetadataBehaviour)
+				BuildElement(
+					resource,
+					state,
+					autoIconsEnabled,
+					aspireMetadataInclusion,
+					normaliseMetadataBehaviour,
+					hiddenByName.GetValueOrDefault(resource.Name)
+				)
 			);
 			CollectRelationships(
 				resource,
@@ -116,7 +132,8 @@ public static class LikeC4ModelBuilder
 		LikeC4ResourceState state,
 		bool autoIconsEnabled,
 		AspireMetadataInclusion aspireMetadataInclusion = AspireMetadataInclusion.All,
-		NormaliseMetadataBehaviour normaliseMetadataBehaviour = NormaliseMetadataBehaviour.Normalise
+		NormaliseMetadataBehaviour normaliseMetadataBehaviour = NormaliseMetadataBehaviour.Normalise,
+		IResource? hiddenOriginal = null
 	)
 	{
 		var details = resource.Annotations.OfType<LikeC4NodeDetailsAnnotation>().LastOrDefault();
@@ -126,7 +143,7 @@ public static class LikeC4ModelBuilder
 		var technology = details?.Technology ?? inferredTechnology;
 		var description = details?.Description;
 		var summary = details?.Summary;
-		var icon = ResolveIcon(resource, details, inferredTechnology, autoIconsEnabled);
+		var icon = ResolveIcon(resource, details, inferredTechnology, autoIconsEnabled, hiddenOriginal);
 		var kind = details?.Kind ?? InferKind(resource);
 		var parentName = (resource as IResourceWithParent)?.Parent?.Name;
 		var group = resource.Annotations.OfType<LikeC4GroupAnnotation>().LastOrDefault()?.GroupName;
@@ -341,7 +358,8 @@ public static class LikeC4ModelBuilder
 		IResource resource,
 		LikeC4NodeDetailsAnnotation? details,
 		string? inferredTechnology,
-		bool autoIconsEnabled
+		bool autoIconsEnabled,
+		IResource? hiddenOriginal = null
 	)
 	{
 		if (!string.IsNullOrWhiteSpace(details?.Icon))
@@ -357,6 +375,11 @@ public static class LikeC4ModelBuilder
 		return LikeC4IconMatcher.TryInferIcon([
 			details?.Technology,
 			inferredTechnology,
+			// The hidden original (e.g. AzurePostgresFlexibleServerResource) carries richer
+			// type information than the visible surrogate (e.g. a generic ContainerResource).
+			// Short name first — it has fewer noise tokens than the fully-qualified name.
+			hiddenOriginal?.GetType().Name,
+			hiddenOriginal?.GetType().FullName,
 			resource.Annotations.OfType<ResourceSnapshotAnnotation>().LastOrDefault()?.InitialSnapshot.ResourceType,
 			resource.GetType().FullName,
 			resource.GetType().Name,
