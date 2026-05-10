@@ -17,10 +17,13 @@ public static class LikeC4ModelBuilder
 	/// Optional mapping of resource name → current <see cref="LikeC4ResourceState"/>.
 	/// When provided, the corresponding diagram element is coloured to reflect the live state.
 	/// </param>
+	/// <param name="autoIconsEnabled">When <see langword="true"/>, infers icons from resource type/name.</param>
+	/// <param name="aspireMetadataInclusion">Controls which Aspire runtime metadata is injected into elements.</param>
 	public static LikeC4Model Build(
 		IReadOnlyList<IResource> resources,
 		IReadOnlyDictionary<string, LikeC4ResourceState>? resourceStates = null,
-		bool autoIconsEnabled = true
+		bool autoIconsEnabled = true,
+		AspireMetadataInclusion aspireMetadataInclusion = AspireMetadataInclusion.All
 	)
 	{
 		ArgumentNullException.ThrowIfNull(resources);
@@ -48,7 +51,7 @@ public static class LikeC4ModelBuilder
 					? s
 					: LikeC4ResourceState.Unknown;
 
-			elements.Add(BuildElement(resource, state, autoIconsEnabled));
+			elements.Add(BuildElement(resource, state, autoIconsEnabled, aspireMetadataInclusion));
 			CollectRelationships(resource, visibleResources, visibleByName, relationships, visitedRelationships);
 		}
 
@@ -97,7 +100,12 @@ public static class LikeC4ModelBuilder
 		return snapshot?.InitialSnapshot.IsHidden == true;
 	}
 
-	static LikeC4Element BuildElement(IResource resource, LikeC4ResourceState state, bool autoIconsEnabled)
+	static LikeC4Element BuildElement(
+		IResource resource,
+		LikeC4ResourceState state,
+		bool autoIconsEnabled,
+		AspireMetadataInclusion aspireMetadataInclusion = AspireMetadataInclusion.All
+	)
 	{
 		var details = resource.Annotations.OfType<LikeC4NodeDetailsAnnotation>().LastOrDefault();
 		var inferredTechnology = InferTechnology(resource);
@@ -111,6 +119,10 @@ public static class LikeC4ModelBuilder
 		var parentName = (resource as IResourceWithParent)?.Parent?.Name;
 		var group = resource.Annotations.OfType<LikeC4GroupAnnotation>().LastOrDefault()?.GroupName;
 
+		var userMetadata = details?.Metadata ?? [];
+		var userLinks = details?.Links ?? [];
+		var (autoMetadata, autoLinks) = BuildAspireData(resource, aspireMetadataInclusion, userMetadata, userLinks);
+
 		return new()
 		{
 			Name = resource.Name,
@@ -123,10 +135,73 @@ public static class LikeC4ModelBuilder
 			ParentName = parentName,
 			State = state,
 			Tags = details?.Tags ?? [],
-			Links = details?.Links ?? [],
-			Metadata = details?.Metadata ?? [],
+			Links = [.. userLinks, .. autoLinks],
+			Metadata = [.. userMetadata, .. autoMetadata],
 			Group = group,
 		};
+	}
+
+	/// <summary>
+	/// Collects Aspire-derived metadata entries and links that are not already present
+	/// in the user-provided sets. User-provided values always take precedence.
+	/// </summary>
+	static (IReadOnlyList<LikeC4Metadata> Metadata, IReadOnlyList<LikeC4Link> Links) BuildAspireData(
+		IResource resource,
+		AspireMetadataInclusion inclusion,
+		IReadOnlyList<LikeC4Metadata> existingMetadata,
+		IReadOnlyList<LikeC4Link> existingLinks
+	)
+	{
+		var metadata = new List<LikeC4Metadata>();
+		var links = new List<LikeC4Link>();
+
+		if (inclusion.HasFlag(AspireMetadataInclusion.Metadata))
+		{
+			var existingKeys = existingMetadata.Select(m => m.Key).ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+			if (!existingKeys.Contains("aspire-name"))
+			{
+				metadata.Add(new LikeC4Metadata("aspire-name", resource.Name));
+			}
+
+			var resourceType = resource
+				.Annotations.OfType<ResourceSnapshotAnnotation>()
+				.LastOrDefault()
+				?.InitialSnapshot.ResourceType;
+
+			if (!string.IsNullOrEmpty(resourceType) && !existingKeys.Contains("aspire-type"))
+			{
+				metadata.Add(new LikeC4Metadata("aspire-type", resourceType));
+			}
+		}
+
+		if (inclusion.HasFlag(AspireMetadataInclusion.Links))
+		{
+			var existingUris = existingLinks.Select(l => l.Uri).ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+			foreach (var endpoint in resource.Annotations.OfType<EndpointAnnotation>())
+			{
+				if (endpoint.UriScheme != "http" && endpoint.UriScheme != "https")
+				{
+					continue;
+				}
+
+				if (endpoint.AllocatedEndpoint is not { } ep || ep.Port <= 0)
+				{
+					continue;
+				}
+
+				var host = ep.Address is "0.0.0.0" ? "localhost" : ep.Address;
+				var uri = $"{endpoint.UriScheme}://{host}:{ep.Port}";
+
+				if (existingUris.Add(uri))
+				{
+					links.Add(new LikeC4Link(uri, endpoint.Name));
+				}
+			}
+		}
+
+		return (metadata, links);
 	}
 
 	static string InferKind(IResource resource) =>

@@ -725,6 +725,164 @@ public sealed class LikeC4ModelBuilderTests
 		await Assert.That(model.Elements[0].Icon).IsEqualTo("tech:mongodb");
 	}
 
+	// ── AutoIncludeAspireMetadata tests ───────────────────────────────────────
+
+	[Test]
+	public async Task Build_AutoMetadata_Default_InjectsAspireName()
+	{
+		var resource = CreateProjectResource("my-api");
+
+		var model = LikeC4ModelBuilder.Build([resource]);
+
+		var meta = model.Elements[0].Metadata;
+		await Assert.That(meta.Any(m => m.Key == "aspire-name" && m.Value == "my-api")).IsTrue();
+	}
+
+	[Test]
+	public async Task Build_AutoMetadata_Default_InjectsAspireType()
+	{
+		var resource = CreateProjectResource("api");
+		resource.Annotations.Add(
+			new ResourceSnapshotAnnotation(new CustomResourceSnapshot { ResourceType = "Project", Properties = [] })
+		);
+
+		var model = LikeC4ModelBuilder.Build([resource]);
+
+		var meta = model.Elements[0].Metadata;
+		await Assert.That(meta.Any(m => m.Key == "aspire-type" && m.Value == "Project")).IsTrue();
+	}
+
+	[Test]
+	public async Task Build_AutoMetadata_None_DoesNotInjectMetadata()
+	{
+		var resource = CreateProjectResource("api");
+
+		var model = LikeC4ModelBuilder.Build([resource], aspireMetadataInclusion: AspireMetadataInclusion.None);
+
+		await Assert.That(model.Elements[0].Metadata).IsEmpty();
+	}
+
+	[Test]
+	public async Task Build_AutoMetadata_MetadataOnly_NoAutoLinks()
+	{
+		var resource = CreateProjectResource("api");
+		resource.Annotations.Add(
+			new EndpointAnnotation(System.Net.Sockets.ProtocolType.Tcp, uriScheme: "http", name: "http")
+		);
+
+		var model = LikeC4ModelBuilder.Build([resource], aspireMetadataInclusion: AspireMetadataInclusion.Metadata);
+
+		await Assert.That(model.Elements[0].Links).IsEmpty();
+		await Assert.That(model.Elements[0].Metadata.Any(m => m.Key == "aspire-name")).IsTrue();
+	}
+
+	[Test]
+	public async Task Build_AutoMetadata_LinksOnly_NoAspireNameMetadata()
+	{
+		var resource = CreateProjectResource("api");
+
+		var model = LikeC4ModelBuilder.Build([resource], aspireMetadataInclusion: AspireMetadataInclusion.Links);
+
+		await Assert.That(model.Elements[0].Metadata.Any(m => m.Key == "aspire-name")).IsFalse();
+	}
+
+	[Test]
+	public async Task Build_AutoMetadata_AllocatedHttpEndpoint_InjectsLink()
+	{
+		var resource = CreateProjectResource("api");
+		var endpoint = new EndpointAnnotation(System.Net.Sockets.ProtocolType.Tcp, uriScheme: "http", name: "http");
+		endpoint.AllocatedEndpoint = new AllocatedEndpoint(endpoint, "localhost", 5000);
+		resource.Annotations.Add(endpoint);
+
+		var model = LikeC4ModelBuilder.Build([resource]);
+
+		var links = model.Elements[0].Links;
+		await Assert.That(links.Any(l => l.Uri == "http://localhost:5000")).IsTrue();
+	}
+
+	[Test]
+	public async Task Build_AutoMetadata_UnallocatedEndpoint_DoesNotInjectLink()
+	{
+		var resource = CreateProjectResource("api");
+		resource.Annotations.Add(
+			new EndpointAnnotation(System.Net.Sockets.ProtocolType.Tcp, uriScheme: "http", name: "http")
+		);
+
+		var model = LikeC4ModelBuilder.Build([resource]);
+
+		await Assert.That(model.Elements[0].Links).IsEmpty();
+	}
+
+	[Test]
+	public async Task Build_AutoMetadata_NonHttpEndpoint_DoesNotInjectLink()
+	{
+		var resource = CreateProjectResource("api");
+		var endpoint = new EndpointAnnotation(System.Net.Sockets.ProtocolType.Tcp, uriScheme: "grpc", name: "grpc");
+		endpoint.AllocatedEndpoint = new AllocatedEndpoint(endpoint, "localhost", 5001);
+		resource.Annotations.Add(endpoint);
+
+		var model = LikeC4ModelBuilder.Build([resource]);
+
+		await Assert.That(model.Elements[0].Links).IsEmpty();
+	}
+
+	[Test]
+	public async Task Build_AutoMetadata_UserMetadataPreservedAndNotDuplicated()
+	{
+		var resource = CreateProjectResource("api");
+		resource.Annotations.Add(
+			new LikeC4NodeDetailsAnnotation(
+				"API",
+				technology: null,
+				description: null,
+				summary: null,
+				icon: null,
+				autoIconEnabled: null,
+				kind: null,
+				tags: [],
+				links: [],
+				metadata: [new LikeC4Metadata("aspire-name", "custom-override")]
+			)
+		);
+
+		var model = LikeC4ModelBuilder.Build([resource]);
+
+		var aspireNameEntries = model.Elements[0].Metadata.Where(m => m.Key == "aspire-name").ToList();
+		// User-provided entry present, auto-generated one should not duplicate it
+		await Assert.That(aspireNameEntries).Count().IsEqualTo(1);
+		await Assert.That(aspireNameEntries[0].Value).IsEqualTo("custom-override");
+	}
+
+	[Test]
+	public async Task Build_AutoMetadata_UserLinksPreservedAndEndpointNotDuplicated()
+	{
+		var resource = CreateProjectResource("api");
+		var endpoint = new EndpointAnnotation(System.Net.Sockets.ProtocolType.Tcp, uriScheme: "http", name: "http");
+		endpoint.AllocatedEndpoint = new AllocatedEndpoint(endpoint, "localhost", 5000);
+		resource.Annotations.Add(endpoint);
+		resource.Annotations.Add(
+			new LikeC4NodeDetailsAnnotation(
+				"API",
+				technology: null,
+				description: null,
+				summary: null,
+				icon: null,
+				autoIconEnabled: null,
+				kind: null,
+				tags: [],
+				links: [new LikeC4Link("http://localhost:5000", "My Service")],
+				metadata: []
+			)
+		);
+
+		var model = LikeC4ModelBuilder.Build([resource]);
+
+		var httpLinks = model.Elements[0].Links.Where(l => l.Uri == "http://localhost:5000").ToList();
+		// Should appear only once — auto-injected duplicate is suppressed
+		await Assert.That(httpLinks).Count().IsEqualTo(1);
+		await Assert.That(httpLinks[0].Title).IsEqualTo("My Service");
+	}
+
 	static ProjectResource CreateProjectResource(string name)
 	{
 		var resource = new ProjectResource(name);

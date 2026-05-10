@@ -86,6 +86,16 @@ public sealed class AspireC4DiagramOptions
 	public List<LikeC4ElementKindSpec> ElementKindSpecs { get; set; } = [];
 
 	/// <summary>
+	/// Controls which Aspire runtime metadata is automatically injected into generated LikeC4 elements.
+	/// When <see cref="AspireMetadataInclusion.Metadata"/> is set, each element receives
+	/// <c>aspire-name</c> and <c>aspire-type</c> metadata entries.
+	/// When <see cref="AspireMetadataInclusion.Links"/> is set, allocated HTTP/HTTPS endpoint URLs
+	/// are added as element links.
+	/// Defaults to <see cref="AspireMetadataInclusion.All"/>.
+	/// </summary>
+	public AspireMetadataInclusion AutoIncludeAspireMetadata { get; set; } = AspireMetadataInclusion.All;
+
+	/// <summary>
 	/// Additional user-managed <c>.c4</c> source files that are copied into the output directory
 	/// (and synced to the Docker volume when in container mode) alongside the generated model file.
 	/// LikeC4 automatically discovers all <c>.c4</c> files in the project directory, so these files

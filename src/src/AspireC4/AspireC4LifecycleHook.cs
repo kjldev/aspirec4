@@ -363,7 +363,12 @@ sealed class AspireC4LifecycleHook(
 
 		telemetry.GeneratingLikeC4Model(appModel.Resources.Count);
 
-		var model = LikeC4ModelBuilder.Build([.. appModel.Resources], _resourceStates, opts.AutoIconsEnabled);
+		var model = LikeC4ModelBuilder.Build(
+			[.. appModel.Resources],
+			_resourceStates,
+			opts.AutoIconsEnabled,
+			opts.AutoIncludeAspireMetadata
+		);
 		var dsl = LikeC4DSLGenerator.Generate(model, opts);
 
 		var outputDir = Path.GetFullPath(opts.OutputDirectory);
