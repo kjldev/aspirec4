@@ -2,6 +2,7 @@ using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Net;
 using System.Net.Sockets;
+using System.Text.Json;
 using Aspire.Hosting.ApplicationModel;
 using Aspire.Hosting.Eventing;
 using Aspire.Hosting.Lifecycle;
@@ -375,12 +376,114 @@ sealed class LikeC4VisualizationLifecycleHook(
 		var outputPath = Path.Combine(outputDir, opts.FileName + ".c4");
 		await File.WriteAllTextAsync(outputPath, dsl, cancellationToken);
 
+		if (opts.ValidateBeforeStart)
+		{
+			await RunValidationAsync(outputDir, outputPath, cancellationToken);
+		}
+
+		// Sync the main model file to the container workspace.
 		if (syncContainerWorkspace)
 		{
 			await WriteContainerWorkspaceFileAsync(opts.FileName, dsl, resetContainerWorkspace, cancellationToken);
 		}
 
+		// Copy and optionally sync additional user-provided DSL files.
+		foreach (var sourcePath in opts.AdditionalDslFiles)
+		{
+			var absoluteSource = Path.GetFullPath(sourcePath);
+			if (!File.Exists(absoluteSource))
+			{
+				continue;
+			}
+
+			var destFileName = Path.GetFileName(absoluteSource);
+			var destPath = Path.Combine(outputDir, destFileName);
+			File.Copy(absoluteSource, destPath, overwrite: true);
+
+			var fileNameWithoutExtension = Path.GetFileNameWithoutExtension(absoluteSource);
+			telemetry.AdditionalDslFileSynced(fileNameWithoutExtension);
+
+			if (syncContainerWorkspace)
+			{
+				var additionalContent = await File.ReadAllTextAsync(destPath, cancellationToken);
+				await WriteContainerWorkspaceFileAsync(
+					fileNameWithoutExtension,
+					additionalContent,
+					resetContainerWorkspace: false,
+					cancellationToken
+				);
+			}
+		}
+
 		telemetry.LikeC4ModelWritten(outputPath);
+	}
+
+	[System.Diagnostics.CodeAnalysis.SuppressMessage(
+		"Design",
+		"CA1031:Do not catch general exception types",
+		Justification = "Validation is non-blocking; failures are logged as warnings only"
+	)]
+	async Task RunValidationAsync(string outputDir, string outputPath, CancellationToken cancellationToken)
+	{
+		try
+		{
+			var startInfo = new ProcessStartInfo
+			{
+				FileName = "npx",
+				RedirectStandardOutput = true,
+				RedirectStandardError = true,
+				UseShellExecute = false,
+				CreateNoWindow = true,
+			};
+
+			startInfo.ArgumentList.Add("likec4");
+			startInfo.ArgumentList.Add("validate");
+			startInfo.ArgumentList.Add("--json");
+			startInfo.ArgumentList.Add("--no-layout");
+			startInfo.ArgumentList.Add("--file");
+			startInfo.ArgumentList.Add(outputPath);
+			startInfo.ArgumentList.Add(outputDir);
+
+			using var process = Process.Start(startInfo);
+			if (process is null)
+			{
+				return;
+			}
+
+			var stdout = await process.StandardOutput.ReadToEndAsync(cancellationToken);
+			await process.WaitForExitAsync(cancellationToken);
+
+			if (string.IsNullOrWhiteSpace(stdout))
+			{
+				return;
+			}
+
+			using var doc = JsonDocument.Parse(stdout);
+			var root = doc.RootElement;
+
+			var filteredErrors =
+				root.TryGetProperty("stats", out var stats) && stats.TryGetProperty("filteredErrors", out var fe)
+					? fe.GetInt32()
+					: 0;
+
+			var totalErrors =
+				root.TryGetProperty("stats", out var statsTotal) && statsTotal.TryGetProperty("totalErrors", out var te)
+					? te.GetInt32()
+					: 0;
+
+			if (filteredErrors > 0)
+			{
+				telemetry.LikeC4ValidationErrors(filteredErrors, totalErrors);
+			}
+			else
+			{
+				telemetry.LikeC4ValidationPassed();
+			}
+		}
+		catch
+		{
+			// Validation is best-effort; never block startup.
+		}
 	}
 
 	async Task WriteContainerWorkspaceFileAsync(

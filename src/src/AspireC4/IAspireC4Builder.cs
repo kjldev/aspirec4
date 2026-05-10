@@ -51,4 +51,23 @@ public interface IAspireC4Builder
 	/// </param>
 	/// <returns>The same <see cref="IAspireC4Builder"/> for further configuration.</returns>
 	IAspireC4Builder WithHideFromDashboard(string displayName = "Architecture Diagram");
+
+	/// <summary>
+	/// Registers an additional <c>.c4</c> source file that will be copied to the LikeC4
+	/// output directory (and synced to the Docker volume workspace, if applicable) alongside
+	/// the auto-generated model file.
+	/// </summary>
+	/// <remarks>
+	/// Use this to include hand-authored LikeC4 files — custom views, styles, or extra model
+	/// elements — that complement the auto-generated output.  The file is copied verbatim; its
+	/// name must form a valid LikeC4 source filename (it should end with <c>.c4</c> or
+	/// <c>.likec4</c>).
+	/// </remarks>
+	/// <param name="sourcePath">
+	/// The path to the source file. Relative paths are resolved from the current working
+	/// directory at the time <see cref="WriteC4FileAsync"/> executes. If the file does not
+	/// exist at startup the entry is silently skipped.
+	/// </param>
+	/// <returns>The same <see cref="IAspireC4Builder"/> for further configuration.</returns>
+	IAspireC4Builder WithAdditionalDslFile(string sourcePath);
 }

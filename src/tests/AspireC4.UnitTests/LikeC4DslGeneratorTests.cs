@@ -1020,7 +1020,7 @@ public sealed class LikeC4DslGeneratorTests
 	}
 
 	[Test]
-	public async Task Generate_MultipleElementsWithDifferentStates_StylesGroupedByColor()
+	public async Task Generate_ElementWithTags_EmitsTagsInSpecAndBody()
 	{
 		var model = new LikeC4Model
 		{
@@ -1031,21 +1031,7 @@ public sealed class LikeC4DslGeneratorTests
 					Name = "api",
 					Label = "API",
 					Kind = LikeC4ElementKind.Component,
-					State = LikeC4ResourceState.Running,
-				},
-				new LikeC4Element
-				{
-					Name = "db",
-					Label = "DB",
-					Kind = LikeC4ElementKind.Database,
-					State = LikeC4ResourceState.Running,
-				},
-				new LikeC4Element
-				{
-					Name = "cache",
-					Label = "Cache",
-					Kind = LikeC4ElementKind.Container,
-					State = LikeC4ResourceState.Error,
+					Tags = ["external", "deprecated"],
 				},
 			],
 			Relationships = [],
@@ -1053,11 +1039,352 @@ public sealed class LikeC4DslGeneratorTests
 
 		var dsl = LikeC4DslGenerator.Generate(model, DefaultOptions);
 
-		// api and db both Running→green should be grouped.
-		await Assert.That(dsl).Contains("style api, db {");
-		await Assert.That(dsl).Contains("color green");
-		// cache Error→red should be separate.
-		await Assert.That(dsl).Contains("style cache {");
-		await Assert.That(dsl).Contains("color red");
+		// Tags declared in specification block.
+		await Assert.That(dsl).Contains("tag external");
+		await Assert.That(dsl).Contains("tag deprecated");
+		// Tags applied in element body.
+		await Assert.That(dsl).Contains("#external");
+		await Assert.That(dsl).Contains("#deprecated");
+		// Tag application must appear before the views block (i.e. in model).
+		var modelIdx = dsl.IndexOf("model {", StringComparison.Ordinal);
+		var viewsIdx = dsl.IndexOf("views {", StringComparison.Ordinal);
+		var tagApplyIdx = dsl.IndexOf("#external", StringComparison.Ordinal);
+		await Assert.That(tagApplyIdx).IsGreaterThan(modelIdx);
+		await Assert.That(tagApplyIdx).IsLessThan(viewsIdx);
+	}
+
+	[Test]
+	public async Task Generate_TagsFromMultipleElements_DeclaredOnceInSpec()
+	{
+		var model = new LikeC4Model
+		{
+			Elements =
+			[
+				new LikeC4Element
+				{
+					Name = "api",
+					Label = "API",
+					Kind = LikeC4ElementKind.Component,
+					Tags = ["external"],
+				},
+				new LikeC4Element
+				{
+					Name = "svc",
+					Label = "SVC",
+					Kind = LikeC4ElementKind.Component,
+					Tags = ["external"],
+				},
+			],
+			Relationships = [],
+		};
+
+		var dsl = LikeC4DslGenerator.Generate(model, DefaultOptions);
+
+		var count = CountOccurrences(dsl, "tag external");
+		await Assert.That(count).IsEqualTo(1);
+	}
+
+	[Test]
+	public async Task Generate_ElementWithLinks_EmitsLinkLines()
+	{
+		var model = new LikeC4Model
+		{
+			Elements =
+			[
+				new LikeC4Element
+				{
+					Name = "api",
+					Label = "API",
+					Kind = LikeC4ElementKind.Component,
+					Links =
+					[
+						new LikeC4Link("https://example.com/docs", "Docs"),
+						new LikeC4Link("https://example.com/src"),
+					],
+				},
+			],
+			Relationships = [],
+		};
+
+		var dsl = LikeC4DslGenerator.Generate(model, DefaultOptions);
+
+		await Assert.That(dsl).Contains("link https://example.com/docs 'Docs'");
+		await Assert.That(dsl).Contains("link https://example.com/src");
+		await Assert.That(dsl).DoesNotContain("link https://example.com/src '");
+	}
+
+	[Test]
+	public async Task Generate_ElementWithMetadata_EmitsMetadataBlock()
+	{
+		var model = new LikeC4Model
+		{
+			Elements =
+			[
+				new LikeC4Element
+				{
+					Name = "api",
+					Label = "API",
+					Kind = LikeC4ElementKind.Component,
+					Metadata = new Dictionary<string, string> { { "owner", "platform-team" }, { "tier", "1" } },
+				},
+			],
+			Relationships = [],
+		};
+
+		var dsl = LikeC4DslGenerator.Generate(model, DefaultOptions);
+
+		await Assert.That(dsl).Contains("metadata {");
+		await Assert.That(dsl).Contains("owner 'platform-team'");
+		await Assert.That(dsl).Contains("tier '1'");
+	}
+
+	[Test]
+	public async Task Generate_RelationshipWithTags_EmitsTagsInSpecAndBody()
+	{
+		var model = new LikeC4Model
+		{
+			Elements =
+			[
+				new LikeC4Element
+				{
+					Name = "a",
+					Label = "A",
+					Kind = LikeC4ElementKind.Component,
+				},
+				new LikeC4Element
+				{
+					Name = "b",
+					Label = "B",
+					Kind = LikeC4ElementKind.Component,
+				},
+			],
+			Relationships =
+			[
+				new LikeC4Relationship
+				{
+					SourceName = "a",
+					TargetName = "b",
+					Tags = ["internal"],
+				},
+			],
+		};
+
+		var dsl = LikeC4DslGenerator.Generate(model, DefaultOptions);
+
+		await Assert.That(dsl).Contains("tag internal");
+		await Assert.That(dsl).Contains("#internal");
+	}
+
+	[Test]
+	public async Task Generate_RelationshipWithLinks_EmitsLinkLines()
+	{
+		var model = new LikeC4Model
+		{
+			Elements =
+			[
+				new LikeC4Element
+				{
+					Name = "a",
+					Label = "A",
+					Kind = LikeC4ElementKind.Component,
+				},
+				new LikeC4Element
+				{
+					Name = "b",
+					Label = "B",
+					Kind = LikeC4ElementKind.Component,
+				},
+			],
+			Relationships =
+			[
+				new LikeC4Relationship
+				{
+					SourceName = "a",
+					TargetName = "b",
+					Links = [new LikeC4Link("https://runbook.example.com")],
+				},
+			],
+		};
+
+		var dsl = LikeC4DslGenerator.Generate(model, DefaultOptions);
+
+		await Assert.That(dsl).Contains("link https://runbook.example.com");
+	}
+
+	[Test]
+	public async Task Generate_RelationshipWithMetadata_EmitsMetadataBlock()
+	{
+		var model = new LikeC4Model
+		{
+			Elements =
+			[
+				new LikeC4Element
+				{
+					Name = "a",
+					Label = "A",
+					Kind = LikeC4ElementKind.Component,
+				},
+				new LikeC4Element
+				{
+					Name = "b",
+					Label = "B",
+					Kind = LikeC4ElementKind.Component,
+				},
+			],
+			Relationships =
+			[
+				new LikeC4Relationship
+				{
+					SourceName = "a",
+					TargetName = "b",
+					Metadata = new Dictionary<string, string> { { "retries", "3" } },
+				},
+			],
+		};
+
+		var dsl = LikeC4DslGenerator.Generate(model, DefaultOptions);
+
+		await Assert.That(dsl).Contains("metadata {");
+		await Assert.That(dsl).Contains("retries '3'");
+	}
+
+	[Test]
+	public async Task Generate_CustomElementKindSpec_EmittedInSpecification()
+	{
+		var opts = new LikeC4DiagramOptions
+		{
+			Title = "Test",
+			OutputDirectory = ".",
+			ElementKindSpecs =
+			[
+				new LikeC4ElementKindSpec("queue")
+					.WithNotation("Message Queue")
+					.WithTechnology("RabbitMQ")
+					.WithStyle(new LikeC4ElementKindStyle { Shape = "queue", Color = "amber" }),
+			],
+		};
+
+		var model = new LikeC4Model { Elements = [], Relationships = [] };
+		var dsl = LikeC4DslGenerator.Generate(model, opts);
+
+		// Kind declared even though no elements use it.
+		await Assert.That(dsl).Contains("element queue {");
+		await Assert.That(dsl).Contains("notation 'Message Queue'");
+		await Assert.That(dsl).Contains("technology 'RabbitMQ'");
+		await Assert.That(dsl).Contains("style {");
+		await Assert.That(dsl).Contains("shape queue");
+		await Assert.That(dsl).Contains("color amber");
+	}
+
+	[Test]
+	public async Task Generate_ElementKindMatchingCustomSpec_EmitsFullBody()
+	{
+		var opts = new LikeC4DiagramOptions
+		{
+			Title = "Test",
+			OutputDirectory = ".",
+			ElementKindSpecs = [new LikeC4ElementKindSpec("component") { Notation = "Component" }],
+		};
+
+		var model = new LikeC4Model
+		{
+			Elements =
+			[
+				new LikeC4Element
+				{
+					Name = "api",
+					Label = "API",
+					Kind = LikeC4ElementKind.Component,
+				},
+			],
+			Relationships = [],
+		};
+
+		var dsl = LikeC4DslGenerator.Generate(model, opts);
+
+		// element kind declared once with the notation body.
+		await Assert.That(dsl).Contains("element component {");
+		await Assert.That(dsl).Contains("notation 'Component'");
+		var count = CountOccurrences(dsl, "element component");
+		await Assert.That(count).IsEqualTo(1);
+	}
+
+	[Test]
+	public async Task Generate_ElementWithGroup_EmitsGroupBlockInViews()
+	{
+		var model = new LikeC4Model
+		{
+			Elements =
+			[
+				new LikeC4Element
+				{
+					Name = "api",
+					Label = "API",
+					Kind = LikeC4ElementKind.Component,
+					Group = "Frontend",
+				},
+				new LikeC4Element
+				{
+					Name = "db",
+					Label = "DB",
+					Kind = LikeC4ElementKind.Database,
+				},
+			],
+			Relationships = [],
+		};
+
+		var dsl = LikeC4DslGenerator.Generate(model, DefaultOptions);
+
+		// Group block inside views.
+		await Assert.That(dsl).Contains("group 'Frontend' {");
+		await Assert.That(dsl).Contains("include api");
+
+		var viewsIdx = dsl.IndexOf("views {", StringComparison.Ordinal);
+		var groupIdx = dsl.IndexOf("group 'Frontend'", StringComparison.Ordinal);
+		await Assert.That(groupIdx).IsGreaterThan(viewsIdx);
+
+		// db has no group — should NOT be inside a group block.
+		await Assert.That(dsl).DoesNotContain("include db");
+	}
+
+	[Test]
+	public async Task Generate_MultipleGroups_EachGroupEmitted()
+	{
+		var model = new LikeC4Model
+		{
+			Elements =
+			[
+				new LikeC4Element
+				{
+					Name = "ui",
+					Label = "UI",
+					Kind = LikeC4ElementKind.Component,
+					Group = "Frontend",
+				},
+				new LikeC4Element
+				{
+					Name = "api",
+					Label = "API",
+					Kind = LikeC4ElementKind.Component,
+					Group = "Backend",
+				},
+				new LikeC4Element
+				{
+					Name = "svc",
+					Label = "SVC",
+					Kind = LikeC4ElementKind.Component,
+					Group = "Backend",
+				},
+			],
+			Relationships = [],
+		};
+
+		var dsl = LikeC4DslGenerator.Generate(model, DefaultOptions);
+
+		await Assert.That(dsl).Contains("group 'Frontend' {");
+		await Assert.That(dsl).Contains("include ui");
+		await Assert.That(dsl).Contains("group 'Backend' {");
+		// api and svc both in Backend group.
+		await Assert.That(dsl).Contains("include api, svc");
 	}
 }

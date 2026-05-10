@@ -25,4 +25,13 @@ interface IAspireC4LifecycleHookTelemetry
 
 	[Warning]
 	void StateWatcherFailed(string error);
+
+	[Warning]
+	void LikeC4ValidationErrors(int filteredErrors, int totalErrors);
+
+	[Info]
+	void LikeC4ValidationPassed();
+
+	[Info]
+	void AdditionalDslFileSynced(string fileName);
 }

@@ -58,4 +58,35 @@ public sealed class LikeC4DiagramOptions
 	/// </list>
 	/// </summary>
 	public LikeC4RelationshipKindSyntax RelationshipKindSyntax { get; set; } = LikeC4RelationshipKindSyntax.Dot;
+
+	/// <summary>
+	/// When <see langword="true"/>, runs <c>npx likec4 validate --json --no-layout</c> against the output
+	/// directory after generating the <c>.c4</c> file. Any validation errors are logged as warnings;
+	/// the application continues to start regardless of the result.
+	/// Defaults to <see langword="false"/>.
+	/// </summary>
+	public bool ValidateBeforeStart { get; set; }
+
+	/// <summary>
+	/// Custom element kind specifications emitted in the <c>specification { }</c> block.
+	/// Each entry may include optional style tokens (shape, color, icon, border, opacity),
+	/// a notation string, and a default technology label.
+	/// <para>
+	/// These are additive — kinds listed here but not present in the model are still declared.
+	/// When a kind in the model matches an entry here, the full body (style, notation, technology)
+	/// is emitted rather than a bare <c>element KIND</c> line.
+	/// </para>
+	/// </summary>
+	public List<LikeC4ElementKindSpec> ElementKindSpecs { get; set; } = [];
+
+	/// <summary>
+	/// Additional user-managed <c>.c4</c> source files that are copied into the output directory
+	/// (and synced to the Docker volume when in container mode) alongside the generated model file.
+	/// LikeC4 automatically discovers all <c>.c4</c> files in the project directory, so these files
+	/// are included in the diagram without any further configuration.
+	/// </summary>
+	/// <remarks>
+	/// Each entry should be an absolute path or a path relative to the AppHost working directory.
+	/// </remarks>
+	public List<string> AdditionalDslFiles { get; set; } = [];
 }

@@ -38,7 +38,11 @@ public static partial class AspireC4ResourceBuilderExtensions
 				options.Description,
 				options.Summary,
 				options.Icon,
-				options.AutoIconEnabled
+				options.AutoIconEnabled,
+				options.Kind,
+				options.Tags,
+				options.Links,
+				options.Metadata
 			);
 		}
 
@@ -73,11 +77,30 @@ public static partial class AspireC4ResourceBuilderExtensions
 					options.Label,
 					options.Technology,
 					options.Description,
-					options.Kind
+					options.Kind,
+					options.Tags,
+					options.Links,
+					options.Metadata
 				)
 			);
 
 			return builder;
+		}
+
+		/// <summary>
+		/// Assigns this resource to a named group in the generated LikeC4 diagram.
+		/// Resources sharing the same <paramref name="groupName"/> are emitted inside a
+		/// <c>group 'label' { include ... }</c> block in the generated view.
+		/// </summary>
+		public IResourceBuilder<T> WithLikeC4Group(string groupName)
+		{
+			ArgumentNullException.ThrowIfNull(builder);
+			ArgumentException.ThrowIfNullOrWhiteSpace(groupName);
+
+			return builder.WithAnnotation(
+				new LikeC4GroupAnnotation(groupName),
+				ResourceAnnotationMutationBehavior.Replace
+			);
 		}
 
 		/// <summary>
@@ -101,7 +124,11 @@ public static partial class AspireC4ResourceBuilderExtensions
 		string? description,
 		string? summary,
 		string? icon,
-		bool? autoIconEnabled
+		bool? autoIconEnabled,
+		string? kind = null,
+		IReadOnlyList<string>? tags = null,
+		IReadOnlyList<LikeC4Link>? links = null,
+		IReadOnlyDictionary<string, string>? metadata = null
 	)
 		where T : IResource
 	{
@@ -109,7 +136,18 @@ public static partial class AspireC4ResourceBuilderExtensions
 
 		var effectiveLabel = label ?? builder.Resource.Name;
 		return builder.WithAnnotation(
-			new LikeC4NodeDetailsAnnotation(effectiveLabel, technology, description, summary, icon, autoIconEnabled),
+			new LikeC4NodeDetailsAnnotation(
+				effectiveLabel,
+				technology,
+				description,
+				summary,
+				icon,
+				autoIconEnabled,
+				kind,
+				tags ?? [],
+				links ?? [],
+				metadata ?? new Dictionary<string, string>()
+			),
 			ResourceAnnotationMutationBehavior.Replace
 		);
 	}

@@ -107,8 +107,9 @@ public static class LikeC4ModelBuilder
 		var description = details?.Description;
 		var summary = details?.Summary;
 		var icon = ResolveIcon(resource, details, inferredTechnology, autoIconsEnabled);
-		var kind = InferKind(resource);
+		var kind = details?.Kind ?? InferKind(resource);
 		var parentName = (resource as IResourceWithParent)?.Parent?.Name;
+		var group = resource.Annotations.OfType<LikeC4GroupAnnotation>().LastOrDefault()?.GroupName;
 
 		return new LikeC4Element
 		{
@@ -121,6 +122,10 @@ public static class LikeC4ModelBuilder
 			Icon = icon,
 			ParentName = parentName,
 			State = state,
+			Tags = details?.Tags ?? [],
+			Links = details?.Links ?? [],
+			Metadata = details?.Metadata ?? new Dictionary<string, string>(),
+			Group = group,
 		};
 	}
 
@@ -446,6 +451,9 @@ public static class LikeC4ModelBuilder
 					Technology = details?.Technology,
 					Description = details?.Description,
 					Kind = details?.Kind,
+					Tags = details?.Tags ?? [],
+					Links = details?.Links ?? [],
+					Metadata = details?.Metadata ?? new Dictionary<string, string>(),
 				}
 			);
 		}
@@ -476,6 +484,9 @@ public static class LikeC4ModelBuilder
 					Technology = details.Technology,
 					Description = details.Description,
 					Kind = details.Kind,
+					Tags = details.Tags,
+					Links = details.Links,
+					Metadata = details.Metadata,
 				}
 			);
 		}

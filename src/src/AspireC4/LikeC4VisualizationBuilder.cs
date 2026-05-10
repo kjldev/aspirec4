@@ -60,6 +60,18 @@ sealed class LikeC4VisualizationBuilder(
 		return this;
 	}
 
+	public IAspireC4Builder WithAdditionalDslFile(string sourcePath)
+	{
+		ArgumentException.ThrowIfNullOrWhiteSpace(sourcePath);
+
+		ApplicationBuilder.Services.Configure<LikeC4DiagramOptions>(opts =>
+		{
+			opts.AdditionalDslFiles.Add(sourcePath);
+		});
+
+		return this;
+	}
+
 	static LikeC4LocalCliRuntime DetectRuntime()
 	{
 		// Try runtimes in order of preference.

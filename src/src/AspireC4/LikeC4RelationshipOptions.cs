@@ -6,6 +6,10 @@ namespace Aspire.Hosting.AspireC4;
 /// <seealso cref="LikeC4VisualizationExtensions.WithLikeC4Reference{T,TRef}"/>
 public sealed class LikeC4RelationshipOptions
 {
+	readonly List<string> _tags = [];
+	readonly List<LikeC4Link> _links = [];
+	readonly Dictionary<string, string> _metadata = [];
+
 	/// <summary>Short label shown on the relationship arrow.</summary>
 	public string? Label { get; private set; }
 
@@ -21,6 +25,15 @@ public sealed class LikeC4RelationshipOptions
 	/// Must be a valid LikeC4 identifier (letters, digits, hyphens, underscores; cannot start with a digit).
 	/// </summary>
 	public string? Kind { get; private set; }
+
+	/// <summary>Tags applied to this relationship in the diagram.</summary>
+	public IReadOnlyList<string> Tags => _tags;
+
+	/// <summary>Links attached to this relationship in the diagram.</summary>
+	public IReadOnlyList<LikeC4Link> Links => _links;
+
+	/// <summary>Metadata key-value pairs for this relationship.</summary>
+	public IReadOnlyDictionary<string, string> Metadata => _metadata;
 
 	/// <summary>Sets the short label shown on the relationship arrow.</summary>
 	public LikeC4RelationshipOptions WithLabel(string label)
@@ -51,6 +64,32 @@ public sealed class LikeC4RelationshipOptions
 	public LikeC4RelationshipOptions WithKind(string? kind)
 	{
 		Kind = kind;
+		return this;
+	}
+
+	/// <summary>Adds a tag to this relationship. Tags are declared in the <c>specification</c> block.</summary>
+	public LikeC4RelationshipOptions WithTag(string tag)
+	{
+		ArgumentException.ThrowIfNullOrWhiteSpace(tag);
+		_tags.Add(tag);
+		return this;
+	}
+
+	/// <summary>Adds a hyperlink to this relationship.</summary>
+	/// <param name="url">The URL, which may be absolute or relative to the <c>.c4</c> file.</param>
+	/// <param name="title">Optional display text.</param>
+	public LikeC4RelationshipOptions WithLink(string url, string? title = null)
+	{
+		ArgumentException.ThrowIfNullOrWhiteSpace(url);
+		_links.Add(new LikeC4Link(url, title));
+		return this;
+	}
+
+	/// <summary>Adds a metadata key-value pair to this relationship.</summary>
+	public LikeC4RelationshipOptions WithMetadata(string key, string value)
+	{
+		ArgumentException.ThrowIfNullOrWhiteSpace(key);
+		_metadata[key] = value;
 		return this;
 	}
 }

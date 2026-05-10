@@ -29,4 +29,16 @@ public sealed record LikeC4Element
 
 	/// <summary>Current runtime state of the resource — controls the diagram colour.</summary>
 	public LikeC4ResourceState State { get; init; } = LikeC4ResourceState.Unknown;
+
+	/// <summary>Tags applied to this element (e.g. <c>"external"</c>, <c>"deprecated"</c>). Declared in the specification block as <c>tag NAME</c>.</summary>
+	public IReadOnlyList<string> Tags { get; init; } = [];
+
+	/// <summary>Links attached to this element — emitted as <c>link URL ['title']</c> in the element body.</summary>
+	public IReadOnlyList<LikeC4Link> Links { get; init; } = [];
+
+	/// <summary>Metadata key-value pairs emitted as a <c>metadata { key "value" }</c> block in the element body.</summary>
+	public IReadOnlyDictionary<string, string> Metadata { get; init; } = new Dictionary<string, string>();
+
+	/// <summary>Optional view-level group label. Elements sharing the same label are emitted inside a <c>group 'label' { include ... }</c> block in the generated view.</summary>
+	public string? Group { get; init; }
 }

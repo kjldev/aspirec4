@@ -15,7 +15,7 @@ public static class LikeC4DslGenerator
 
 		var sb = new StringBuilder(512);
 
-		WriteSpecification(sb, model);
+		WriteSpecification(sb, model, options);
 		sb.AppendLine();
 		WriteModel(sb, model, options);
 		sb.AppendLine();
@@ -24,19 +24,37 @@ public static class LikeC4DslGenerator
 		return sb.ToString();
 	}
 
-	static void WriteSpecification(StringBuilder sb, LikeC4Model model)
+	static void WriteSpecification(StringBuilder sb, LikeC4Model model, LikeC4DiagramOptions options)
 	{
-		var elementKinds = model.Elements.Select(e => e.Kind).Distinct().OrderBy(k => k);
+		var elementKindsInModel = model.Elements.Select(e => e.Kind).ToHashSet();
+		var allElementKinds = elementKindsInModel.Union(options.ElementKindSpecs.Select(s => s.Name)).OrderBy(k => k);
+
 		var relationshipKinds = model
 			.Relationships.Where(r => !string.IsNullOrWhiteSpace(r.Kind))
 			.Select(r => r.Kind!)
 			.Distinct()
 			.OrderBy(k => k);
 
+		var allTags = model
+			.Elements.SelectMany(e => e.Tags)
+			.Concat(model.Relationships.SelectMany(r => r.Tags))
+			.Distinct()
+			.OrderBy(t => t);
+
+		var specsByName = options.ElementKindSpecs.ToDictionary(s => s.Name, StringComparer.OrdinalIgnoreCase);
+
 		sb.AppendLine("specification {");
-		foreach (var kind in elementKinds)
+
+		foreach (var kind in allElementKinds)
 		{
-			sb.Append("  element ").AppendLine(kind);
+			if (specsByName.TryGetValue(kind, out var spec))
+			{
+				WriteElementKindSpec(sb, spec);
+			}
+			else
+			{
+				sb.Append("  element ").AppendLine(kind);
+			}
 		}
 
 		foreach (var kind in relationshipKinds)
@@ -44,7 +62,79 @@ public static class LikeC4DslGenerator
 			sb.Append("  relationship ").AppendLine(kind);
 		}
 
+		foreach (var tag in allTags)
+		{
+			sb.Append("  tag ").AppendLine(tag);
+		}
+
 		sb.AppendLine("}");
+	}
+
+	static void WriteElementKindSpec(StringBuilder sb, LikeC4ElementKindSpec spec)
+	{
+		var hasNotation = !string.IsNullOrWhiteSpace(spec.Notation);
+		var hasTechnology = !string.IsNullOrWhiteSpace(spec.Technology);
+		var style = spec.Style;
+		var hasStyle =
+			style is not null
+			&& (
+				!string.IsNullOrWhiteSpace(style.Shape)
+				|| !string.IsNullOrWhiteSpace(style.Color)
+				|| !string.IsNullOrWhiteSpace(style.Icon)
+				|| !string.IsNullOrWhiteSpace(style.Border)
+				|| style.Opacity.HasValue
+			);
+
+		if (!hasNotation && !hasTechnology && !hasStyle)
+		{
+			sb.Append("  element ").AppendLine(spec.Name);
+			return;
+		}
+
+		sb.Append("  element ").AppendLine(spec.Name + " {");
+
+		if (hasNotation)
+		{
+			sb.Append("    notation '").Append(EscapeQuote(spec.Notation!)).AppendLine("'");
+		}
+
+		if (hasTechnology)
+		{
+			sb.Append("    technology '").Append(EscapeQuote(spec.Technology!)).AppendLine("'");
+		}
+
+		if (hasStyle)
+		{
+			sb.AppendLine("    style {");
+			if (!string.IsNullOrWhiteSpace(style!.Shape))
+			{
+				sb.Append("      shape ").AppendLine(style.Shape);
+			}
+
+			if (!string.IsNullOrWhiteSpace(style.Color))
+			{
+				sb.Append("      color ").AppendLine(style.Color);
+			}
+
+			if (!string.IsNullOrWhiteSpace(style.Icon))
+			{
+				sb.Append("      icon ").AppendLine(style.Icon);
+			}
+
+			if (!string.IsNullOrWhiteSpace(style.Border))
+			{
+				sb.Append("      border ").AppendLine(style.Border);
+			}
+
+			if (style.Opacity.HasValue)
+			{
+				sb.Append("      opacity ").Append(style.Opacity.Value).AppendLine("%");
+			}
+
+			sb.AppendLine("    }");
+		}
+
+		sb.AppendLine("  }");
 	}
 
 	static void WriteModel(StringBuilder sb, LikeC4Model model, LikeC4DiagramOptions options)
@@ -94,12 +184,26 @@ public static class LikeC4DslGenerator
 				sb.Append(" '").Append(EscapeQuote(rel.Label)).Append('\'');
 			}
 
+			var hasTags = rel.Tags.Count > 0;
 			var hasTechnology = !string.IsNullOrWhiteSpace(rel.Technology);
 			var hasDescription = !string.IsNullOrWhiteSpace(rel.Description);
+			var hasLinks = rel.Links.Count > 0;
+			var hasMetadata = rel.Metadata.Count > 0;
 
-			if (hasTechnology || hasDescription)
+			if (hasTags || hasTechnology || hasDescription || hasLinks || hasMetadata)
 			{
 				sb.AppendLine(" {");
+
+				if (hasTags)
+				{
+					sb.Append("    ");
+					foreach (var tag in rel.Tags)
+					{
+						sb.Append('#').Append(tag).Append(' ');
+					}
+
+					sb.AppendLine();
+				}
 
 				if (hasTechnology)
 				{
@@ -111,6 +215,28 @@ public static class LikeC4DslGenerator
 					sb.Append("    description '''").AppendLine();
 					sb.Append(EscapeQuote(rel.Description!)).AppendLine();
 					sb.AppendLine("'''");
+				}
+
+				foreach (var link in rel.Links)
+				{
+					sb.Append("    link ").Append(link.Url);
+					if (!string.IsNullOrWhiteSpace(link.Title))
+					{
+						sb.Append(" '").Append(EscapeQuote(link.Title)).Append('\'');
+					}
+
+					sb.AppendLine();
+				}
+
+				if (hasMetadata)
+				{
+					sb.AppendLine("    metadata {");
+					foreach (var (key, value) in rel.Metadata)
+					{
+						sb.Append("      ").Append(key).Append(" '").Append(EscapeQuote(value)).AppendLine("'");
+					}
+
+					sb.AppendLine("    }");
 				}
 
 				sb.AppendLine("  }");
@@ -140,19 +266,42 @@ public static class LikeC4DslGenerator
 			.Append('\'');
 
 		var children = nested.GetValueOrDefault(element.Name);
+		var hasTags = element.Tags.Count > 0;
 		var hasTechnology = !string.IsNullOrWhiteSpace(element.Technology);
 		var hasDescription = !string.IsNullOrWhiteSpace(element.Description);
 		var hasSummary = !string.IsNullOrWhiteSpace(element.Summary);
 		var hasIcon = !string.IsNullOrWhiteSpace(element.Icon);
+		var hasLinks = element.Links.Count > 0;
+		var hasMetadata = element.Metadata.Count > 0;
 		var hasChildren = children?.Count > 0;
 
-		if (!hasTechnology && !hasDescription && !hasSummary && !hasIcon && !hasChildren)
+		if (
+			!hasTags
+			&& !hasTechnology
+			&& !hasDescription
+			&& !hasSummary
+			&& !hasIcon
+			&& !hasLinks
+			&& !hasMetadata
+			&& !hasChildren
+		)
 		{
 			sb.AppendLine();
 			return;
 		}
 
 		sb.AppendLine(" {");
+
+		if (hasTags)
+		{
+			sb.Append(indent).Append("  ");
+			foreach (var tag in element.Tags)
+			{
+				sb.Append('#').Append(tag).Append(' ');
+			}
+
+			sb.AppendLine();
+		}
 
 		if (hasTechnology)
 		{
@@ -177,6 +326,28 @@ public static class LikeC4DslGenerator
 		if (hasIcon)
 		{
 			sb.Append(indent).Append("  icon ").AppendLine(element.Icon!);
+		}
+
+		foreach (var link in element.Links)
+		{
+			sb.Append(indent).Append("  link ").Append(link.Url);
+			if (!string.IsNullOrWhiteSpace(link.Title))
+			{
+				sb.Append(" '").Append(EscapeQuote(link.Title)).Append('\'');
+			}
+
+			sb.AppendLine();
+		}
+
+		if (hasMetadata)
+		{
+			sb.Append(indent).AppendLine("  metadata {");
+			foreach (var (key, value) in element.Metadata)
+			{
+				sb.Append(indent).Append("    ").Append(key).Append(" '").Append(EscapeQuote(value)).AppendLine("'");
+			}
+
+			sb.Append(indent).AppendLine("  }");
 		}
 
 		if (hasChildren)
@@ -231,6 +402,17 @@ public static class LikeC4DslGenerator
 		else
 		{
 			sb.AppendLine("    include *");
+
+			// Emit view-level group blocks.
+			var groups = model.Elements.Where(e => e.Group is not null).GroupBy(e => e.Group!).OrderBy(g => g.Key);
+
+			foreach (var group in groups)
+			{
+				var members = string.Join(", ", group.Select(e => Sanitize(e.Name)));
+				sb.Append("    group '").Append(EscapeQuote(group.Key)).AppendLine("' {");
+				sb.Append("      include ").AppendLine(members);
+				sb.AppendLine("    }");
+			}
 
 			// Emit style overrides grouped by (color, opacity) for elements with a non-default state.
 			// In LikeC4, element colors must be set via view-level style rules, not in the

@@ -24,4 +24,13 @@ public sealed record LikeC4Relationship
 	/// <c>-[KIND]-&gt;</c> typed syntax.
 	/// </summary>
 	public string? Kind { get; init; }
+
+	/// <summary>Tags applied to this relationship (e.g. <c>"external"</c>). Declared in the specification block as <c>tag NAME</c>.</summary>
+	public IReadOnlyList<string> Tags { get; init; } = [];
+
+	/// <summary>Links attached to this relationship — emitted as <c>link URL ['title']</c> in the relationship body.</summary>
+	public IReadOnlyList<LikeC4Link> Links { get; init; } = [];
+
+	/// <summary>Metadata key-value pairs emitted as a <c>metadata { key "value" }</c> block in the relationship body.</summary>
+	public IReadOnlyDictionary<string, string> Metadata { get; init; } = new Dictionary<string, string>();
 }

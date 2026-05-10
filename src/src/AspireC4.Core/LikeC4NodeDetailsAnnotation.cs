@@ -8,10 +8,32 @@ namespace Aspire.Hosting.AspireC4;
 public sealed class LikeC4NodeDetailsAnnotation : IResourceAnnotation
 {
 	public LikeC4NodeDetailsAnnotation(string label, string? technology = null, string? description = null)
-		: this(label, technology, description, summary: null, icon: null, autoIconEnabled: null) { }
+		: this(
+			label,
+			technology,
+			description,
+			summary: null,
+			icon: null,
+			autoIconEnabled: null,
+			kind: null,
+			tags: [],
+			links: [],
+			metadata: new Dictionary<string, string>()
+		) { }
 
 	public LikeC4NodeDetailsAnnotation(string label, string? technology, string? description, string? icon)
-		: this(label, technology, description, summary: null, icon, autoIconEnabled: null) { }
+		: this(
+			label,
+			technology,
+			description,
+			summary: null,
+			icon,
+			autoIconEnabled: null,
+			kind: null,
+			tags: [],
+			links: [],
+			metadata: new Dictionary<string, string>()
+		) { }
 
 	public LikeC4NodeDetailsAnnotation(
 		string label,
@@ -20,7 +42,18 @@ public sealed class LikeC4NodeDetailsAnnotation : IResourceAnnotation
 		string? icon,
 		bool? autoIconEnabled
 	)
-		: this(label, technology, description, summary: null, icon, autoIconEnabled) { }
+		: this(
+			label,
+			technology,
+			description,
+			summary: null,
+			icon,
+			autoIconEnabled,
+			kind: null,
+			tags: [],
+			links: [],
+			metadata: new Dictionary<string, string>()
+		) { }
 
 	public LikeC4NodeDetailsAnnotation(
 		string label,
@@ -29,6 +62,31 @@ public sealed class LikeC4NodeDetailsAnnotation : IResourceAnnotation
 		string? summary,
 		string? icon,
 		bool? autoIconEnabled
+	)
+		: this(
+			label,
+			technology,
+			description,
+			summary,
+			icon,
+			autoIconEnabled,
+			kind: null,
+			tags: [],
+			links: [],
+			metadata: new Dictionary<string, string>()
+		) { }
+
+	public LikeC4NodeDetailsAnnotation(
+		string label,
+		string? technology,
+		string? description,
+		string? summary,
+		string? icon,
+		bool? autoIconEnabled,
+		string? kind,
+		IReadOnlyList<string> tags,
+		IReadOnlyList<LikeC4Link> links,
+		IReadOnlyDictionary<string, string> metadata
 	)
 	{
 		ArgumentException.ThrowIfNullOrWhiteSpace(label);
@@ -44,6 +102,10 @@ public sealed class LikeC4NodeDetailsAnnotation : IResourceAnnotation
 		Summary = summary;
 		Icon = icon;
 		AutoIconEnabled = autoIconEnabled;
+		Kind = kind;
+		Tags = tags ?? [];
+		Links = links ?? [];
+		Metadata = metadata ?? new Dictionary<string, string>();
 	}
 
 	public string Label { get; }
@@ -52,4 +114,16 @@ public sealed class LikeC4NodeDetailsAnnotation : IResourceAnnotation
 	public string? Summary { get; }
 	public string? Icon { get; }
 	public bool? AutoIconEnabled { get; }
+
+	/// <summary>Optional element kind override. When set, overrides the inferred element kind in the diagram.</summary>
+	public string? Kind { get; }
+
+	/// <summary>Tags applied to this element in the diagram.</summary>
+	public IReadOnlyList<string> Tags { get; }
+
+	/// <summary>Links attached to this element in the diagram.</summary>
+	public IReadOnlyList<LikeC4Link> Links { get; }
+
+	/// <summary>Metadata key-value pairs for this element.</summary>
+	public IReadOnlyDictionary<string, string> Metadata { get; }
 }
