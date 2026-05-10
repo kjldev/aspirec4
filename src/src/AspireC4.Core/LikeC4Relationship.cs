@@ -33,4 +33,10 @@ public sealed record LikeC4Relationship
 
 	/// <summary>Metadata key-value pairs emitted as a <c>metadata { key "value" }</c> block in the relationship body.</summary>
 	public IReadOnlyList<LikeC4Metadata> Metadata { get; init; } = [];
+
+	/// <summary>
+	/// Optional ID of a LikeC4 view to navigate to when the relationship is clicked.
+	/// Emitted as <c>navigateTo viewId</c> in the relationship body.
+	/// </summary>
+	public string? NavigateTo { get; init; }
 }

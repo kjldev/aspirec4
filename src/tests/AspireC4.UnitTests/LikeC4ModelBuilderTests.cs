@@ -352,6 +352,27 @@ public sealed class LikeC4ModelBuilderTests
 	}
 
 	[Test]
+	public async Task Build_RelationshipDetailsAnnotation_SetsNavigateTo()
+	{
+		var api = CreateProjectResource("api");
+		var db = CreateContainerResource("db");
+		api.Annotations.Add(new ResourceRelationshipAnnotation(db, "Reference"));
+		api.Annotations.Add(
+			new LikeC4RelationshipDetailsAnnotation(
+				"db",
+				label: null,
+				technology: null,
+				description: null,
+				navigateTo: "db-detail-flow"
+			)
+		);
+
+		var model = LikeC4ModelBuilder.Build([api, db]);
+
+		await Assert.That(model.Relationships[0].NavigateTo).IsEqualTo("db-detail-flow");
+	}
+
+	[Test]
 	public async Task Build_RelationshipDetailsAnnotation_SetsTechnologyAndDescription()
 	{
 		var api = CreateProjectResource("api");

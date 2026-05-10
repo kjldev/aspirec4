@@ -78,6 +78,7 @@ public static partial class AspireC4ResourceBuilderExtensions
 					options.Technology,
 					options.Description,
 					options.Kind,
+					options.NavigateTo,
 					options.Tags,
 					options.Links,
 					options.Metadata

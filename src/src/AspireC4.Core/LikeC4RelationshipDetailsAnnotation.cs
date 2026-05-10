@@ -21,14 +21,16 @@ public sealed class LikeC4RelationshipDetailsAnnotation : IResourceAnnotation
 	/// identifier (letters, digits, hyphens, underscores; cannot start with a digit). When set, the
 	/// kind is declared in the <c>specification</c> block and the typed <c>-[kind]-&gt;</c> syntax is used.
 	/// </param>
+	/// <param name="navigateTo">Optional ID of a LikeC4 view to navigate to when the relationship is clicked.</param>
 	public LikeC4RelationshipDetailsAnnotation(
 		string targetName,
 		string? label,
 		string? technology,
 		string? description,
-		string? kind = null
+		string? kind = null,
+		string? navigateTo = null
 	)
-		: this(targetName, label, technology, description, kind, tags: [], links: [], metadata: []) { }
+		: this(targetName, label, technology, description, kind, navigateTo, tags: [], links: [], metadata: []) { }
 
 	public LikeC4RelationshipDetailsAnnotation(
 		string targetName,
@@ -36,6 +38,7 @@ public sealed class LikeC4RelationshipDetailsAnnotation : IResourceAnnotation
 		string? technology,
 		string? description,
 		string? kind,
+		string? navigateTo,
 		IReadOnlyList<string> tags,
 		IReadOnlyList<LikeC4Link> links,
 		IReadOnlyList<LikeC4Metadata> metadata
@@ -48,6 +51,7 @@ public sealed class LikeC4RelationshipDetailsAnnotation : IResourceAnnotation
 		Technology = technology;
 		Description = description;
 		Kind = kind;
+		NavigateTo = navigateTo;
 		Tags = tags ?? [];
 		Links = links ?? [];
 		Metadata = metadata ?? [];
@@ -79,4 +83,7 @@ public sealed class LikeC4RelationshipDetailsAnnotation : IResourceAnnotation
 
 	/// <summary>Metadata key-value pairs for this relationship.</summary>
 	public IReadOnlyList<LikeC4Metadata> Metadata { get; }
+
+	/// <summary>Optional ID of a LikeC4 view to navigate to when the relationship is clicked.</summary>
+	public string? NavigateTo { get; }
 }

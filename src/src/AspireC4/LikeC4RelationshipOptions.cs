@@ -35,6 +35,12 @@ public sealed class LikeC4RelationshipOptions
 	/// <summary>Metadata key-value pairs for this relationship.</summary>
 	public IReadOnlyList<LikeC4Metadata> Metadata => _metadata;
 
+	/// <summary>
+	/// Optional ID of a LikeC4 view to navigate to when the relationship is clicked.
+	/// The view must be a dynamic view defined in the LikeC4 DSL.
+	/// </summary>
+	public string? NavigateTo { get; private set; }
+
 	/// <summary>Sets the short label shown on the relationship arrow.</summary>
 	public LikeC4RelationshipOptions WithLabel(string label)
 	{
@@ -117,6 +123,17 @@ public sealed class LikeC4RelationshipOptions
 		foreach (var (key, value) in metadata)
 			WithMetadata(key, value);
 
+		return this;
+	}
+
+	/// <summary>
+	/// Sets the ID of a LikeC4 dynamic view to navigate to when the relationship is clicked.
+	/// </summary>
+	/// <param name="viewId">The identifier of the target dynamic view.</param>
+	public LikeC4RelationshipOptions WithNavigateTo(string viewId)
+	{
+		ArgumentException.ThrowIfNullOrWhiteSpace(viewId);
+		NavigateTo = viewId;
 		return this;
 	}
 }

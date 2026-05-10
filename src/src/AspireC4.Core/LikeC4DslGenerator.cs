@@ -198,8 +198,9 @@ public static class LikeC4DSLGenerator
 			var hasDescription = !string.IsNullOrWhiteSpace(rel.Description);
 			var hasLinks = rel.Links.Count > 0;
 			var hasMetadata = rel.Metadata.Count > 0;
+			var hasNavigateTo = !string.IsNullOrWhiteSpace(rel.NavigateTo);
 
-			if (hasTags || hasTechnology || hasDescription || hasLinks || hasMetadata)
+			if (hasTags || hasTechnology || hasDescription || hasLinks || hasMetadata || hasNavigateTo)
 			{
 				sb.AppendLine(" {");
 
@@ -246,6 +247,11 @@ public static class LikeC4DSLGenerator
 					}
 
 					sb.AppendLine("    }");
+				}
+
+				if (hasNavigateTo)
+				{
+					sb.Append("    navigateTo ").AppendLine(rel.NavigateTo!);
 				}
 
 				sb.AppendLine("  }");

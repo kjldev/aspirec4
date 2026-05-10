@@ -1271,6 +1271,81 @@ public sealed partial class LikeC4DslGeneratorTests
 	}
 
 	[Test]
+	public async Task Generate_RelationshipWithNavigateTo_EmitsNavigateToLine()
+	{
+		var model = new LikeC4Model
+		{
+			Elements =
+			[
+				new LikeC4Element
+				{
+					Name = "a",
+					Label = "A",
+					Kind = LikeC4ElementKind.Component,
+				},
+				new LikeC4Element
+				{
+					Name = "b",
+					Label = "B",
+					Kind = LikeC4ElementKind.Component,
+				},
+			],
+			Relationships =
+			[
+				new LikeC4Relationship
+				{
+					SourceName = "a",
+					TargetName = "b",
+					NavigateTo = "detail-flow",
+				},
+			],
+		};
+
+		var dsl = LikeC4DSLGenerator.Generate(model, DefaultOptions);
+
+		await Assert.That(dsl).Contains("navigateTo detail-flow");
+	}
+
+	[Test]
+	public async Task Generate_RelationshipWithNavigateTo_OpensBodyBlock()
+	{
+		// navigateTo alone (no technology/description/etc) must still open the { } body block.
+		var model = new LikeC4Model
+		{
+			Elements =
+			[
+				new LikeC4Element
+				{
+					Name = "a",
+					Label = "A",
+					Kind = LikeC4ElementKind.Component,
+				},
+				new LikeC4Element
+				{
+					Name = "b",
+					Label = "B",
+					Kind = LikeC4ElementKind.Component,
+				},
+			],
+			Relationships =
+			[
+				new LikeC4Relationship
+				{
+					SourceName = "a",
+					TargetName = "b",
+					NavigateTo = "my-view",
+				},
+			],
+		};
+
+		var dsl = LikeC4DSLGenerator.Generate(model, DefaultOptions);
+
+		// The relationship body must be opened with { and closed with }.
+		await Assert.That(dsl).Contains("a -> b {");
+		await Assert.That(dsl).Contains("navigateTo my-view");
+	}
+
+	[Test]
 	public async Task Generate_CustomElementKindSpec_EmittedInSpecification()
 	{
 		var opts = new AspireC4DiagramOptions
