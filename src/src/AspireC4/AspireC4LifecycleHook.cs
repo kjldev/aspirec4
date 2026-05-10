@@ -18,10 +18,12 @@ sealed class AspireC4LifecycleHook(
 	IOptions<AspireC4DiagramOptions> options,
 	IOptions<LikeC4ContainerWorkspaceOptions> workspaceOptions,
 	ResourceNotificationService resourceNotificationService,
+	ResourceLoggerService resourceLoggerService,
 	IAspireC4LifecycleHookTelemetry telemetry
 ) : IDistributedApplicationEventingSubscriber, IDisposable
 {
 	readonly ConcurrentDictionary<string, LikeC4ResourceState> _resourceStates = new(StringComparer.OrdinalIgnoreCase);
+	readonly ConcurrentDictionary<string, bool> _resourcesWithErrorLogs = new(StringComparer.OrdinalIgnoreCase);
 
 	// Debounce: cancels any pending delayed write when a new state change arrives.
 	CancellationTokenSource? _debounceCts;
@@ -64,6 +66,7 @@ sealed class AspireC4LifecycleHook(
 				// Fire-and-forget: watch for resource state changes and regenerate the file.
 				// The ct is the application lifetime token; it is cancelled on shutdown.
 				_ = WatchResourceStatesAsync(evt.Model, syncContainerWorkspace, ct);
+				_ = WatchResourceLogsAsync(evt.Model, syncContainerWorkspace, ct);
 			}
 		);
 
@@ -313,6 +316,72 @@ sealed class AspireC4LifecycleHook(
 #pragma warning restore CA1031
 	}
 
+	// ── Resource log watcher ─────────────────────────────────────────────────
+
+	async Task WatchResourceLogsAsync(
+		DistributedApplicationModel appModel,
+		bool syncContainerWorkspace,
+		CancellationToken cancellationToken
+	)
+	{
+		try
+		{
+			var allResources = appModel.Resources.ToArray();
+			var visibleNames = LikeC4ModelBuilder.GetVisibleResourceNames(allResources);
+			var visibleResources = allResources.Where(r => visibleNames.Contains(r.Name)).ToList();
+
+			var watchTasks = visibleResources.Select(r =>
+				WatchSingleResourceLogsAsync(r, appModel, syncContainerWorkspace, cancellationToken)
+			);
+
+			await Task.WhenAll(watchTasks);
+		}
+		catch (OperationCanceledException)
+		{
+			// Normal on shutdown.
+		}
+#pragma warning disable CA1031
+		catch (Exception ex)
+		{
+			telemetry.StateWatcherFailed(ex.Message);
+		}
+#pragma warning restore CA1031
+	}
+
+	async Task WatchSingleResourceLogsAsync(
+		IResource resource,
+		DistributedApplicationModel appModel,
+		bool syncContainerWorkspace,
+		CancellationToken cancellationToken
+	)
+	{
+		try
+		{
+			await foreach (var batch in resourceLoggerService.WatchAsync(resource).WithCancellation(cancellationToken))
+			{
+				if (!batch.Any(l => l.IsErrorMessage))
+					continue;
+
+				// Only flag once — subsequent error lines don't need to trigger regeneration.
+				if (!_resourcesWithErrorLogs.TryAdd(resource.Name, true))
+					continue;
+
+				telemetry.ResourceErrorLogDetected(resource.Name);
+				ScheduleRegeneration(appModel, syncContainerWorkspace, cancellationToken);
+			}
+		}
+		catch (OperationCanceledException)
+		{
+			// Normal on shutdown.
+		}
+#pragma warning disable CA1031
+		catch (Exception ex)
+		{
+			telemetry.StateWatcherFailed(ex.Message);
+		}
+#pragma warning restore CA1031
+	}
+
 	void ScheduleRegeneration(
 		DistributedApplicationModel appModel,
 		bool syncContainerWorkspace,
@@ -363,9 +432,18 @@ sealed class AspireC4LifecycleHook(
 
 		telemetry.GeneratingLikeC4Model(appModel.Resources.Count);
 
+		// Overlay error-log flags: resources that are Running but have error log entries
+		// are shown with HasErrorLogs state instead.
+		Dictionary<string, LikeC4ResourceState> mergedStates = new(_resourceStates, StringComparer.OrdinalIgnoreCase);
+		foreach (var name in _resourcesWithErrorLogs.Keys)
+		{
+			if (mergedStates.TryGetValue(name, out var state) && state == LikeC4ResourceState.Running)
+				mergedStates[name] = LikeC4ResourceState.HasErrorLogs;
+		}
+
 		var model = LikeC4ModelBuilder.Build(
 			[.. appModel.Resources],
-			_resourceStates,
+			mergedStates,
 			opts.AutoIconsEnabled,
 			opts.AutoIncludeAspireMetadata,
 			opts.NormaliseMetadataBehaviour,

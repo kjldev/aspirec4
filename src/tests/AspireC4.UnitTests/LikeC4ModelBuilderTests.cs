@@ -1178,7 +1178,7 @@ public sealed class LikeC4ModelBuilderTests
 
 		var meta = model.Elements[0].Metadata;
 		// Both keys normalise to "Azure_SKU"; the builder deduplicates keeping the first value.
-		await Assert.That(meta.Where(m => m.Key == "Azure_SKU").Count()).IsEqualTo(1);
+		await Assert.That(meta.Count(m => m.Key == "Azure_SKU")).IsEqualTo(1);
 		await Assert.That(meta.Any(m => m.Key == "Azure_SKU" && m.Value == "Entry 1")).IsTrue();
 	}
 

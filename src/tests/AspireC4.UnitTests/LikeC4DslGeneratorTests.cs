@@ -951,6 +951,7 @@ public sealed partial class LikeC4DslGeneratorTests
 		yield return (LikeC4ResourceState.Exited, "muted", 30);
 		yield return (LikeC4ResourceState.Failed, "amber", null);
 		yield return (LikeC4ResourceState.Error, "red", null);
+		yield return (LikeC4ResourceState.HasErrorLogs, "orange", null);
 	}
 
 	[Test]

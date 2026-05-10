@@ -401,6 +401,7 @@ public static class LikeC4DSLGenerator
 			LikeC4ResourceState.Exited => new("muted", 30),
 			LikeC4ResourceState.Failed => new("amber", null),
 			LikeC4ResourceState.Error => new("red", null),
+			LikeC4ResourceState.HasErrorLogs => new("orange", null),
 			_ => new(null, null),
 		};
 

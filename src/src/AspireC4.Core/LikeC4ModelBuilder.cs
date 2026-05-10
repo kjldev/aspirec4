@@ -156,17 +156,7 @@ public static class LikeC4ModelBuilder
 		var parentName = (resource as IResourceWithParent)?.Parent?.Name;
 		var group = resource.Annotations.OfType<LikeC4GroupAnnotation>().LastOrDefault()?.GroupName;
 
-		var userMetadata = new List<LikeC4Metadata>();
-		var seenMetadataKeys = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-		foreach (var m in details?.Metadata ?? [])
-		{
-			var normalisedKey = NormaliseMetadataKey(m.Key, normaliseMetadataBehaviour);
-			if (seenMetadataKeys.Add(normalisedKey))
-			{
-				userMetadata.Add(new LikeC4Metadata(normalisedKey, m.Value));
-			}
-		}
-
+		var userMetadata = NormaliseMetadataKeys(details?.Metadata ?? [], normaliseMetadataBehaviour);
 		var userLinks = details?.Links ?? [];
 		var (autoMetadata, autoLinks) = BuildAspireData(resource, aspireMetadataInclusion, userMetadata, userLinks);
 
@@ -301,6 +291,10 @@ public static class LikeC4ModelBuilder
 	/// Returns a new dictionary with all keys normalised according to <paramref name="behaviour"/>.
 	/// When two keys normalise to the same value, the first occurrence is kept.
 	/// </summary>
+	/// <summary>
+	/// Returns a new list with all keys normalised according to <paramref name="behaviour"/>.
+	/// When two keys normalise to the same value, the first occurrence is kept.
+	/// </summary>
 	static IReadOnlyList<LikeC4Metadata> NormaliseMetadataKeys(
 		IReadOnlyList<LikeC4Metadata> metadata,
 		NormaliseMetadataBehaviour behaviour
@@ -312,9 +306,12 @@ public static class LikeC4ModelBuilder
 		}
 
 		List<LikeC4Metadata> results = [];
+		HashSet<string> seen = new(StringComparer.Ordinal);
 		foreach (var (key, value) in metadata)
 		{
-			results.Add(new LikeC4Metadata(NormaliseMetadataKey(key, behaviour), value));
+			var normalised = NormaliseMetadataKey(key, behaviour);
+			if (seen.Add(normalised))
+				results.Add(new LikeC4Metadata(normalised, value));
 		}
 
 		return results;

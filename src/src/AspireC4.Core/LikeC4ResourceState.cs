@@ -26,4 +26,7 @@ public enum LikeC4ResourceState
 
 	/// <summary>Resource failed to start or reported a runtime error.</summary>
 	Error,
+
+	/// <summary>Resource is running but has emitted at least one error-level log entry.</summary>
+	HasErrorLogs,
 }
