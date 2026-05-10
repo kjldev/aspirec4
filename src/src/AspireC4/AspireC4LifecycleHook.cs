@@ -40,6 +40,11 @@ sealed class AspireC4LifecycleHook(
 	// Discovered at runtime once the aspire-dashboard resource starts.
 	volatile string? _dashboardBaseUrl;
 
+	// Discovered at runtime once the LikeC4 server is Running.
+	// Contains the full public URL (scheme + host + port + path) from the server's snapshot,
+	// e.g. "http://localhost:51234/view/index". Used by the dashboard command handler.
+	volatile string? _diagramUrl;
+
 	// Debounce: cancels any pending delayed write when a new state change arrives.
 	CancellationTokenSource? _debounceCts;
 	readonly Lock _debounceLock = new();
@@ -163,30 +168,12 @@ sealed class AspireC4LifecycleHook(
 			return;
 		}
 
-		// Add a URL callback and command annotation to every project resource so the
-		// diagram link appears in the Aspire dashboard on those rows instead.
+		// Add a command annotation to every project resource so the diagram link appears
+		// in the Aspire dashboard on those rows. The URL is populated once the server starts;
+		// until then, the command is disabled. URL injection into snapshots is handled by
+		// InjectDiagramUrlWhenLikeC4RunsAsync, which uses the correct public URL from the server's snapshot.
 		foreach (var projectResource in appModel.Resources.OfType<ProjectResource>())
 		{
-			// ResourceUrlsCallbackAnnotation: called once when the project resource's
-			// endpoints are first allocated. Adds the diagram URL if LikeC4 is already up.
-			projectResource.Annotations.Add(
-				new ResourceUrlsCallbackAnnotation(ctx =>
-				{
-					var ep = serverResource
-						.Annotations.OfType<EndpointAnnotation>()
-						.FirstOrDefault(e => e.Name == LikeC4ServerResource.HttpEndpointName)
-						?.AllocatedEndpoint;
-
-					if (ep is { Port: > 0 })
-					{
-						var host = ep.Address is "0.0.0.0" ? "localhost" : ep.Address;
-						ctx.Urls.Add(
-							new ResourceUrlAnnotation { Url = $"http://{host}:{ep.Port}", DisplayText = displayName }
-						);
-					}
-				})
-			);
-
 			// ResourceCommandAnnotation: re-evaluated on every state update via UpdateCommands.
 			// The executeCommand callback returns a Markdown link that the dashboard renders
 			// as a clickable dialog (displayImmediately: true).
@@ -195,29 +182,17 @@ sealed class AspireC4LifecycleHook(
 					name: "likec4-architecture-diagram",
 					displayName: displayName,
 					updateState: _ =>
-					{
-						var ep = serverResource
-							.Annotations.OfType<EndpointAnnotation>()
-							.FirstOrDefault(e => e.Name == LikeC4ServerResource.HttpEndpointName)
-							?.AllocatedEndpoint;
-						return ep is { Port: > 0 } ? ResourceCommandState.Enabled : ResourceCommandState.Disabled;
-					},
+						_diagramUrl is not null ? ResourceCommandState.Enabled : ResourceCommandState.Disabled,
 					executeCommand: _ =>
 					{
-						var ep = serverResource
-							.Annotations.OfType<EndpointAnnotation>()
-							.FirstOrDefault(e => e.Name == LikeC4ServerResource.HttpEndpointName)
-							?.AllocatedEndpoint;
-
-						if (ep is null or { Port: 0 })
+						var url = _diagramUrl;
+						if (url is null)
 						{
 							return Task.FromResult(
 								CommandResults.Failure("The architecture diagram is not yet available.")
 							);
 						}
 
-						var host = ep.Address is "0.0.0.0" ? "localhost" : ep.Address;
-						var url = $"http://{host}:{ep.Port}";
 						return Task.FromResult(
 							CommandResults.Success(
 								$"[Open {displayName}]({url})",
@@ -249,6 +224,8 @@ sealed class AspireC4LifecycleHook(
 	/// Watches for the LikeC4 server resource to become Running, then directly injects
 	/// its URL into each project resource's snapshot so the link appears immediately —
 	/// even when the server starts after the project resource's endpoints are already allocated.
+	/// Also caches the URL into <see cref="_diagramUrl"/> so the dashboard command handler
+	/// can use the correct public URL (with scheme, public port, and path).
 	/// </summary>
 	async Task InjectDiagramUrlWhenLikeC4RunsAsync(
 		DistributedApplicationModel appModel,
@@ -273,6 +250,9 @@ sealed class AspireC4LifecycleHook(
 				if (url is null)
 					continue;
 
+				// Cache the URL so the command handler can use the correct public URL.
+				_diagramUrl = url;
+
 				var capturedUrl = url;
 				foreach (var resource in appModel.Resources.OfType<ProjectResource>())
 				{
@@ -280,7 +260,7 @@ sealed class AspireC4LifecycleHook(
 						resource,
 						s =>
 						{
-							// Avoid duplicates if the callback already injected this URL.
+							// Avoid duplicates on repeated Running notifications.
 							return s.Urls.Any(u => u.Name == "architecture-diagram")
 								? s
 								: (
