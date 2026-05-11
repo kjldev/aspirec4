@@ -77,7 +77,9 @@ sealed class AspireC4Builder(
 		{
 			var sourceDir = Path.GetDirectoryName(absoluteSource)!;
 			var hashBytes = SHA256.HashData(Encoding.UTF8.GetBytes(sourceDir));
+#pragma warning disable CA1308 // Normalize strings to uppercase
 			var hash = Convert.ToHexString(hashBytes)[..8].ToLowerInvariant();
+#pragma warning restore CA1308 // Normalize strings to uppercase
 			var mountTarget = $"{LikeC4ServerResource.WorkspacePath}/ext/{hash}";
 
 			// De-duplicate: only add the bind mount once per unique source directory.

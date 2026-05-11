@@ -35,7 +35,7 @@ public sealed partial class LikeC4DslGeneratorTests
 		// Timestamp in the header must fall within the test window.
 		var match = TimeStampRegex().Match(dsl);
 		await Assert.That(match.Success).IsTrue();
-		var timestamp = DateTimeOffset.ParseExact(
+		DateTimeOffset timestamp = DateTimeOffset.ParseExact(
 			match.Groups[1].Value,
 			"yyyy-MM-dd HH:mm:ss",
 			System.Globalization.CultureInfo.InvariantCulture,
@@ -48,7 +48,7 @@ public sealed partial class LikeC4DslGeneratorTests
 	[Test]
 	public async Task Generate_SingleElement_IncludesKindInSpecification()
 	{
-		var model = new LikeC4Model
+		LikeC4Model model = new()
 		{
 			Elements =
 			[
@@ -70,7 +70,7 @@ public sealed partial class LikeC4DslGeneratorTests
 	[Test]
 	public async Task Generate_MultipleKinds_AllKindsInSpecification()
 	{
-		var model = new LikeC4Model
+		LikeC4Model model = new()
 		{
 			Elements =
 			[
@@ -106,7 +106,7 @@ public sealed partial class LikeC4DslGeneratorTests
 	[Test]
 	public async Task Generate_DuplicateKinds_KindAppearsOnceInSpecification()
 	{
-		var model = new LikeC4Model
+		LikeC4Model model = new()
 		{
 			Elements =
 			[
@@ -135,7 +135,7 @@ public sealed partial class LikeC4DslGeneratorTests
 	[Test]
 	public async Task Generate_ElementWithTechnology_IncludesTechnologyLine()
 	{
-		var model = new LikeC4Model
+		LikeC4Model model = new()
 		{
 			Elements =
 			[
@@ -158,7 +158,7 @@ public sealed partial class LikeC4DslGeneratorTests
 	[Test]
 	public async Task Generate_ElementWithDescription_IncludesDescriptionLine()
 	{
-		var model = new LikeC4Model
+		LikeC4Model model = new()
 		{
 			Elements =
 			[
@@ -182,7 +182,7 @@ public sealed partial class LikeC4DslGeneratorTests
 	[Test]
 	public async Task Generate_ElementWithIcon_IncludesIconLine()
 	{
-		var model = new LikeC4Model
+		LikeC4Model model = new()
 		{
 			Elements =
 			[
@@ -205,7 +205,7 @@ public sealed partial class LikeC4DslGeneratorTests
 	[Test]
 	public async Task Generate_LabelWithSingleQuote_IsEscaped()
 	{
-		var model = new LikeC4Model
+		LikeC4Model model = new()
 		{
 			Elements =
 			[
@@ -227,7 +227,7 @@ public sealed partial class LikeC4DslGeneratorTests
 	[Test]
 	public async Task Generate_NameWithSpecialChars_IsSanitized()
 	{
-		var model = new LikeC4Model
+		LikeC4Model model = new()
 		{
 			Elements =
 			[
@@ -249,7 +249,7 @@ public sealed partial class LikeC4DslGeneratorTests
 	[Test]
 	public async Task Generate_Relationship_RenderedAsArrow()
 	{
-		var model = new LikeC4Model
+		LikeC4Model model = new()
 		{
 			Elements =
 			[
@@ -277,7 +277,7 @@ public sealed partial class LikeC4DslGeneratorTests
 	[Test]
 	public async Task Generate_RelationshipWithLabel_IncludesLabel()
 	{
-		var model = new LikeC4Model
+		LikeC4Model model = new()
 		{
 			Elements =
 			[
@@ -315,7 +315,7 @@ public sealed partial class LikeC4DslGeneratorTests
 	[Test]
 	public async Task Generate_RelationshipWithTechnology_EmitsBlock()
 	{
-		var model = new LikeC4Model
+		LikeC4Model model = new()
 		{
 			Elements =
 			[
@@ -352,7 +352,7 @@ public sealed partial class LikeC4DslGeneratorTests
 	[Test]
 	public async Task Generate_RelationshipWithDescription_EmitsBlock()
 	{
-		var model = new LikeC4Model
+		LikeC4Model model = new()
 		{
 			Elements =
 			[
@@ -390,7 +390,7 @@ public sealed partial class LikeC4DslGeneratorTests
 	[Test]
 	public async Task Generate_RelationshipWithLabelAndTechnology_EmitsBoth()
 	{
-		var model = new LikeC4Model
+		LikeC4Model model = new()
 		{
 			Elements =
 			[
@@ -428,7 +428,7 @@ public sealed partial class LikeC4DslGeneratorTests
 	[Test]
 	public async Task Generate_RelationshipWithKind_EmitsTypedSyntaxInModel()
 	{
-		var model = new LikeC4Model
+		LikeC4Model model = new()
 		{
 			Elements =
 			[
@@ -464,7 +464,7 @@ public sealed partial class LikeC4DslGeneratorTests
 	[Test]
 	public async Task Generate_RelationshipWithKind_DeclaredInSpecification()
 	{
-		var model = new LikeC4Model
+		LikeC4Model model = new()
 		{
 			Elements =
 			[
@@ -500,7 +500,7 @@ public sealed partial class LikeC4DslGeneratorTests
 	[Test]
 	public async Task Generate_RelationshipWithKindAndLabel_EmitsTypedSyntaxWithLabel()
 	{
-		var model = new LikeC4Model
+		LikeC4Model model = new()
 		{
 			Elements =
 			[
@@ -537,7 +537,7 @@ public sealed partial class LikeC4DslGeneratorTests
 	[Test]
 	public async Task Generate_RelationshipWithKind_BracketSyntax_EmitsBracketForm()
 	{
-		var model = new LikeC4Model
+		LikeC4Model model = new()
 		{
 			Elements =
 			[
@@ -564,7 +564,7 @@ public sealed partial class LikeC4DslGeneratorTests
 				},
 			],
 		};
-		var opts = new AspireC4DiagramOptions
+		AspireC4DiagramOptions opts = new()
 		{
 			Title = "Test",
 			OutputDirectory = ".",
@@ -579,7 +579,7 @@ public sealed partial class LikeC4DslGeneratorTests
 	[Test]
 	public async Task Generate_RelationshipWithKindAndLabel_BracketSyntax_EmitsBracketForm()
 	{
-		var model = new LikeC4Model
+		LikeC4Model model = new()
 		{
 			Elements =
 			[
@@ -607,7 +607,7 @@ public sealed partial class LikeC4DslGeneratorTests
 				},
 			],
 		};
-		var opts = new AspireC4DiagramOptions
+		AspireC4DiagramOptions opts = new()
 		{
 			Title = "Test",
 			OutputDirectory = ".",
@@ -622,7 +622,7 @@ public sealed partial class LikeC4DslGeneratorTests
 	[Test]
 	public async Task Generate_MultipleRelationshipsWithSameKind_KindAppearsOnceInSpecification()
 	{
-		var model = new LikeC4Model
+		LikeC4Model model = new()
 		{
 			Elements =
 			[
@@ -671,7 +671,7 @@ public sealed partial class LikeC4DslGeneratorTests
 	[Test]
 	public async Task Generate_MultipleRelationshipsWithDifferentKinds_AllKindsDeclaredInSpecification()
 	{
-		var model = new LikeC4Model
+		LikeC4Model model = new()
 		{
 			Elements =
 			[
@@ -720,7 +720,7 @@ public sealed partial class LikeC4DslGeneratorTests
 	[Test]
 	public async Task Generate_RelationshipWithoutKind_DoesNotAddRelationshipSpecification()
 	{
-		var model = new LikeC4Model
+		LikeC4Model model = new()
 		{
 			Elements =
 			[
@@ -749,7 +749,7 @@ public sealed partial class LikeC4DslGeneratorTests
 	[Test]
 	public async Task Generate_RelationshipKindSpecification_AppearsInsideSpecificationBlock()
 	{
-		var model = new LikeC4Model
+		LikeC4Model model = new()
 		{
 			Elements =
 			[
@@ -800,7 +800,7 @@ public sealed partial class LikeC4DslGeneratorTests
 	[Test]
 	public async Task Generate_TitleWithSingleQuote_IsEscaped()
 	{
-		var opts = new AspireC4DiagramOptions { Title = "O'Reilly's App", OutputDirectory = "." };
+		AspireC4DiagramOptions opts = new() { Title = "O'Reilly's App", OutputDirectory = "." };
 
 		var dsl = LikeC4DSLGenerator.Generate(LikeC4Model.Empty, opts);
 
@@ -810,7 +810,7 @@ public sealed partial class LikeC4DslGeneratorTests
 	[Test]
 	public async Task Generate_NonEmptyModel_ViewContainsIncludeStar()
 	{
-		var model = new LikeC4Model
+		LikeC4Model model = new()
 		{
 			Elements =
 			[
@@ -832,7 +832,7 @@ public sealed partial class LikeC4DslGeneratorTests
 	[Test]
 	public async Task Generate_NestedElement_RenderedInsideParent()
 	{
-		var model = new LikeC4Model
+		LikeC4Model model = new()
 		{
 			Elements =
 			[
@@ -885,7 +885,7 @@ public sealed partial class LikeC4DslGeneratorTests
 		int? expectedOpacity
 	)
 	{
-		var model = new LikeC4Model
+		LikeC4Model model = new()
 		{
 			Elements =
 			[
@@ -959,7 +959,7 @@ public sealed partial class LikeC4DslGeneratorTests
 	[Test]
 	public async Task Generate_ElementWithStateAndTechnology_RendersColorInViewsNotModel()
 	{
-		var model = new LikeC4Model
+		LikeC4Model model = new()
 		{
 			Elements =
 			[
@@ -993,7 +993,7 @@ public sealed partial class LikeC4DslGeneratorTests
 	[Test]
 	public async Task Generate_ElementWithIconAndState_RendersIconInModelAndColorInViews()
 	{
-		var model = new LikeC4Model
+		LikeC4Model model = new()
 		{
 			Elements =
 			[
@@ -1023,7 +1023,7 @@ public sealed partial class LikeC4DslGeneratorTests
 	public async Task Generate_ElementWithUnknownState_NoStyleRuleRendered()
 	{
 		// An element with Unknown state should produce no style block in views.
-		var model = new LikeC4Model
+		LikeC4Model model = new()
 		{
 			Elements =
 			[
@@ -1050,7 +1050,7 @@ public sealed partial class LikeC4DslGeneratorTests
 		// `orange` is not a LikeC4 built-in colour token. The spec block must
 		// declare it with the LikeC4 syntax  `color IDENTIFIER #HEX`  (there is
 		// no `colors { }` sub-block in the DSL grammar).
-		var model = new LikeC4Model
+		LikeC4Model model = new()
 		{
 			Elements =
 			[
@@ -1088,7 +1088,7 @@ public sealed partial class LikeC4DslGeneratorTests
 	[Test]
 	public async Task Generate_ElementWithTags_EmitsTagsInSpecAndBody()
 	{
-		var model = new LikeC4Model
+		LikeC4Model model = new()
 		{
 			Elements =
 			[
@@ -1122,7 +1122,7 @@ public sealed partial class LikeC4DslGeneratorTests
 	[Test]
 	public async Task Generate_TagsFromMultipleElements_DeclaredOnceInSpec()
 	{
-		var model = new LikeC4Model
+		LikeC4Model model = new()
 		{
 			Elements =
 			[
@@ -1155,7 +1155,7 @@ public sealed partial class LikeC4DslGeneratorTests
 	{
 		// Tags stored in the model must be without '#'; the generator adds '#' in the body
 		// and emits the bare name in the spec. This test guards against double-hashing.
-		var model = new LikeC4Model
+		LikeC4Model model = new()
 		{
 			Elements =
 			[
@@ -1181,7 +1181,7 @@ public sealed partial class LikeC4DslGeneratorTests
 	[Test]
 	public async Task Generate_ElementWithLinks_EmitsLinkLines()
 	{
-		var model = new LikeC4Model
+		LikeC4Model model = new()
 		{
 			Elements =
 			[
@@ -1210,7 +1210,7 @@ public sealed partial class LikeC4DslGeneratorTests
 	[Test]
 	public async Task Generate_ElementWithMetadata_EmitsMetadataBlock()
 	{
-		var model = new LikeC4Model
+		LikeC4Model model = new()
 		{
 			Elements =
 			[
@@ -1235,7 +1235,7 @@ public sealed partial class LikeC4DslGeneratorTests
 	[Test]
 	public async Task Generate_RelationshipWithTags_EmitsTagsInSpecAndBody()
 	{
-		var model = new LikeC4Model
+		LikeC4Model model = new()
 		{
 			Elements =
 			[
@@ -1272,7 +1272,7 @@ public sealed partial class LikeC4DslGeneratorTests
 	[Test]
 	public async Task Generate_RelationshipWithLinks_EmitsLinkLines()
 	{
-		var model = new LikeC4Model
+		LikeC4Model model = new()
 		{
 			Elements =
 			[
@@ -1308,7 +1308,7 @@ public sealed partial class LikeC4DslGeneratorTests
 	[Test]
 	public async Task Generate_RelationshipWithMetadata_EmitsMetadataBlock()
 	{
-		var model = new LikeC4Model
+		LikeC4Model model = new()
 		{
 			Elements =
 			[
@@ -1343,9 +1343,88 @@ public sealed partial class LikeC4DslGeneratorTests
 	}
 
 	[Test]
+	[Arguments(2)]
+	[Arguments(5)]
+	[Arguments(10)]
+	[Arguments(50)]
+	public async Task Generate_RelationshipWithDuplicateMetadataKeys_EmitsAllMetadataValues(int metadataCount)
+	{
+		var metadataKey = $"retries_{metadataCount}";
+		LikeC4Model model = new()
+		{
+			Elements =
+			[
+				new LikeC4Element
+				{
+					Name = "a",
+					Label = "A",
+					Kind = LikeC4ElementKind.Component,
+				},
+				new LikeC4Element
+				{
+					Name = "b",
+					Label = "B",
+					Kind = LikeC4ElementKind.Component,
+				},
+			],
+			Relationships =
+			[
+				new LikeC4Relationship
+				{
+					SourceName = "a",
+					TargetName = "b",
+					Metadata =
+					[
+						.. Enumerable.Range(0, metadataCount).Select(i => new LikeC4Metadata(metadataKey, $"{i + 1}")),
+					],
+				},
+			],
+		};
+
+		var dsl = LikeC4DSLGenerator.Generate(model, DefaultOptions);
+
+		var occurrences = CountOccurrences(dsl, $"{metadataCount} '");
+
+		await Assert.That(occurrences).IsEqualTo(metadataCount);
+	}
+
+	[Test]
+	[Arguments(2)]
+	[Arguments(5)]
+	[Arguments(10)]
+	[Arguments(50)]
+	public async Task Generate_ElementWithDuplicateMetadataKeys_EmitsAllMetadataValues(int metadataCount)
+	{
+		var metadataKey = $"retries_{metadataCount}";
+		LikeC4Model model = new()
+		{
+			Elements =
+			[
+				new LikeC4Element
+				{
+					Name = "a",
+					Label = "A",
+					Kind = LikeC4ElementKind.Component,
+					Metadata =
+					[
+						.. Enumerable.Range(0, metadataCount).Select(i => new LikeC4Metadata(metadataKey, $"{i + 1}")),
+					]
+				}
+			],
+			Relationships = []
+		};
+
+		var dsl = LikeC4DSLGenerator.Generate(model, DefaultOptions);
+
+		var occurrences = CountOccurrences(dsl, $"{metadataCount} '");
+
+		await Assert.That(occurrences).IsEqualTo(metadataCount);
+	}
+
+	[Test]
 	public async Task Generate_RelationshipWithNavigateTo_EmitsNavigateToLine()
 	{
-		var model = new LikeC4Model
+		LikeC4Model model = new()
 		{
 			Elements =
 			[
@@ -1382,7 +1461,7 @@ public sealed partial class LikeC4DslGeneratorTests
 	public async Task Generate_RelationshipWithNavigateTo_OpensBodyBlock()
 	{
 		// navigateTo alone (no technology/description/etc) must still open the { } body block.
-		var model = new LikeC4Model
+		LikeC4Model model = new()
 		{
 			Elements =
 			[
@@ -1420,7 +1499,7 @@ public sealed partial class LikeC4DslGeneratorTests
 	[Test]
 	public async Task Generate_CustomElementKindSpec_EmittedInSpecification()
 	{
-		var opts = new AspireC4DiagramOptions
+		AspireC4DiagramOptions opts = new()
 		{
 			Title = "Test",
 			OutputDirectory = ".",
@@ -1433,7 +1512,7 @@ public sealed partial class LikeC4DslGeneratorTests
 			],
 		};
 
-		var model = new LikeC4Model { Elements = [], Relationships = [] };
+		LikeC4Model model = new() { Elements = [], Relationships = [] };
 		var dsl = LikeC4DSLGenerator.Generate(model, opts);
 
 		// Kind declared even though no elements use it.
@@ -1448,14 +1527,14 @@ public sealed partial class LikeC4DslGeneratorTests
 	[Test]
 	public async Task Generate_ElementKindMatchingCustomSpec_EmitsFullBody()
 	{
-		var opts = new AspireC4DiagramOptions
+		AspireC4DiagramOptions opts = new()
 		{
 			Title = "Test",
 			OutputDirectory = ".",
 			ElementKindSpecs = [new LikeC4ElementKindSpec("component") { Notation = "Component" }],
 		};
 
-		var model = new LikeC4Model
+		LikeC4Model model = new()
 		{
 			Elements =
 			[
@@ -1481,7 +1560,7 @@ public sealed partial class LikeC4DslGeneratorTests
 	[Test]
 	public async Task Generate_ElementWithGroup_EmitsGroupBlockInViews()
 	{
-		var model = new LikeC4Model
+		LikeC4Model model = new()
 		{
 			Elements =
 			[
@@ -1522,7 +1601,7 @@ public sealed partial class LikeC4DslGeneratorTests
 	[Test]
 	public async Task Generate_MultipleGroups_EachGroupEmitted()
 	{
-		var model = new LikeC4Model
+		LikeC4Model model = new()
 		{
 			Elements =
 			[

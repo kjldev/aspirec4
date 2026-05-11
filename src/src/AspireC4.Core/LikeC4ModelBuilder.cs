@@ -79,7 +79,7 @@ public static class LikeC4ModelBuilder
 		// ContainerResource with the same name becomes the visible counterpart.
 		// WithReference() still annotates with the hidden Azure resource, so we need
 		// this lookup to resolve the visible surrogate by name.
-		var visibleByName = visibleResources
+		Dictionary<string, IResource> visibleByName = visibleResources
 			.GroupBy(r => r.Name, StringComparer.OrdinalIgnoreCase)
 			.ToDictionary(g => g.Key, g => g.First(), StringComparer.OrdinalIgnoreCase);
 
@@ -87,14 +87,14 @@ public static class LikeC4ModelBuilder
 		// than the visible surrogate (e.g. a generic ContainerResource). We pass the hidden
 		// original to the element builder so the icon matcher can use its type name to select
 		// the correct azure icon (e.g. azure:azure-database-postgre-sql-server).
-		var hiddenByName = resources
+		Dictionary<string, IResource> hiddenByName = resources
 			.Where(r => !visibleResources.Contains(r))
 			.GroupBy(r => r.Name, StringComparer.OrdinalIgnoreCase)
 			.ToDictionary(g => g.Key, g => g.First(), StringComparer.OrdinalIgnoreCase);
 
-		var elements = new List<LikeC4Element>(visibleResources.Count);
-		var relationships = new List<LikeC4Relationship>();
-		var visitedRelationships = new HashSet<(string Source, string Target)>();
+		List<LikeC4Element> elements = new(visibleResources.Count);
+		List<LikeC4Relationship> relationships = [];
+		HashSet<(string Source, string Target)> visitedRelationships = [];
 
 		foreach (var resource in visibleResources)
 		{
@@ -149,7 +149,7 @@ public static class LikeC4ModelBuilder
 
 	static HashSet<IResource> BuildVisibleSet(IReadOnlyList<IResource> resources)
 	{
-		var visible = new HashSet<IResource>(resources.Count);
+		HashSet<IResource> visible = new(resources.Count);
 
 		foreach (var resource in resources)
 		{
@@ -258,12 +258,14 @@ public static class LikeC4ModelBuilder
 		IReadOnlyList<(string Url, string Name)>? snapshotEndpointUrls = null
 	)
 	{
-		var metadata = new List<LikeC4Metadata>();
-		var links = new List<LikeC4Link>();
+		List<LikeC4Metadata> metadata = [];
+		List<LikeC4Link> links = [];
 
 		if (inclusion.HasFlag(AspireMetadataInclusion.Metadata))
 		{
-			var existingKeys = existingMetadata.Select(m => m.Key).ToHashSet(StringComparer.OrdinalIgnoreCase);
+			HashSet<string> existingKeys = existingMetadata
+				.Select(m => m.Key)
+				.ToHashSet(StringComparer.OrdinalIgnoreCase);
 
 			if (!existingKeys.Contains("aspire-name"))
 			{
@@ -283,7 +285,7 @@ public static class LikeC4ModelBuilder
 
 		if (inclusion.HasFlag(AspireMetadataInclusion.Links))
 		{
-			var existingUris = existingLinks.Select(l => l.Uri).ToHashSet(StringComparer.OrdinalIgnoreCase);
+			HashSet<string> existingUris = existingLinks.Select(l => l.Uri).ToHashSet(StringComparer.OrdinalIgnoreCase);
 
 			// Prefer snapshot URLs (same source as Aspire dashboard, correct public port).
 			// Fall back to EndpointAnnotation when no snapshot data is available yet
@@ -302,7 +304,7 @@ public static class LikeC4ModelBuilder
 			{
 				foreach (var endpoint in resource.Annotations.OfType<EndpointAnnotation>())
 				{
-					if (endpoint.UriScheme != "http" && endpoint.UriScheme != "https")
+					if (endpoint.UriScheme is not "http" and not "https")
 					{
 						continue;
 					}
@@ -373,16 +375,13 @@ public static class LikeC4ModelBuilder
 
 		if (behaviour == NormaliseMetadataBehaviour.Throw)
 		{
-			if (!IsValidMetadataKey(key))
-			{
-				throw new ArgumentException(
+			return !IsValidMetadataKey(key)
+				? throw new ArgumentException(
 					$"Metadata key '{key}' contains invalid characters. "
 						+ "Valid characters are letters, digits, hyphens (-), and underscores (_).",
 					nameof(key)
-				);
-			}
-
-			return key;
+				)
+				: key;
 		}
 
 		var normalised = string.Create(
@@ -423,12 +422,10 @@ public static class LikeC4ModelBuilder
 		}
 
 		List<LikeC4Metadata> results = [];
-		HashSet<string> seen = new(StringComparer.Ordinal);
 		foreach (var (key, value) in metadata)
 		{
 			var normalised = NormaliseMetadataKey(key, behaviour);
-			if (seen.Add(normalised))
-				results.Add(new LikeC4Metadata(normalised, value));
+			results.Add(new LikeC4Metadata(normalised, value));
 		}
 
 		return results;
@@ -493,7 +490,7 @@ public static class LikeC4ModelBuilder
 		// Custom resolvers run before auto-inference; first non-null result wins.
 		if (iconResolvers is { Count: > 0 })
 		{
-			var ctx = new LikeC4IconResolverContext { Resource = resource, HiddenOriginal = hiddenOriginal };
+			LikeC4IconResolverContext ctx = new() { Resource = resource, HiddenOriginal = hiddenOriginal };
 			foreach (var resolver in iconResolvers)
 			{
 				var resolved = resolver(ctx);
@@ -504,24 +501,21 @@ public static class LikeC4ModelBuilder
 			}
 		}
 
-		if (!(details?.AutoIconEnabled ?? autoIconsEnabled))
-		{
-			return null;
-		}
-
-		return LikeC4IconMatcher.TryInferIcon([
-			details?.Technology,
-			inferredTechnology,
-			// The hidden original (e.g. AzurePostgresFlexibleServerResource) carries richer
-			// type information than the visible surrogate (e.g. a generic ContainerResource).
-			// Short name first — it has fewer noise tokens than the fully-qualified name.
-			hiddenOriginal?.GetType().Name,
-			hiddenOriginal?.GetType().FullName,
-			resource.Annotations.OfType<ResourceSnapshotAnnotation>().LastOrDefault()?.InitialSnapshot.ResourceType,
-			resource.GetType().FullName,
-			resource.GetType().Name,
-			resource.Name,
-		]);
+		return !(details?.AutoIconEnabled ?? autoIconsEnabled)
+			? null
+			: LikeC4IconMatcher.TryInferIcon([
+				details?.Technology,
+				inferredTechnology,
+				// The hidden original (e.g. AzurePostgresFlexibleServerResource) carries richer
+				// type information than the visible surrogate (e.g. a generic ContainerResource).
+				// Short name first — it has fewer noise tokens than the fully-qualified name.
+				hiddenOriginal?.GetType().Name,
+				hiddenOriginal?.GetType().FullName,
+				resource.Annotations.OfType<ResourceSnapshotAnnotation>().LastOrDefault()?.InitialSnapshot.ResourceType,
+				resource.GetType().FullName,
+				resource.GetType().Name,
+				resource.Name,
+			]);
 	}
 
 	static void CollectRelationships(

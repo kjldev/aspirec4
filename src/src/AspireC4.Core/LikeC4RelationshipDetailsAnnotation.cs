@@ -114,7 +114,9 @@ public sealed class LikeC4RelationshipDetailsAnnotation : IResourceAnnotation
 	public LikeC4RelationshipDetailsAnnotation WithMetadata(string key, string value)
 	{
 		ArgumentException.ThrowIfNullOrWhiteSpace(key);
+
 		_metadata.Add(new LikeC4Metadata(key, value));
+
 		return this;
 	}
 
@@ -122,8 +124,10 @@ public sealed class LikeC4RelationshipDetailsAnnotation : IResourceAnnotation
 	public LikeC4RelationshipDetailsAnnotation WithMetadata(params (string key, string value)[] metadata)
 	{
 		ArgumentNullException.ThrowIfNull(metadata);
+
 		foreach (var (key, value) in metadata)
 			WithMetadata(key, value);
+
 		return this;
 	}
 

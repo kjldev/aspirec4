@@ -10,61 +10,23 @@ namespace Aspire.Hosting.AspireC4;
 /// Integration tests that verify the LikeC4 visualization starts successfully in a real Aspire app host.
 /// </summary>
 [NotInParallel]
-public sealed partial class LikeC4VisualizationHostTests : IAsyncDisposable
+public sealed partial class AspireC4HostTests : IAsyncDisposable
 {
-	const string LikeC4ResourceName = AspireC4DistributedApplicationBuilderExtensions.AspireC4ResourceName;
+	const string AspireC4ResourceName = AspireC4DistributedApplicationBuilderExtensions.AspireC4ResourceName;
 	static readonly TimeSpan LikeC4StartupTimeout = TimeSpan.FromSeconds(120);
 
 	DistributedApplication? _app;
-	EnvironmentVariableScope? _containerRuntimeScope;
 	EnvironmentVariableScope? _outputDirectoryScope;
 	EnvironmentVariableScope? _fileNameScope;
 	EnvironmentVariableScope? _titleScope;
 	string? _outputDir;
 	string? _modelPath;
 
-	[System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1031:Do not catch general exception types")]
-	static async Task<bool> IsDockerAvailableAsync(CancellationToken cancellationToken)
-	{
-		try
-		{
-			using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-			linkedCts.CancelAfter(5_000);
-
-			using var process = System.Diagnostics.Process.Start(
-				new System.Diagnostics.ProcessStartInfo
-				{
-					FileName = "docker",
-					Arguments = "info",
-					RedirectStandardOutput = true,
-					RedirectStandardError = true,
-					UseShellExecute = false,
-					CreateNoWindow = true,
-				}
-			);
-
-			if (process is null)
-			{
-				return false;
-			}
-
-			await process.WaitForExitAsync(linkedCts.Token);
-			return process.ExitCode == 0;
-		}
-		catch
-		{
-			return false;
-		}
-	}
-
 	[Before(Test)]
 	public async Task SetUpAsync(CancellationToken cancellationToken)
 	{
-		await Assert.That(await IsDockerAvailableAsync(cancellationToken)).IsTrue();
-
 		_outputDir = Path.Combine(Path.GetTempPath(), "likec4-integration-" + Guid.NewGuid().ToString("N")[..8]);
 		_modelPath = Path.Combine(_outputDir, "model.gen.c4");
-		_containerRuntimeScope = new EnvironmentVariableScope("ASPIRE_CONTAINER_RUNTIME", "docker");
 		_outputDirectoryScope = new EnvironmentVariableScope("AspireC4__OutputDirectory", _outputDir);
 		_fileNameScope = new EnvironmentVariableScope("AspireC4__FileName", "model.gen");
 		_titleScope = new EnvironmentVariableScope("AspireC4__Title", "Integration Test Architecture");
@@ -93,8 +55,6 @@ public sealed partial class LikeC4VisualizationHostTests : IAsyncDisposable
 		_fileNameScope = null;
 		_outputDirectoryScope?.Dispose();
 		_outputDirectoryScope = null;
-		_containerRuntimeScope?.Dispose();
-		_containerRuntimeScope = null;
 	}
 
 	[Test]
@@ -127,7 +87,7 @@ public sealed partial class LikeC4VisualizationHostTests : IAsyncDisposable
 	{
 		await WaitForLikeC4ServerRunningAsync(cancellationToken);
 
-		using var client = _app!.CreateHttpClient(LikeC4ResourceName, LikeC4ServerResource.HttpEndpointName);
+		using var client = _app!.CreateHttpClient(AspireC4ResourceName, LikeC4ServerResource.HttpEndpointName);
 
 		HttpResponseMessage? response = null;
 		for (var attempt = 0; attempt < 10; attempt++)
@@ -152,7 +112,7 @@ public sealed partial class LikeC4VisualizationHostTests : IAsyncDisposable
 	{
 		await WaitForLikeC4ServerRunningAsync(cancellationToken);
 
-		using var client = _app!.CreateHttpClient(LikeC4ResourceName, LikeC4ServerResource.HttpEndpointName);
+		using var client = _app!.CreateHttpClient(AspireC4ResourceName, LikeC4ServerResource.HttpEndpointName);
 		var viteClient = await client.GetStringAsync("/@vite/client", cancellationToken);
 		var tokenMatch = WSTokenRegex().Match(viteClient);
 		var portMatch = HMRPortRegex().Match(viteClient);
@@ -183,7 +143,7 @@ public sealed partial class LikeC4VisualizationHostTests : IAsyncDisposable
 	{
 		await _app!
 			.ResourceNotifications.WaitForResourceAsync(
-				LikeC4ResourceName,
+				AspireC4ResourceName,
 				KnownResourceStates.Running,
 				cancellationToken
 			)
@@ -205,7 +165,6 @@ public sealed partial class LikeC4VisualizationHostTests : IAsyncDisposable
 		_titleScope?.Dispose();
 		_fileNameScope?.Dispose();
 		_outputDirectoryScope?.Dispose();
-		_containerRuntimeScope?.Dispose();
 	}
 
 	sealed class EnvironmentVariableScope : IDisposable

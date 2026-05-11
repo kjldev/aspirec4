@@ -19,10 +19,15 @@ public sealed class LikeC4NodeDetailsAnnotation : IResourceAnnotation
 	}
 
 	public string Label { get; private set; }
+
 	public string? Technology { get; private set; }
+
 	public string? Description { get; private set; }
+
 	public string? Summary { get; private set; }
+
 	public string? Icon { get; private set; }
+
 	public bool? AutoIconEnabled { get; private set; }
 
 	/// <summary>Optional element kind override. When set, overrides the inferred element kind in the diagram.</summary>
@@ -118,7 +123,9 @@ public sealed class LikeC4NodeDetailsAnnotation : IResourceAnnotation
 	{
 		ArgumentException.ThrowIfNullOrWhiteSpace(key);
 		ArgumentException.ThrowIfNullOrWhiteSpace(value);
+
 		_metadata.Add(new(key, value));
+
 		return this;
 	}
 
@@ -126,8 +133,10 @@ public sealed class LikeC4NodeDetailsAnnotation : IResourceAnnotation
 	public LikeC4NodeDetailsAnnotation WithMetadata(params (string key, string value)[] metadata)
 	{
 		ArgumentNullException.ThrowIfNull(metadata);
+
 		foreach (var (key, value) in metadata)
 			WithMetadata(key, value);
+
 		return this;
 	}
 }

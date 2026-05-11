@@ -1139,7 +1139,7 @@ public sealed class LikeC4ModelBuilderTests
 	}
 
 	[Test]
-	public async Task Build_NormaliseMetadata_DuplicateKeysAreTurnedIntoArrays()
+	public async Task Build_NormaliseMetadata_DuplicateKeysAreNormalisedAndOutput()
 	{
 		var resource = CreateProjectResource("api");
 		resource.Annotations.Add(
@@ -1153,9 +1153,7 @@ public sealed class LikeC4ModelBuilderTests
 		await Assert.That(model.Elements.Count).IsEqualTo(1);
 
 		var meta = model.Elements[0].Metadata;
-		// Both keys normalise to "Azure_SKU"; the builder deduplicates keeping the first value.
-		await Assert.That(meta.Count(m => m.Key == "Azure_SKU")).IsEqualTo(1);
-		await Assert.That(meta.Any(m => m.Key == "Azure_SKU" && m.Value == "Entry 1")).IsTrue();
+		await Assert.That(meta.Count(m => m.Key == "Azure_SKU")).IsEqualTo(2);
 	}
 
 	[Test]
@@ -1228,25 +1226,6 @@ public sealed class LikeC4ModelBuilderTests
 
 		var meta = model.Elements[0].Metadata;
 		await Assert.That(meta.Any(m => m.Key == "My_Key__v2__")).IsTrue();
-	}
-
-	[Test]
-	public async Task Build_NormaliseMetadata_DuplicateNormalisedKeys_KeepsFirst()
-	{
-		var resource = CreateProjectResource("api");
-		resource.Annotations.Add(
-			// "Azure SKU" and "Azure_SKU" both normalise to "Azure_SKU"
-			new LikeC4NodeDetailsAnnotation("API")
-				.WithMetadata("Azure SKU", "first")
-				.WithMetadata("Azure_SKU", "second")
-		);
-
-		var model = LikeC4ModelBuilder.Build([resource]);
-
-		var meta = model.Elements[0].Metadata;
-		var normalised = meta.Where(m => m.Key == "Azure_SKU").ToList();
-		await Assert.That(normalised).Count().IsEqualTo(1);
-		await Assert.That(normalised[0].Value).IsEqualTo("first");
 	}
 
 	// ── Dashboard deep-link tests ─────────────────────────────────────────────
