@@ -126,8 +126,18 @@ sealed class AspireC4LifecycleHook(
 				if (notification.Snapshot.State?.Text != KnownResourceStates.Running)
 					continue;
 
-				// Extract base URL (scheme + authority) from the first non-internal URL.
-				var rawUrl = notification.Snapshot.Urls.FirstOrDefault(u => !u.IsInternal)?.Url;
+				// Mirror Aspire's own GetDashboardUrl logic: prefer HTTPS over HTTP so that
+				// OTLP/gRPC endpoints (which are typically HTTP) are not selected ahead of
+				// the browser-facing HTTPS frontend URL.
+				var rawUrl =
+					notification.Snapshot.Urls.FirstOrDefault(u =>
+						!u.IsInternal
+						&& u.Url.StartsWith("https://", StringComparison.OrdinalIgnoreCase)
+					)?.Url
+					?? notification.Snapshot.Urls.FirstOrDefault(u =>
+						!u.IsInternal
+						&& u.Url.StartsWith("http://", StringComparison.OrdinalIgnoreCase)
+					)?.Url;
 				if (rawUrl is null)
 					continue;
 
@@ -193,14 +203,11 @@ sealed class AspireC4LifecycleHook(
 					executeCommand: _ =>
 					{
 						var url = _diagramUrl;
-						if (url is null)
-						{
-							return Task.FromResult(
+						return url is null
+							? Task.FromResult(
 								CommandResults.Failure("The architecture diagram is not yet available.")
-							);
-						}
-
-						return Task.FromResult(
+							)
+							: Task.FromResult(
 							CommandResults.Success(
 								$"[Open {displayName}]({url})",
 								new CommandResultData
@@ -266,9 +273,8 @@ sealed class AspireC4LifecycleHook(
 					await resourceNotificationService.PublishUpdateAsync(
 						resource,
 						s =>
-						{
 							// Avoid duplicates on repeated Running notifications.
-							return s.Urls.Any(u => u.Name == "architecture-diagram")
+							s.Urls.Any(u => u.Name == "architecture-diagram")
 								? s
 								: (
 									s with
@@ -284,9 +290,7 @@ sealed class AspireC4LifecycleHook(
 											}
 										),
 									}
-								);
-						}
-					);
+								));
 				}
 
 				break; // Only inject once — the URL persists in the snapshot.
@@ -362,7 +366,7 @@ sealed class AspireC4LifecycleHook(
 							|| u.Url.StartsWith("https://", StringComparison.OrdinalIgnoreCase)
 						)
 					)
-					.Select(u => (Url: u.Url, Name: u.Name ?? "endpoint"))
+					.Select(u => (u.Url, Name: u.Name ?? "endpoint"))
 					.ToImmutableArray();
 
 				if (!externalUrls.IsEmpty)
