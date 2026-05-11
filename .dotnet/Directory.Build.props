@@ -171,7 +171,10 @@
 		<!-- Testing packages -->
 		<PackageReference Include="TUnit" Condition="!$(IsSharedTestingProject)" />
 		<PackageReference Include="Bogus" />
-		<PackageReference Include="Microsoft.Testing.Platform.MSBuild" Condition="!$(IsSharedTestingProject)" />
+		<PackageReference
+			Include="Microsoft.Testing.Platform.MSBuild"
+			Condition="!$(IsSharedTestingProject)"
+		/>
 		<PackageReference Include="NSubstitute" />
 		<PackageReference Include="NSubstitute.Analyzers.CSharp">
 			<PrivateAssets>all</PrivateAssets>

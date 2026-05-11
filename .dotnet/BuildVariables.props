@@ -38,7 +38,8 @@
 			>$([System.Text.RegularExpressions.Regex]::Match($(MSBuildProjectName), `^.*\.([\w|_]\w*)Tests?$`).get_Groups().get_Item(1).ToString())</TestingType
 		>
 		<IsTestProject Condition="'$(TestingType)' != ''">true</IsTestProject>
-		<IsSharedTestingProject Condition="('$(MSBuildProjectName)' == 'SharedTestingFramework') OR ('$(MSBuildProjectName)' == 'SharedTestingInfrastructure') OR ('$(MSBuildProjectName)' == 'SharedTestingUtilities' OR '$(MSBuildProjectName)' == 'SharedTestingInfra')" 
+		<IsSharedTestingProject
+			Condition="('$(MSBuildProjectName)' == 'SharedTestingFramework') OR ('$(MSBuildProjectName)' == 'SharedTestingInfrastructure') OR ('$(MSBuildProjectName)' == 'SharedTestingUtilities' OR '$(MSBuildProjectName)' == 'SharedTestingInfra')"
 			>true</IsSharedTestingProject
 		>
 	</PropertyGroup>

@@ -118,11 +118,8 @@ jobs:
         with:
           global-json-file: ./global.json
 
-      - name: Restore dotnet tools
-        run: dotnet tool restore
-
       - name: CSharpier format check
-        run: dotnet csharpier check src
+        run: dnx csharpier check ./
 
       - name: Restore solution
         run: dotnet restore ${{ env.SOLUTION }}
