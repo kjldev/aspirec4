@@ -1,30 +1,13 @@
 var builder = DistributedApplication.CreateBuilder(args);
 
 // Add LikeC4 visualization to the application. This will allow us to visualize the components and their relationships in a C4 model.
-var visualization = builder.AddAspireC4(configure: opts =>
-{
-	// Validate the C4 model before starting the application to catch any issues early.
-	opts.ValidateBeforeStart = true;
-});
-
-// Register hand-authored extension files (custom styles, views, model extensions).
-// The files sit next to the TestAppHost assembly so they are available in both the normal
-// run context (when the TestAppHost is launched directly) and the integration-test context
-// (where the TestAppHost assembly is copied to the test output directory).
-var extensionsDir = Path.Combine(
-	Path.GetDirectoryName(typeof(TestAppHostProgram).Assembly.Location)!,
-	"likec4-extensions"
-);
-if (Directory.Exists(extensionsDir))
-{
-	visualization.WithAdditionalDSLFolder(extensionsDir);
-}
-
-var imagesDir = Path.Combine(Path.GetDirectoryName(typeof(TestAppHostProgram).Assembly.Location)!, "likec4-images");
-if (Directory.Exists(imagesDir))
-{
-	visualization.WithImageAliasFolder("@test-icons", imagesDir);
-}
+builder
+	.AddAspireC4(configure: opts =>
+	{
+		// Validate the C4 model before starting the application to catch any issues early.
+		opts.ValidateBeforeStart = true;
+	})
+	.ConfigureTestHost();
 
 var azureManagerRedis = builder
 	.AddAzureManagedRedis("azure-redis")
@@ -103,7 +86,7 @@ var postgres = builder
 	.WithLikeC4Group("Local Dev/ Sync Group");
 
 var nodeApp = builder
-	.AddNodeApp("node-app", "../../../samples/node-app", "index.js")
+	.AddNodeApp("node-app", "../../../samples/node-app", "index.ts")
 	// Add LikeC4 details to the component for better visualization in the C4 model.
 	.WithLikeC4Details(
 		label: "Sample Node App",
@@ -111,7 +94,7 @@ var nodeApp = builder
 		description: "A sample Node.js application that connects to Azure Redis and Azure Postgres"
 	//icon: "tech:nodejs"
 	)
-	.WithPnpm(install: true)
+	.WithNpm(install: true)
 	.WithHttpEndpoint(env: "PORT")
 	// These references will be used to generate the connections in the C4 model and also ensure that the application waits for these dependencies to be ready before starting.
 	.WithLikeC4Reference(

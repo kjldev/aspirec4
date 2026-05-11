@@ -52,7 +52,7 @@ pack configuration=config_default: (build configuration)
 # Regenerate the LikeC4 icon manifest from the upstream GitHub repository
 [group('dotnet')]
 refresh-icons:
-    node scripts/generate-icon-manifest.mjs
+    node scripts/generate-icon-manifest.mts
 # ── LikeC4 diagram viewer ─────────────────────────────────────────────────────
 
 # View all LikeC4 diagrams in this repository
@@ -77,4 +77,4 @@ _try-docker path=justfile_dir():
 [private]
 _try-node path=justfile_dir():
     echo "Docker not available, falling back to Node..."
-    sh -c 'set -- --use-hash-history; if command -v dot >/dev/null 2>&1; then set -- "$@" --use-dot-bin; fi; pnpx likec4 serve "{{ path }}" "$@"'
+    sh -c 'set -- --use-hash-history; if command -v dot >/dev/null 2>&1; then set -- "$@" --use-dot-bin; fi; npx likec4 serve "{{ path }}" "$@"'

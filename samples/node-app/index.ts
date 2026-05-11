@@ -11,8 +11,8 @@
  *   GET /ping/postgres   — run SELECT 1 against PostgreSQL
  */
 
-import express from 'express'
-import Redis from 'ioredis'
+import express, { type Request, type Response } from 'express'
+import { Redis, type RedisOptions } from 'ioredis'
 import pg from 'pg'
 
 const PORT = parseInt(process.env.PORT ?? '3000', 10)
@@ -28,7 +28,7 @@ const PORT = parseInt(process.env.PORT ?? '3000', 10)
  *   - "host:port,password=xxx,ssl=true"
  *   - "redis[s]://…" URLs (pass-through)
  */
-function redisOptions(cs) {
+function redisOptions(cs: string | undefined): RedisOptions {
   if (!cs) return { host: 'localhost', port: 6379 }
   if (cs.startsWith('redis://') || cs.startsWith('rediss://')) {
     const url = new URL(cs)
@@ -57,7 +57,7 @@ function redisOptions(cs) {
  *   - "Host=…;Port=…;Username=…;Password=…;Database=…"
  *   - "postgresql://…" / "postgres://…" URLs (pass-through)
  */
-function postgresConfig(cs) {
+function postgresConfig(cs: string | undefined): pg.PoolConfig {
   if (!cs) return { host: 'localhost', port: 5432 }
   if (cs.startsWith('postgresql://') || cs.startsWith('postgres://'))
     return { connectionString: cs }
@@ -92,7 +92,7 @@ const redis = new Redis({
   maxRetriesPerRequest: 1,
 })
 
-redis.on('error', err => console.error('[redis] connection error:', err.message))
+redis.on('error', (err: Error) => console.error('[redis] connection error:', err.message))
 
 const pgPool = new pg.Pool({
   ...postgresConfig(process.env['ConnectionStrings__posgres']),
@@ -108,31 +108,31 @@ const app = express()
 app.use(express.json())
 
 /** GET /health — liveness probe; always 200 while the process is running */
-app.get('/health', (_req, res) => {
+app.get('/health', (_req: Request, res: Response) => {
   res.json({ status: 'ok', service: 'node-app' })
 })
 
 /** GET /ping/redis — verifies Redis connectivity with a PING command */
-app.get('/ping/redis', async (_req, res) => {
+app.get('/ping/redis', async (_req: Request, res: Response) => {
   try {
     // connect() is idempotent when already connected
     await redis.connect().catch(() => {})
     const response = await redis.ping()
     res.json({ status: 'ok', response })
   } catch (err) {
-    console.error('[redis] ping failed:', err.message)
-    res.status(503).json({ status: 'error', message: err.message })
+    console.error('[redis] ping failed:', (err as Error).message)
+    res.status(503).json({ status: 'error', message: (err as Error).message })
   }
 })
 
 /** GET /ping/postgres — verifies PostgreSQL connectivity with SELECT 1 */
-app.get('/ping/postgres', async (_req, res) => {
+app.get('/ping/postgres', async (_req: Request, res: Response) => {
   try {
     const { rows } = await pgPool.query('SELECT 1 AS ping, now() AS ts')
     res.json({ status: 'ok', response: rows[0] })
   } catch (err) {
-    console.error('[postgres] ping failed:', err.message)
-    res.status(503).json({ status: 'error', message: err.message })
+    console.error('[postgres] ping failed:', (err as Error).message)
+    res.status(503).json({ status: 'error', message: (err as Error).message })
   }
 })
 

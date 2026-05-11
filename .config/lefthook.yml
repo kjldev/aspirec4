@@ -6,4 +6,4 @@ pre-commit:
 commit-msg:
   jobs:
     - name: conventional commits
-      run: pnpm dlx commitlint --edit {1}
+      run: npx commitlint --edit {1}

@@ -8,8 +8,8 @@
  *
  * When those vars are absent (local dev outside Aspire) the SDK emits nothing.
  *
- * Load order: start script passes `--import ./instrumentation.js` so this
- * module runs before index.js and patches http/express/pg.
+ * Load order: start script passes `--import ./instrumentation.ts` so this
+ * module runs before index.ts and patches http/express/pg.
  */
 
 if (process.env.OTEL_EXPORTER_OTLP_ENDPOINT) {
