@@ -11,10 +11,15 @@
 	</ItemGroup>
 
 	<ItemGroup>
-		<Content Include="..\..\src\AspireC4\kjldev-logo.png" Link="likec4-images\test-badge.png" />
+		<Content
+			Include="..\..\src\AspireC4\kjldev-logo.png"
+			Link="likec4-images\test-badge.png"
+			CopyToOutputDirectory="PreserveNewest"
+		/>
 		<Content
 			Include="..\..\..\assets\images\likec4\likec4-logo.svg"
 			Link="likec4-images\test-logo.svg"
+			CopyToOutputDirectory="PreserveNewest"
 		/>
 
 		<Content Include="likec4-extensions\*.c4" CopyToOutputDirectory="PreserveNewest" />
