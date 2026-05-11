@@ -51,13 +51,12 @@ public static class AspireC4DistributedApplicationBuilderExtensions
 					opts.OutputDirectory = ResolveOutputDirectory(builder.AppHostDirectory, opts.OutputDirectory);
 				});
 
-			// Resolve options at build time so the bind mount and lifecycle hook use the same path.
-			AspireC4DiagramOptions opts = new();
-			configure?.Invoke(opts);
+			var diagramOpts = new AspireC4DiagramOptions();
+			configure?.Invoke(diagramOpts);
 
-			var outputDir = ResolveOutputDirectory(builder.AppHostDirectory, opts.OutputDirectory);
+			var outputDir = ResolveOutputDirectory(builder.AppHostDirectory, diagramOpts.OutputDirectory);
 			Directory.CreateDirectory(outputDir);
-			var imageTag = opts.ContainerImageTag ?? LikeC4ServerResource.DefaultTag;
+			var imageTag = diagramOpts.ContainerImageTag ?? LikeC4ServerResource.DefaultTag;
 			var imageReference = LikeC4ServerResource.GetImageReference(imageTag);
 			var hmrPortMode = LikeC4HmrPortCompatibility.Resolve(imageTag);
 			// Use the relay on Windows even in Configurable mode: Docker Desktop may fail to publish
@@ -66,6 +65,9 @@ public static class AspireC4DistributedApplicationBuilderExtensions
 			// bridges incoming HMR connections to whatever dynamic port Docker happened to allocate.
 			var useHmrRelay = hmrPortMode == LikeC4HMRPortMode.FixedPort || OperatingSystem.IsWindows();
 			var workspaceVolumeName = ResolveWorkspaceVolumeName(builder.AppHostDirectory, name);
+			var defaultViewId = string.IsNullOrWhiteSpace(diagramOpts.DefaultViewId)
+				? "index"
+				: diagramOpts.DefaultViewId;
 
 			builder
 				.Services.AddOptions<LikeC4ContainerWorkspaceOptions>()
@@ -112,14 +114,14 @@ public static class AspireC4DistributedApplicationBuilderExtensions
 						opts.DisplayText = "View LikeC4 Diagram";
 						opts.DisplayOrder = 0;
 						opts.DisplayLocation = UrlDisplayLocation.SummaryAndDetails;
-						opts.Url = "/view/index";
+						opts.Url = $"/view/{defaultViewId}";
 					}
 				)
 				//.WithExternalHttpEndpoints()
 				// Exclude the sidecar from the architecture diagram — it is tooling, not a system element.
 				.WithAnnotation(new ExcludeFromLikeC4Annotation(), ResourceAnnotationMutationBehavior.Replace);
 
-			if (opts.DisableHMR)
+			if (diagramOpts.DisableHMR)
 			{
 				serverBuilder.WithArgs("--no-react-hmr");
 			}

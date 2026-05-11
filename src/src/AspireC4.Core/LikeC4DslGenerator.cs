@@ -406,8 +406,9 @@ public static class LikeC4DSLGenerator
 
 	static void WriteViews(StringBuilder sb, LikeC4Model model, AspireC4DiagramOptions options)
 	{
+		var viewId = string.IsNullOrWhiteSpace(options.GeneratedViewId) ? "index" : options.GeneratedViewId;
 		sb.AppendLine("views {");
-		sb.AppendLine("  view index {");
+		sb.Append("  view ").Append(viewId).AppendLine(" {");
 		sb.Append("    title '").Append(EscapeQuote(options.Title)).AppendLine("'");
 
 		if (model.Elements.Count == 0)

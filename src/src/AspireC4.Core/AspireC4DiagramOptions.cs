@@ -5,6 +5,30 @@ public sealed class AspireC4DiagramOptions
 {
 	public const string SectionName = "AspireC4";
 
+	/// <summary>
+	/// The LikeC4 view identifier emitted in the generated <c>.c4</c> file
+	/// (e.g. <c>view <b>index</b> { ... }</c>).
+	/// Defaults to <c>"index"</c>.
+	/// </summary>
+	/// <remarks>
+	/// Change this if the generated view ID conflicts with a hand-authored view in the same
+	/// LikeC4 project.  Any <see langword="null"/> or empty value is normalised to <c>"index"</c>.
+	/// If you change this, set <see cref="DefaultViewId"/> to the same value so the Aspire
+	/// dashboard link still opens the correct diagram.
+	/// </remarks>
+	public string? GeneratedViewId { get; set; }
+
+	/// <summary>
+	/// The LikeC4 view identifier used in the <c>/view/{id}</c> URL that the Aspire dashboard
+	/// links to. Defaults to <c>"index"</c> (the ID of the auto-generated view).
+	/// </summary>
+	/// <remarks>
+	/// Override this when you want the dashboard link to open a different view — for example,
+	/// a hand-authored context diagram instead of the generated overview. Any <see langword="null"/>
+	/// or empty value is normalised to <c>"index"</c>.
+	/// </remarks>
+	public string? DefaultViewId { get; set; }
+
 	/// <summary>Title shown in the generated LikeC4 view. Defaults to "Architecture".</summary>
 	public string Title { get; set; } = "Architecture";
 

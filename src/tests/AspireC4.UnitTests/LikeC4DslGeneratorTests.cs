@@ -798,6 +798,56 @@ public sealed partial class LikeC4DSLGeneratorTests
 	}
 
 	[Test]
+	public async Task Generate_DefaultGeneratedViewId_EmitsIndexView()
+	{
+		var dsl = LikeC4DSLGenerator.Generate(LikeC4Model.Empty, DefaultOptions);
+
+		await Assert.That(dsl).Contains("view index {");
+	}
+
+	[Test]
+	public async Task Generate_CustomGeneratedViewId_UsesCustomId()
+	{
+		var opts = new AspireC4DiagramOptions
+		{
+			Title = DefaultOptions.Title,
+			OutputDirectory = DefaultOptions.OutputDirectory,
+			FileName = DefaultOptions.FileName,
+			GeneratedViewId = "overview",
+		};
+
+		var dsl = LikeC4DSLGenerator.Generate(LikeC4Model.Empty, opts);
+
+		await Assert.That(dsl).Contains("view overview {");
+		await Assert.That(dsl).DoesNotContain("view index {");
+	}
+
+	[Test]
+	public async Task Generate_NullOrWhitespaceGeneratedViewId_FallsBackToIndex()
+	{
+		var optsNull = new AspireC4DiagramOptions
+		{
+			Title = DefaultOptions.Title,
+			OutputDirectory = DefaultOptions.OutputDirectory,
+			FileName = DefaultOptions.FileName,
+			GeneratedViewId = null,
+		};
+		var optsEmpty = new AspireC4DiagramOptions
+		{
+			Title = DefaultOptions.Title,
+			OutputDirectory = DefaultOptions.OutputDirectory,
+			FileName = DefaultOptions.FileName,
+			GeneratedViewId = "   ",
+		};
+
+		var dslNull = LikeC4DSLGenerator.Generate(LikeC4Model.Empty, optsNull);
+		var dslEmpty = LikeC4DSLGenerator.Generate(LikeC4Model.Empty, optsEmpty);
+
+		await Assert.That(dslNull).Contains("view index {");
+		await Assert.That(dslEmpty).Contains("view index {");
+	}
+
+	[Test]
 	public async Task Generate_TitleWithSingleQuote_IsEscaped()
 	{
 		AspireC4DiagramOptions opts = new() { Title = "O'Reilly's App", OutputDirectory = "." };
