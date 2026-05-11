@@ -76,10 +76,7 @@ sealed class AspireC4Builder(
 		if (LikeC4ResourceBuilder.Resource is ContainerResource containerResource)
 		{
 			var sourceDir = Path.GetDirectoryName(absoluteSource)!;
-			var hashBytes = SHA256.HashData(Encoding.UTF8.GetBytes(sourceDir));
-#pragma warning disable CA1308 // Normalize strings to uppercase
-			var hash = Convert.ToHexString(hashBytes)[..8].ToLowerInvariant();
-#pragma warning restore CA1308 // Normalize strings to uppercase
+			var hash = ComputeShortHash(sourceDir);
 			var mountTarget = $"{LikeC4ServerResource.WorkspacePath}/ext/{hash}";
 
 			// De-duplicate: only add the bind mount once per unique source directory.
@@ -102,6 +99,109 @@ sealed class AspireC4Builder(
 		}
 
 		return this;
+	}
+
+	public IAspireC4Builder WithAdditionalDSLFolder(string folderPath)
+	{
+		ArgumentException.ThrowIfNullOrWhiteSpace(folderPath);
+
+		var absoluteFolder = Path.GetFullPath(folderPath);
+		if (!Directory.Exists(absoluteFolder))
+			throw new DirectoryNotFoundException($"The additional DSL folder does not exist: '{absoluteFolder}'");
+
+		ApplicationBuilder.Services.Configure<AspireC4DiagramOptions>(opts =>
+			opts.AdditionalDSLFolders.Add(absoluteFolder)
+		);
+
+		if (LikeC4ResourceBuilder.Resource is ContainerResource containerResource)
+		{
+			var hash = ComputeShortHash(absoluteFolder);
+			var containerRelative = $"ext/{hash}";
+			var mountTarget = $"{LikeC4ServerResource.WorkspacePath}/{containerRelative}";
+
+			var alreadyMounted = containerResource
+				.Annotations.OfType<ContainerMountAnnotation>()
+				.Any(a => a.Target == mountTarget);
+
+			if (!alreadyMounted)
+			{
+				containerResource.Annotations.Add(
+					new ContainerMountAnnotation(
+						absoluteFolder,
+						mountTarget,
+						ContainerMountType.BindMount,
+						isReadOnly: true
+					)
+				);
+			}
+
+			ApplicationBuilder.Services.Configure<LikeC4ContainerWorkspaceOptions>(wsOpts =>
+				wsOpts.BindMountedFolderTargets.TryAdd(absoluteFolder, containerRelative)
+			);
+		}
+
+		return this;
+	}
+
+	public IAspireC4Builder WithImageAliasFolder(string aliasKey, string folderPath)
+	{
+		ArgumentException.ThrowIfNullOrWhiteSpace(aliasKey);
+		ArgumentException.ThrowIfNullOrWhiteSpace(folderPath);
+
+		if (!aliasKey.StartsWith('@'))
+			throw new ArgumentException("Image alias keys must start with '@'.", nameof(aliasKey));
+
+		var absoluteFolder = Path.GetFullPath(folderPath);
+		if (!Directory.Exists(absoluteFolder))
+			throw new DirectoryNotFoundException($"The image alias folder does not exist: '{absoluteFolder}'");
+
+		ApplicationBuilder.Services.Configure<AspireC4DiagramOptions>(opts =>
+			opts.ImageAliases[aliasKey] = absoluteFolder
+		);
+
+		if (LikeC4ResourceBuilder.Resource is ContainerResource containerResource)
+		{
+			var hash = ComputeShortHash(absoluteFolder);
+			var containerRelative = $"img/{hash}";
+			var mountTarget = $"{LikeC4ServerResource.WorkspacePath}/{containerRelative}";
+
+			var alreadyMounted = containerResource
+				.Annotations.OfType<ContainerMountAnnotation>()
+				.Any(a => a.Target == mountTarget);
+
+			if (!alreadyMounted)
+			{
+				containerResource.Annotations.Add(
+					new ContainerMountAnnotation(
+						absoluteFolder,
+						mountTarget,
+						ContainerMountType.BindMount,
+						isReadOnly: true
+					)
+				);
+			}
+
+			ApplicationBuilder.Services.Configure<LikeC4ContainerWorkspaceOptions>(wsOpts =>
+				wsOpts.BindMountedImageAliasFolderTargets.TryAdd(aliasKey, containerRelative)
+			);
+		}
+
+		return this;
+	}
+
+	public IAspireC4Builder WithoutConfigFileGeneration()
+	{
+		ApplicationBuilder.Services.Configure<AspireC4DiagramOptions>(opts => opts.GenerateConfigFile = false);
+
+		return this;
+	}
+
+	static string ComputeShortHash(string value)
+	{
+		var hashBytes = SHA256.HashData(Encoding.UTF8.GetBytes(value));
+#pragma warning disable CA1308 // Normalize strings to uppercase
+		return Convert.ToHexString(hashBytes)[..8].ToLowerInvariant();
+#pragma warning restore CA1308 // Normalize strings to uppercase
 	}
 
 	static LikeC4LocalCLIRuntime DetectRuntime()

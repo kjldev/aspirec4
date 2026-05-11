@@ -945,7 +945,12 @@ public sealed partial class LikeC4DSLGeneratorTests
 	/// </list>
 	/// </para>
 	/// </summary>
-	public static IEnumerable<(LikeC4ResourceState State, string? StateTag, string? Color, int? Opacity)> StateStyleMappings()
+	public static IEnumerable<(
+		LikeC4ResourceState State,
+		string? StateTag,
+		string? Color,
+		int? Opacity
+	)> StateStyleMappings()
 	{
 		yield return (LikeC4ResourceState.Unknown, null, null, null);
 		yield return (LikeC4ResourceState.Starting, "state-starting", "sky", null);
@@ -1404,10 +1409,10 @@ public sealed partial class LikeC4DSLGeneratorTests
 					Metadata =
 					[
 						.. Enumerable.Range(0, metadataCount).Select(i => new LikeC4Metadata(metadataKey, $"{i + 1}")),
-					]
-				}
+					],
+				},
 			],
-			Relationships = []
+			Relationships = [],
 		};
 
 		var dsl = LikeC4DSLGenerator.Generate(model, DefaultOptions);

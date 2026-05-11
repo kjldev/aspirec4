@@ -25,4 +25,25 @@ sealed class LikeC4ContainerWorkspaceOptions
 #pragma warning disable IDE0028 // Simplify collection initialization
 	public HashSet<string> BindMountedSourceFiles { get; } = new(StringComparer.OrdinalIgnoreCase);
 #pragma warning restore IDE0028 // Simplify collection initialization
+
+	/// <summary>
+	/// Maps absolute host folder path → container-relative path (e.g. <c>"ext/abc12345"</c>)
+	/// for each folder added via <see cref="IAspireC4Builder.WithAdditionalDSLFolder"/>.
+	/// Used when generating the <c>include.paths</c> section of the container-side
+	/// <c>likec4.config.json</c> that is synced to the Docker volume.
+	/// </summary>
+#pragma warning disable IDE0028
+	public Dictionary<string, string> BindMountedFolderTargets { get; } = new(StringComparer.OrdinalIgnoreCase);
+#pragma warning restore IDE0028
+
+	/// <summary>
+	/// Maps image alias key (e.g. <c>"@icons"</c>) → container-relative path (e.g. <c>"img/def67890"</c>)
+	/// for each alias registered via <see cref="IAspireC4Builder.WithImageAliasFolder"/>.
+	/// Used when generating the <c>imageAliases</c> section of the container-side
+	/// <c>likec4.config.json</c> that is synced to the Docker volume.
+	/// </summary>
+#pragma warning disable IDE0028
+	public Dictionary<string, string> BindMountedImageAliasFolderTargets { get; } =
+		new(StringComparer.OrdinalIgnoreCase);
+#pragma warning restore IDE0028
 }

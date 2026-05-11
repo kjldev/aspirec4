@@ -12,10 +12,7 @@ public sealed class AspireC4LifecycleHookTests
 	[Test]
 	public async Task SelectDashboardBaseUrl_HttpsNamedEndpoint_ReturnsBaseUrl()
 	{
-		var urls = new[]
-		{
-			new UrlSnapshot("https", "https://localhost:17134/", IsInternal: false),
-		};
+		var urls = new[] { new UrlSnapshot("https", "https://localhost:17134/", IsInternal: false) };
 
 		var result = AspireC4LifecycleHook.SelectDashboardBaseUrl(urls);
 
@@ -26,10 +23,7 @@ public sealed class AspireC4LifecycleHookTests
 	public async Task SelectDashboardBaseUrl_HttpsNamedEndpoint_WithLoginToken_StripsPath()
 	{
 		// The aspire-dashboard appends /login?t=... to the URL when a browser token is configured.
-		var urls = new[]
-		{
-			new UrlSnapshot("https", "https://localhost:17134/login?t=abc123", IsInternal: false),
-		};
+		var urls = new[] { new UrlSnapshot("https", "https://localhost:17134/login?t=abc123", IsInternal: false) };
 
 		var result = AspireC4LifecycleHook.SelectDashboardBaseUrl(urls);
 
@@ -77,10 +71,7 @@ public sealed class AspireC4LifecycleHookTests
 	public async Task SelectDashboardBaseUrl_HttpNamedEndpointOnly_ReturnsBaseUrl()
 	{
 		// HTTP-only setup (no TLS) — the browser frontend is still named "http".
-		var urls = new[]
-		{
-			new UrlSnapshot("http", "http://localhost:15000/", IsInternal: false),
-		};
+		var urls = new[] { new UrlSnapshot("http", "http://localhost:15000/", IsInternal: false) };
 
 		var result = AspireC4LifecycleHook.SelectDashboardBaseUrl(urls);
 
@@ -91,10 +82,7 @@ public sealed class AspireC4LifecycleHookTests
 	public async Task SelectDashboardBaseUrl_NullNameFallsBackToScheme()
 	{
 		// If no endpoint has a "https"/"http" name, fall back to scheme-based selection.
-		var urls = new[]
-		{
-			new UrlSnapshot(Name: null, "https://localhost:17134/", IsInternal: false),
-		};
+		var urls = new[] { new UrlSnapshot(Name: null, "https://localhost:17134/", IsInternal: false) };
 
 		var result = AspireC4LifecycleHook.SelectDashboardBaseUrl(urls);
 

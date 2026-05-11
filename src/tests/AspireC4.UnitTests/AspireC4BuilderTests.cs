@@ -294,4 +294,175 @@ public sealed class AspireC4BuilderTests
 				Directory.Delete(tempDir, recursive: true);
 		}
 	}
+
+	[Test]
+	public async Task WithAdditionalDSLFolder_AddsBindMountForFolder()
+	{
+		var appBuilder = DistributedApplication.CreateBuilder([]);
+		var tempDir = Path.Combine(Path.GetTempPath(), "likec4-unit-" + Guid.NewGuid().ToString("N")[..8]);
+		Directory.CreateDirectory(tempDir);
+
+		try
+		{
+			var visualization = appBuilder.AddAspireC4();
+			visualization.WithAdditionalDSLFolder(tempDir);
+
+			var mounts = visualization
+				.LikeC4ResourceBuilder.Resource.Annotations.OfType<ContainerMountAnnotation>()
+				.ToArray();
+
+			// 1 named volume (workspace) + 1 bind mount (the folder).
+			await Assert.That(mounts.Length).EqualTo(2);
+
+			var bindMount = mounts.FirstOrDefault(m => m.Type == ContainerMountType.BindMount);
+			await Assert.That(bindMount).IsNotNull();
+			await Assert.That(bindMount!.Source).IsEqualTo(tempDir);
+			await Assert.That(bindMount.Target).StartsWith($"{LikeC4ServerResource.WorkspacePath}/ext/");
+			await Assert.That(bindMount.IsReadOnly).IsTrue();
+		}
+		finally
+		{
+			if (Directory.Exists(tempDir))
+				Directory.Delete(tempDir, recursive: true);
+		}
+	}
+
+	[Test]
+	public async Task WithAdditionalDSLFolder_FolderDoesNotExist_ThrowsDirectoryNotFoundException()
+	{
+		var appBuilder = DistributedApplication.CreateBuilder([]);
+		var nonExistent = Path.Combine(Path.GetTempPath(), "likec4-nonexistent-" + Guid.NewGuid().ToString("N"));
+
+		var visualization = appBuilder.AddAspireC4();
+
+		await Assert
+			.That(() => visualization.WithAdditionalDSLFolder(nonExistent))
+			.Throws<DirectoryNotFoundException>();
+	}
+
+	[Test]
+	public async Task WithAdditionalDSLFolder_SameFolderTwice_OnlyOneBindMount()
+	{
+		var appBuilder = DistributedApplication.CreateBuilder([]);
+		var tempDir = Path.Combine(Path.GetTempPath(), "likec4-unit-" + Guid.NewGuid().ToString("N")[..8]);
+		Directory.CreateDirectory(tempDir);
+
+		try
+		{
+			var visualization = appBuilder.AddAspireC4();
+			visualization.WithAdditionalDSLFolder(tempDir).WithAdditionalDSLFolder(tempDir);
+
+			var bindMounts = visualization
+				.LikeC4ResourceBuilder.Resource.Annotations.OfType<ContainerMountAnnotation>()
+				.Where(m => m.Type == ContainerMountType.BindMount)
+				.ToArray();
+
+			await Assert.That(bindMounts).HasSingleItem();
+		}
+		finally
+		{
+			if (Directory.Exists(tempDir))
+				Directory.Delete(tempDir, recursive: true);
+		}
+	}
+
+	[Test]
+	public async Task WithAdditionalDSLFolder_RegistersFolderTarget_InWorkspaceOptions()
+	{
+		var appBuilder = DistributedApplication.CreateBuilder([]);
+		var tempDir = Path.Combine(Path.GetTempPath(), "likec4-unit-" + Guid.NewGuid().ToString("N")[..8]);
+		Directory.CreateDirectory(tempDir);
+
+		try
+		{
+			var visualization = appBuilder.AddAspireC4();
+			visualization.WithAdditionalDSLFolder(tempDir);
+
+			using var sp = appBuilder.Services.BuildServiceProvider();
+			var wsOpts =
+				sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<LikeC4ContainerWorkspaceOptions>>().Value;
+
+			await Assert.That(wsOpts.BindMountedFolderTargets.ContainsKey(tempDir)).IsTrue();
+			await Assert.That(wsOpts.BindMountedFolderTargets[tempDir]).StartsWith("ext/");
+		}
+		finally
+		{
+			if (Directory.Exists(tempDir))
+				Directory.Delete(tempDir, recursive: true);
+		}
+	}
+
+	[Test]
+	public async Task WithImageAliasFolder_AddsBindMountForImageFolder()
+	{
+		var appBuilder = DistributedApplication.CreateBuilder([]);
+		var tempDir = Path.Combine(Path.GetTempPath(), "likec4-unit-" + Guid.NewGuid().ToString("N")[..8]);
+		Directory.CreateDirectory(tempDir);
+
+		try
+		{
+			var visualization = appBuilder.AddAspireC4();
+			visualization.WithImageAliasFolder("@icons", tempDir);
+
+			var bindMount = visualization
+				.LikeC4ResourceBuilder.Resource.Annotations.OfType<ContainerMountAnnotation>()
+				.FirstOrDefault(m => m.Type == ContainerMountType.BindMount);
+
+			await Assert.That(bindMount).IsNotNull();
+			await Assert.That(bindMount!.Source).IsEqualTo(tempDir);
+			await Assert.That(bindMount.Target).StartsWith($"{LikeC4ServerResource.WorkspacePath}/img/");
+			await Assert.That(bindMount.IsReadOnly).IsTrue();
+		}
+		finally
+		{
+			if (Directory.Exists(tempDir))
+				Directory.Delete(tempDir, recursive: true);
+		}
+	}
+
+	[Test]
+	public async Task WithImageAliasFolder_InvalidKey_ThrowsArgumentException()
+	{
+		var appBuilder = DistributedApplication.CreateBuilder([]);
+		var tempDir = Path.Combine(Path.GetTempPath(), "likec4-unit-" + Guid.NewGuid().ToString("N")[..8]);
+		Directory.CreateDirectory(tempDir);
+
+		try
+		{
+			var visualization = appBuilder.AddAspireC4();
+
+			await Assert.That(() => visualization.WithImageAliasFolder("icons", tempDir)).Throws<ArgumentException>();
+		}
+		finally
+		{
+			if (Directory.Exists(tempDir))
+				Directory.Delete(tempDir, recursive: true);
+		}
+	}
+
+	[Test]
+	public async Task WithImageAliasFolder_FolderDoesNotExist_ThrowsDirectoryNotFoundException()
+	{
+		var appBuilder = DistributedApplication.CreateBuilder([]);
+		var nonExistent = Path.Combine(Path.GetTempPath(), "likec4-nonexistent-" + Guid.NewGuid().ToString("N"));
+
+		var visualization = appBuilder.AddAspireC4();
+
+		await Assert
+			.That(() => visualization.WithImageAliasFolder("@icons", nonExistent))
+			.Throws<DirectoryNotFoundException>();
+	}
+
+	[Test]
+	public async Task WithoutConfigFileGeneration_SetsFlagToFalse()
+	{
+		var appBuilder = DistributedApplication.CreateBuilder([]);
+
+		appBuilder.AddAspireC4().WithoutConfigFileGeneration();
+
+		using var sp = appBuilder.Services.BuildServiceProvider();
+		var opts = sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<AspireC4DiagramOptions>>().Value;
+
+		await Assert.That(opts.GenerateConfigFile).IsFalse();
+	}
 }

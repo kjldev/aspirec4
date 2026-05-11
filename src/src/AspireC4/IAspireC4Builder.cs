@@ -70,4 +70,78 @@ public interface IAspireC4Builder
 	/// </param>
 	/// <returns>The same <see cref="IAspireC4Builder"/> for further configuration.</returns>
 	IAspireC4Builder WithAdditionalDSLFile(string sourcePath);
+
+	/// <summary>
+	/// Registers an additional folder whose <c>.c4</c> files will be included in the LikeC4
+	/// project via the <c>include.paths</c> field of the generated <c>likec4.config.json</c>.
+	/// </summary>
+	/// <remarks>
+	/// <para>
+	/// Unlike <see cref="WithAdditionalDSLFile"/>, this method does <b>not</b> copy files into
+	/// the output directory. Instead it registers a directory whose contents are discovered by
+	/// LikeC4 at runtime through the config file's <c>include.paths</c> mechanism
+	/// (see <see href="https://likec4.dev/dsl/config/#include-additional-directories"/>).
+	/// </para>
+	/// <para>
+	/// In Docker container mode, the folder is bind-mounted read-only into the container at a
+	/// deterministic path under <c>/data/ext/</c> and the container-side config file is generated
+	/// to reference that path.
+	/// </para>
+	/// </remarks>
+	/// <param name="folderPath">
+	/// The absolute path to a directory containing <c>.c4</c> source files. Relative paths are
+	/// resolved against the current working directory at call time. The directory must exist when
+	/// this method is called; a <see cref="DirectoryNotFoundException"/> is thrown otherwise.
+	/// </param>
+	/// <returns>The same <see cref="IAspireC4Builder"/> for further configuration.</returns>
+	/// <exception cref="DirectoryNotFoundException">
+	/// Thrown immediately if <paramref name="folderPath"/> does not refer to an existing directory.
+	/// </exception>
+	IAspireC4Builder WithAdditionalDSLFolder(string folderPath);
+
+	/// <summary>
+	/// Registers an image alias that maps a shorthand key (e.g. <c>"@icons"</c>) to a directory
+	/// of image files.  The alias is written to the <c>imageAliases</c> section of the generated
+	/// <c>likec4.config.json</c> (see <see href="https://likec4.dev/dsl/config/#image-aliases"/>).
+	/// </summary>
+	/// <remarks>
+	/// <para>
+	/// Once registered, the alias can be used inside <c>.c4</c> files as an icon prefix, e.g.
+	/// <c>icon "@icons/service.svg"</c>.
+	/// </para>
+	/// <para>
+	/// In Docker container mode, the folder is bind-mounted read-only into the container at a
+	/// deterministic path under <c>/data/img/</c> and the container-side config file references
+	/// that mount point.
+	/// </para>
+	/// </remarks>
+	/// <param name="aliasKey">
+	/// The alias identifier, which must start with <c>@</c> (e.g. <c>"@icons"</c>).
+	/// An <see cref="ArgumentException"/> is thrown if the key does not start with <c>@</c>.
+	/// </param>
+	/// <param name="folderPath">
+	/// The absolute path to the image directory. Relative paths are resolved against the current
+	/// working directory at call time. The directory must exist; a
+	/// <see cref="DirectoryNotFoundException"/> is thrown otherwise.
+	/// </param>
+	/// <returns>The same <see cref="IAspireC4Builder"/> for further configuration.</returns>
+	/// <exception cref="ArgumentException">
+	/// Thrown if <paramref name="aliasKey"/> does not start with <c>@</c>.
+	/// </exception>
+	/// <exception cref="DirectoryNotFoundException">
+	/// Thrown immediately if <paramref name="folderPath"/> does not refer to an existing directory.
+	/// </exception>
+	IAspireC4Builder WithImageAliasFolder(string aliasKey, string folderPath);
+
+	/// <summary>
+	/// Disables the automatic generation of <c>likec4.config.json</c> in the output directory.
+	/// </summary>
+	/// <remarks>
+	/// By default, AspireC4 writes a <c>likec4.config.json</c> that sets the project title,
+	/// any registered include paths, and image aliases.  Call this method when you want full
+	/// control over the config file — for example, because the output directory is already part
+	/// of a hand-curated LikeC4 project with its own config.
+	/// </remarks>
+	/// <returns>The same <see cref="IAspireC4Builder"/> for further configuration.</returns>
+	IAspireC4Builder WithoutConfigFileGeneration();
 }

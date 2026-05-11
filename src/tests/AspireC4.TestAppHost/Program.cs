@@ -21,10 +21,7 @@ var extensionsDir = Path.Combine(
 );
 if (Directory.Exists(extensionsDir))
 {
-	foreach (var c4File in Directory.GetFiles(extensionsDir, "*.c4", SearchOption.TopDirectoryOnly).Order())
-	{
-		visualization.WithAdditionalDSLFile(c4File);
-	}
+	visualization.WithAdditionalDSLFolder(extensionsDir);
 }
 
 var azureManagerRedis = builder

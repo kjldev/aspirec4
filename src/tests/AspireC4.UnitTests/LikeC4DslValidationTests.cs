@@ -137,15 +137,17 @@ public sealed class LikeC4DSLValidationTests
 	{
 		try
 		{
-			using var proc = Process.Start(new ProcessStartInfo
-			{
-				FileName = "dot",
-				Arguments = "-V",
-				RedirectStandardOutput = true,
-				RedirectStandardError = true,
-				UseShellExecute = false,
-				CreateNoWindow = true,
-			});
+			using var proc = Process.Start(
+				new ProcessStartInfo
+				{
+					FileName = "dot",
+					Arguments = "-V",
+					RedirectStandardOutput = true,
+					RedirectStandardError = true,
+					UseShellExecute = false,
+					CreateNoWindow = true,
+				}
+			);
 			proc?.WaitForExit();
 			return proc?.ExitCode == 0;
 		}
@@ -412,12 +414,27 @@ public sealed class LikeC4DSLValidationTests
 		{
 			Elements =
 			[
-				new LikeC4Element { Name = "api", Label = "API", Kind = LikeC4ElementKind.Component },
-				new LikeC4Element { Name = "db", Label = "Database", Kind = LikeC4ElementKind.Database },
+				new LikeC4Element
+				{
+					Name = "api",
+					Label = "API",
+					Kind = LikeC4ElementKind.Component,
+				},
+				new LikeC4Element
+				{
+					Name = "db",
+					Label = "Database",
+					Kind = LikeC4ElementKind.Database,
+				},
 			],
 			Relationships =
 			[
-				new LikeC4Relationship { SourceName = "api", TargetName = "db", Label = "reads" },
+				new LikeC4Relationship
+				{
+					SourceName = "api",
+					TargetName = "db",
+					Label = "reads",
+				},
 			],
 		};
 

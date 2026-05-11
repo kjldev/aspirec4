@@ -62,14 +62,16 @@ sealed class AspireC4LifecycleHook(
 		{
 			try
 			{
-				using var proc = Process.Start(new ProcessStartInfo
-				{
-					FileName = "dot",
-					Arguments = "-V",
-					RedirectStandardError = true,
-					UseShellExecute = false,
-					CreateNoWindow = true,
-				});
+				using var proc = Process.Start(
+					new ProcessStartInfo
+					{
+						FileName = "dot",
+						Arguments = "-V",
+						RedirectStandardError = true,
+						UseShellExecute = false,
+						CreateNoWindow = true,
+					}
+				);
 				proc?.WaitForExit();
 				return proc?.ExitCode == 0;
 			}
@@ -192,14 +194,12 @@ sealed class AspireC4LifecycleHook(
 			list.FirstOrDefault(u => u.Name == "https")?.Url
 			?? list.FirstOrDefault(u => u.Name == "http")?.Url
 			// Fallbacks for future-proofing in case endpoint names change.
-			?? list.FirstOrDefault(u =>
-				u.Url.StartsWith("https://", StringComparison.OrdinalIgnoreCase)
-			)?.Url
-			?? list.FirstOrDefault(u =>
-				u.Url.StartsWith("http://", StringComparison.OrdinalIgnoreCase)
-			)?.Url;
+			?? list.FirstOrDefault(u => u.Url.StartsWith("https://", StringComparison.OrdinalIgnoreCase))?.Url
+			?? list.FirstOrDefault(u => u.Url.StartsWith("http://", StringComparison.OrdinalIgnoreCase))?.Url;
 
-		return rawUrl is null || !Uri.TryCreate(rawUrl, UriKind.Absolute, out var parsed) ? null : $"{parsed.Scheme}://{parsed.Authority}";
+		return rawUrl is null || !Uri.TryCreate(rawUrl, UriKind.Absolute, out var parsed)
+			? null
+			: $"{parsed.Scheme}://{parsed.Authority}";
 	}
 
 	// ── Dashboard integration (hide & surface URL/command on project resources) ──
@@ -238,20 +238,18 @@ sealed class AspireC4LifecycleHook(
 					{
 						var url = _diagramUrl;
 						return url is null
-							? Task.FromResult(
-								CommandResults.Failure("The architecture diagram is not yet available.")
-							)
+							? Task.FromResult(CommandResults.Failure("The architecture diagram is not yet available."))
 							: Task.FromResult(
-							CommandResults.Success(
-								$"[Open {displayName}]({url})",
-								new CommandResultData
-								{
-									Value = $"[Open {displayName}]({url})",
-									Format = CommandResultFormat.Markdown,
-									DisplayImmediately = true,
-								}
-							)
-						);
+								CommandResults.Success(
+									$"[Open {displayName}]({url})",
+									new CommandResultData
+									{
+										Value = $"[Open {displayName}]({url})",
+										Format = CommandResultFormat.Markdown,
+										DisplayImmediately = true,
+									}
+								)
+							);
 					},
 					displayDescription: "View the live LikeC4 architecture diagram",
 					parameter: null,
@@ -324,7 +322,8 @@ sealed class AspireC4LifecycleHook(
 											}
 										),
 									}
-								));
+								)
+					);
 				}
 
 				break; // Only inject once — the URL persists in the snapshot.
@@ -523,7 +522,12 @@ sealed class AspireC4LifecycleHook(
 		// Sync the main model file to the container workspace.
 		if (syncContainerWorkspace)
 		{
-			await WriteContainerWorkspaceFileAsync(opts.FileName, dsl, resetContainerWorkspace, cancellationToken);
+			await SyncContainerVolumeFileAsync(
+				$"{LikeC4ServerResource.WorkspacePath}/{opts.FileName}.c4",
+				dsl,
+				resetContainerWorkspace,
+				cancellationToken
+			);
 		}
 
 		// Copy and optionally sync additional user-provided DSL files.
@@ -550,13 +554,19 @@ sealed class AspireC4LifecycleHook(
 			if (syncContainerWorkspace && !bindMountedFiles.Contains(absoluteSource))
 			{
 				var additionalContent = await File.ReadAllTextAsync(destPath, cancellationToken);
-				await WriteContainerWorkspaceFileAsync(
-					fileNameWithoutExtension,
+				await SyncContainerVolumeFileAsync(
+					$"{LikeC4ServerResource.WorkspacePath}/{fileNameWithoutExtension}.c4",
 					additionalContent,
 					resetContainerWorkspace: false,
 					cancellationToken
 				);
 			}
+		}
+
+		// Generate likec4.config.json when opted in (default).
+		if (opts.GenerateConfigFile)
+		{
+			await WriteConfigFileAsync(opts, outputDir, syncContainerWorkspace, cancellationToken);
 		}
 
 		// Validate after ALL files (generated model + additional DSL) are in the output directory.
@@ -654,15 +664,74 @@ sealed class AspireC4LifecycleHook(
 		}
 	}
 
-	async Task WriteContainerWorkspaceFileAsync(
-		string fileName,
-		string dsl,
+	async Task WriteConfigFileAsync(
+		AspireC4DiagramOptions opts,
+		string outputDir,
+		bool syncContainerWorkspace,
+		CancellationToken cancellationToken
+	)
+	{
+		// Build host-side include paths (relative to outputDir, using forward slashes for JSON).
+		var hostIncludePaths = opts
+			.AdditionalDSLFolders.Select(absoluteFolder =>
+				Path.GetRelativePath(outputDir, absoluteFolder).Replace('\\', '/')
+			)
+			.ToList();
+
+		// Build host-side image alias paths (relative to outputDir, forward slashes).
+		var hostAliases = opts.ImageAliases.ToDictionary(
+			kvp => kvp.Key,
+			kvp => Path.GetRelativePath(outputDir, kvp.Value).Replace('\\', '/'),
+			StringComparer.OrdinalIgnoreCase
+		);
+
+		var hostConfig = LikeC4ConfigGenerator.Generate("aspirec4", opts.Title, hostIncludePaths, hostAliases);
+		var configPath = Path.Combine(outputDir, "likec4.config.json");
+		await File.WriteAllTextAsync(configPath, hostConfig, cancellationToken);
+
+		if (syncContainerWorkspace)
+		{
+			// In Docker mode the folders are bind-mounted at /data/ext/{hash}/; the config path is
+			// /data/likec4.config.json; so container-relative include paths are simply "ext/{hash}".
+			var wsOpts = workspaceOptions.Value;
+
+			var containerIncludePaths = opts
+				.AdditionalDSLFolders.Where(f => wsOpts.BindMountedFolderTargets.ContainsKey(f))
+				.Select(f => wsOpts.BindMountedFolderTargets[f])
+				.ToList();
+
+			var containerAliases = opts
+				.ImageAliases.Where(kvp => wsOpts.BindMountedImageAliasFolderTargets.ContainsKey(kvp.Key))
+				.ToDictionary(
+					kvp => kvp.Key,
+					kvp => wsOpts.BindMountedImageAliasFolderTargets[kvp.Key],
+					StringComparer.OrdinalIgnoreCase
+				);
+
+			var containerConfig = LikeC4ConfigGenerator.Generate(
+				"aspirec4",
+				opts.Title,
+				containerIncludePaths,
+				containerAliases
+			);
+
+			await SyncContainerVolumeFileAsync(
+				$"{LikeC4ServerResource.WorkspacePath}/likec4.config.json",
+				containerConfig,
+				resetContainerWorkspace: false,
+				cancellationToken
+			);
+		}
+	}
+
+	async Task SyncContainerVolumeFileAsync(
+		string containerFilePath,
+		string content,
 		bool resetContainerWorkspace,
 		CancellationToken cancellationToken
 	)
 	{
 		var workspace = workspaceOptions.Value;
-		var containerFilePath = $"{LikeC4ServerResource.WorkspacePath}/{fileName}.c4";
 		var syncScript = resetContainerWorkspace
 			? "const fs=require('node:fs'); const path=require('node:path'); for (const entry of fs.readdirSync('/data')) { if (entry.endsWith('.c4')) fs.rmSync(path.join('/data', entry), { force: true }); } fs.writeFileSync(process.argv[1], fs.readFileSync(0));"
 			: "const fs=require('node:fs');fs.writeFileSync(process.argv[1], fs.readFileSync(0));";
@@ -697,7 +766,7 @@ sealed class AspireC4LifecycleHook(
 
 		try
 		{
-			await process.StandardInput.WriteAsync(dsl.AsMemory(), cancellationToken);
+			await process.StandardInput.WriteAsync(content.AsMemory(), cancellationToken);
 			await process.StandardInput.FlushAsync(cancellationToken);
 			process.StandardInput.Close();
 

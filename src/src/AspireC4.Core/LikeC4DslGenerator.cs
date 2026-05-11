@@ -152,8 +152,8 @@ public static class LikeC4DSLGenerator
 
 		// Top-level elements first, then nested.
 		var topLevel = model.Elements.Where(e => e.ParentName is null).ToList();
-		var nested = model.Elements
-			.Where(e => e.ParentName is not null)
+		var nested = model
+			.Elements.Where(e => e.ParentName is not null)
 			.ToLookup(e => e.ParentName!, StringComparer.OrdinalIgnoreCase);
 
 		foreach (var element in topLevel)
@@ -391,16 +391,18 @@ public static class LikeC4DSLGenerator
 	/// </list>
 	/// </para>
 	/// </summary>
-	static readonly IReadOnlyDictionary<string, LikeC4ElementStyleOverride> DefaultStateStyles =
-		new Dictionary<string, LikeC4ElementStyleOverride>(StringComparer.OrdinalIgnoreCase)
-		{
-			["state-starting"] = new("sky", null),
-			["state-running"] = new("green", null),
-			["state-stopping"] = new("slate", 60),
-			["state-exited"] = new("muted", 30),
-			["state-failed"] = new("amber", null),
-			["state-error"] = new("red", null),
-		};
+	static readonly IReadOnlyDictionary<string, LikeC4ElementStyleOverride> DefaultStateStyles = new Dictionary<
+		string,
+		LikeC4ElementStyleOverride
+	>(StringComparer.OrdinalIgnoreCase)
+	{
+		["state-starting"] = new("sky", null),
+		["state-running"] = new("green", null),
+		["state-stopping"] = new("slate", 60),
+		["state-exited"] = new("muted", 30),
+		["state-failed"] = new("amber", null),
+		["state-error"] = new("red", null),
+	};
 
 	static void WriteViews(StringBuilder sb, LikeC4Model model, AspireC4DiagramOptions options)
 	{
@@ -432,9 +434,7 @@ public static class LikeC4DSLGenerator
 			// model block.
 			if (options.IncludeDefaultStateStyles)
 			{
-				var tagsInModel = model
-					.Elements.SelectMany(e => e.Tags)
-					.ToHashSet(StringComparer.OrdinalIgnoreCase);
+				var tagsInModel = model.Elements.SelectMany(e => e.Tags).ToHashSet(StringComparer.OrdinalIgnoreCase);
 
 				foreach (var (tag, styleOverride) in DefaultStateStyles)
 				{

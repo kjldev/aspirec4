@@ -1253,10 +1253,7 @@ public sealed class LikeC4ModelBuilderTests
 	{
 		var resource = CreateContainerResource("api");
 		var states = new Dictionary<string, LikeC4ResourceState> { { "api", LikeC4ResourceState.Unknown } };
-		var stateTagMap = new Dictionary<LikeC4ResourceState, string?>
-		{
-			[LikeC4ResourceState.Unknown] = null,
-		};
+		var stateTagMap = new Dictionary<LikeC4ResourceState, string?> { [LikeC4ResourceState.Unknown] = null };
 
 		var model = LikeC4ModelBuilder.Build([resource], resourceStates: states, stateTagMap: stateTagMap);
 
@@ -1283,10 +1280,7 @@ public sealed class LikeC4ModelBuilderTests
 		resource.Annotations.Add(new LikeC4NodeDetailsAnnotation("API").WithTag("backend").WithTag("v2"));
 
 		var states = new Dictionary<string, LikeC4ResourceState> { { "api", LikeC4ResourceState.Error } };
-		var stateTagMap = new Dictionary<LikeC4ResourceState, string?>
-		{
-			[LikeC4ResourceState.Error] = "state-error",
-		};
+		var stateTagMap = new Dictionary<LikeC4ResourceState, string?> { [LikeC4ResourceState.Error] = "state-error" };
 
 		var model = LikeC4ModelBuilder.Build([resource], resourceStates: states, stateTagMap: stateTagMap);
 

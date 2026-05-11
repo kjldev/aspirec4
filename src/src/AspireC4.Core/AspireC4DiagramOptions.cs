@@ -118,6 +118,48 @@ public sealed class AspireC4DiagramOptions
 	public List<string> AdditionalDSLFiles { get; set; } = [];
 
 	/// <summary>
+	/// Additional directories containing <c>.c4</c> source files to include in the LikeC4 project
+	/// via the <c>include.paths</c> field in the generated <c>likec4.config.json</c>.
+	/// LikeC4 recursively scans each directory for <c>.c4</c> files.
+	/// </summary>
+	/// <remarks>
+	/// Each entry must be an absolute path to an existing directory.
+	/// Use <see cref="IAspireC4Builder.WithAdditionalDSLFolder"/> to register directories;
+	/// that method validates existence at call time.
+	/// In Docker container mode, each folder is bind-mounted read-only into the container at
+	/// a deterministic path under <c>/data/ext/</c>.
+	/// </remarks>
+	[System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1002:Do not expose generic lists")]
+	[System.Diagnostics.CodeAnalysis.SuppressMessage("Usage", "CA2227:Collection properties should be read only")]
+	public List<string> AdditionalDSLFolders { get; set; } = [];
+
+	/// <summary>
+	/// Image alias definitions written to the <c>imageAliases</c> section of the generated
+	/// <c>likec4.config.json</c>. Each key must start with <c>@</c> and maps to an absolute
+	/// path of a directory that contains image files.
+	/// </summary>
+	/// <remarks>
+	/// Use <see cref="IAspireC4Builder.WithImageAliasFolder"/> to register aliases; that method
+	/// validates that the key starts with <c>@</c> and that the directory exists at call time.
+	/// In Docker container mode, each image directory is bind-mounted read-only at a deterministic
+	/// path under <c>/data/img/</c>.
+	/// </remarks>
+	[System.Diagnostics.CodeAnalysis.SuppressMessage("Usage", "CA2227:Collection properties should be read only")]
+	public Dictionary<string, string> ImageAliases { get; set; } = new(StringComparer.OrdinalIgnoreCase);
+
+	/// <summary>
+	/// When <see langword="true"/> (default), generates a <c>likec4.config.json</c> file in the
+	/// output directory. The file includes the project title, any <see cref="AdditionalDSLFolders"/>
+	/// as <c>include.paths</c> entries, and any <see cref="ImageAliases"/>.
+	/// <para>
+	/// Set to <see langword="false"/> to opt out of automatic config generation and manage
+	/// <c>likec4.config.json</c> manually — useful when the output directory is already part of a
+	/// hand-curated LikeC4 project with its own config.
+	/// </para>
+	/// </summary>
+	public bool GenerateConfigFile { get; set; } = true;
+
+	/// <summary>
 	/// When <see langword="true"/>, adds links from each LikeC4 element back to the Aspire dashboard
 	/// console logs and structured logs pages for that resource. The links are constructed at runtime
 	/// once the Aspire dashboard URL is discovered and are encoded as login-redirect URLs when a browser

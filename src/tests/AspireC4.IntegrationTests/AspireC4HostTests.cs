@@ -154,10 +154,16 @@ public sealed partial class AspireC4HostTests : IAsyncDisposable
 	}
 
 	[Test]
-	public async Task AdditionalDSLFiles_AreCopiedToOutputDirectory()
+	public async Task ConfigFile_IsGeneratedInOutputDirectory(CancellationToken cancellationToken)
 	{
-		await Assert.That(File.Exists(Path.Combine(_outputDir!, "extend.c4"))).IsTrue();
-		await Assert.That(File.Exists(Path.Combine(_outputDir!, "views.c4"))).IsTrue();
+		var configPath = Path.Combine(_outputDir!, "likec4.config.json");
+		await Assert.That(File.Exists(configPath)).IsTrue();
+
+		var json = await File.ReadAllTextAsync(configPath, cancellationToken);
+		await Assert.That(json).Contains("aspirec4");
+		await Assert.That(json).Contains("Integration Test Architecture");
+		// The extensions folder is an include path; the config must reference it.
+		await Assert.That(json).Contains("likec4-extensions");
 	}
 
 	[Test]
@@ -167,9 +173,7 @@ public sealed partial class AspireC4HostTests : IAsyncDisposable
 
 		if (totalErrors < 0)
 		{
-			throw new InvalidOperationException(
-				$"LikeC4 validation did not produce JSON output.\n\n{rawOutput}"
-			);
+			throw new InvalidOperationException($"LikeC4 validation did not produce JSON output.\n\n{rawOutput}");
 		}
 
 		if (totalErrors != 0)
@@ -246,14 +250,16 @@ public sealed partial class AspireC4HostTests : IAsyncDisposable
 	{
 		try
 		{
-			using var proc = Process.Start(new ProcessStartInfo
-			{
-				FileName = "dot",
-				Arguments = "-V",
-				RedirectStandardError = true,
-				UseShellExecute = false,
-				CreateNoWindow = true,
-			});
+			using var proc = Process.Start(
+				new ProcessStartInfo
+				{
+					FileName = "dot",
+					Arguments = "-V",
+					RedirectStandardError = true,
+					UseShellExecute = false,
+					CreateNoWindow = true,
+				}
+			);
 			proc?.WaitForExit();
 			return proc?.ExitCode == 0;
 		}
