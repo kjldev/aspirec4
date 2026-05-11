@@ -3,10 +3,6 @@ var builder = DistributedApplication.CreateBuilder(args);
 // Add LikeC4 visualization to the application. This will allow us to visualize the components and their relationships in a C4 model.
 var visualization = builder.AddAspireC4(configure: opts =>
 {
-	// Disable HMR (Hot Module Replacement) when in publish mode for better performance and stability.
-	// HMR is typically used in development to allow live updates without restarting the application, but it can
-	// add overhead that is not desirable in a production environment.
-	opts.DisableHMR = builder.ExecutionContext.IsPublishMode;
 	// Validate the C4 model before starting the application to catch any issues early.
 	opts.ValidateBeforeStart = true;
 });

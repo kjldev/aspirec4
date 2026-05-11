@@ -1,9 +1,6 @@
 using System.Diagnostics;
-using System.Globalization;
-using System.Net.WebSockets;
 using System.Runtime.InteropServices;
 using System.Text.Json;
-using System.Text.RegularExpressions;
 using Aspire.Hosting.ApplicationModel;
 using Aspire.Hosting.Testing;
 using Microsoft.Extensions.Configuration;
@@ -14,6 +11,7 @@ namespace Aspire.Hosting.AspireC4;
 /// Integration tests that verify the LikeC4 visualization starts successfully in a real Aspire app host.
 /// Tests are isolated by unique output directories and inject configuration directly into the app
 /// builder — no process-wide environment variables are mutated, making tests safe to run in parallel.
+/// HMR is disabled via configuration so no relay port is bound and tests can run concurrently.
 /// </summary>
 public sealed partial class AspireC4HostTests : IAsyncDisposable
 {
@@ -40,6 +38,8 @@ public sealed partial class AspireC4HostTests : IAsyncDisposable
 				["AspireC4:OutputDirectory"] = _outputDir,
 				["AspireC4:FileName"] = "model.gen",
 				["AspireC4:Title"] = "Integration Test Architecture",
+				// Disable HMR so no relay port is bound — tests can run fully in parallel.
+				["AspireC4:DisableHMR"] = "true",
 			}
 		);
 
@@ -109,38 +109,6 @@ public sealed partial class AspireC4HostTests : IAsyncDisposable
 
 		await Assert.That(response).IsNotNull();
 		await Assert.That((int)response!.StatusCode).IsLessThan(500);
-	}
-
-	[Test]
-	public async Task LikeC4Visualization_HmrEndpointAcceptsWebSocketConnections(CancellationToken cancellationToken)
-	{
-		await WaitForLikeC4ServerRunningAsync(cancellationToken);
-
-		using var client = _app!.CreateHttpClient(AspireC4ResourceName, LikeC4ServerResource.HttpEndpointName);
-		var viteClient = await client.GetStringAsync("/@vite/client", cancellationToken);
-		var tokenMatch = WSTokenRegex().Match(viteClient);
-		var portMatch = HMRPortRegex().Match(viteClient);
-
-		await Assert.That(tokenMatch.Success).IsTrue();
-		await Assert.That(portMatch.Success).IsTrue();
-		await Assert
-			.That(int.Parse(portMatch.Groups[1].Value, CultureInfo.InvariantCulture))
-			.IsEqualTo(LikeC4ServerResource.DefaultContainerUpdatePort);
-
-		using var socket = new ClientWebSocket();
-		socket.Options.AddSubProtocol("vite-hmr");
-
-		using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-		linkedCts.CancelAfter(TimeSpan.FromSeconds(10));
-
-		await socket.ConnectAsync(
-			new Uri(
-				$"ws://127.0.0.1:{LikeC4ServerResource.DefaultContainerUpdatePort}/?token={tokenMatch.Groups[1].Value}"
-			),
-			linkedCts.Token
-		);
-
-		await Assert.That(socket.State).IsEqualTo(WebSocketState.Open);
 	}
 
 	async Task WaitForLikeC4ServerRunningAsync(CancellationToken cancellationToken)
@@ -330,10 +298,4 @@ public sealed partial class AspireC4HostTests : IAsyncDisposable
 			Directory.Delete(_outputDir, recursive: true);
 		}
 	}
-
-	[GeneratedRegex("hmrPort = (\\d+)")]
-	private static partial Regex HMRPortRegex();
-
-	[GeneratedRegex("wsToken = \\\"([^\\\"]+)\\\"")]
-	private static partial Regex WSTokenRegex();
 }

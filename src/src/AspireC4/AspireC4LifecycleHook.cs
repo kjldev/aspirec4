@@ -100,7 +100,7 @@ sealed class AspireC4LifecycleHook(
 					return;
 				}
 
-				if (syncContainerWorkspace)
+				if (syncContainerWorkspace && !options.Value.DisableHMR)
 				{
 					EnsureLegacyHostHmrPortAvailable();
 					StartLegacyHmrRelay(evt.Model, ct);
