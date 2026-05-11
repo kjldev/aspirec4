@@ -519,12 +519,21 @@ sealed class AspireC4LifecycleHook(
 		var outputPath = Path.Combine(outputDir, filename);
 		await File.WriteAllTextAsync(outputPath, dsl, cancellationToken);
 
+		// Format the generated file in-place (best-effort) so the on-disk file is human-readable.
+		// Re-read after formatting so the container sync receives the formatted content.
+		var syncContent = dsl;
+		if (opts.FormatGeneratedFile)
+		{
+			await RunFormatAsync(outputPath, outputDir, cancellationToken);
+			syncContent = await File.ReadAllTextAsync(outputPath, cancellationToken);
+		}
+
 		// Sync the main model file to the container workspace.
 		if (syncContainerWorkspace)
 		{
 			await SyncContainerVolumeFileAsync(
 				$"{LikeC4ServerResource.GeneratedPath}/{opts.FileName}.c4",
-				dsl,
+				syncContent,
 				resetContainerWorkspace,
 				cancellationToken
 			);
@@ -661,6 +670,46 @@ sealed class AspireC4LifecycleHook(
 		catch
 		{
 			// Validation is best-effort; never block startup.
+		}
+	}
+
+	[System.Diagnostics.CodeAnalysis.SuppressMessage(
+		"Design",
+		"CA1031:Do not catch general exception types",
+		Justification = "Formatting is non-blocking; failures are silently ignored"
+	)]
+	async Task RunFormatAsync(string outputPath, string outputDir, CancellationToken cancellationToken)
+	{
+		try
+		{
+			var startInfo = new ProcessStartInfo
+			{
+				FileName = "npx",
+				RedirectStandardOutput = true,
+				RedirectStandardError = true,
+				UseShellExecute = false,
+				CreateNoWindow = true,
+				WorkingDirectory = outputDir,
+			};
+
+			startInfo.ArgumentList.Add("likec4");
+			startInfo.ArgumentList.Add("format");
+			startInfo.ArgumentList.Add("--files");
+			startInfo.ArgumentList.Add(outputPath);
+			startInfo.ArgumentList.Add(outputDir);
+
+			using var process = Process.Start(startInfo);
+			if (process is null)
+				return;
+
+			await process.WaitForExitAsync(cancellationToken);
+
+			if (process.ExitCode == 0)
+				telemetry.LikeC4FormatApplied();
+		}
+		catch
+		{
+			// Formatting is best-effort; never block startup or regeneration.
 		}
 	}
 

@@ -94,6 +94,16 @@ public sealed class AspireC4DiagramOptions
 	public LikeC4RelationshipKindSyntax RelationshipKindSyntax { get; set; } = LikeC4RelationshipKindSyntax.Dot;
 
 	/// <summary>
+	/// When <see langword="true"/> (default), runs <c>npx likec4 format --files &lt;file&gt;</c>
+	/// against the generated <c>.c4</c> file immediately after it is written to disk.
+	/// The formatter modifies the file in-place so the on-disk copy is human-readable;
+	/// the formatted content is also what gets synced to the Docker container workspace.
+	/// Failures are silently ignored — the application always continues regardless of the result.
+	/// Set to <see langword="false"/> to skip formatting (useful if <c>npx</c> is slow or unavailable).
+	/// </summary>
+	public bool FormatGeneratedFile { get; set; } = true;
+
+	/// <summary>
 	/// When <see langword="true"/>, runs <c>npx likec4 validate --json --no-layout</c> against the output
 	/// directory after generating the <c>.c4</c> file. Any validation errors are logged as warnings;
 	/// the application continues to start regardless of the result.

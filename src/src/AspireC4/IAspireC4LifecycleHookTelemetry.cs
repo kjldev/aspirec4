@@ -36,5 +36,8 @@ interface IAspireC4LifecycleHookTelemetry
 	void LikeC4ValidationPassed();
 
 	[Info]
+	void LikeC4FormatApplied();
+
+	[Info]
 	void AdditionalDSLFileSynced(string fileName);
 }
