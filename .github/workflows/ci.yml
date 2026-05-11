@@ -22,11 +22,10 @@ jobs:
         with:
           global-json-file: ./global.json
 
-      - name: Restore dotnet tools
-        run: dotnet tool restore
-
       - name: CSharpier format check
-        run: dotnet csharpier check src
+        run: |
+          dotnet tool install --global csharpier --version 1.2.6
+          csharpier check src
 
   build-and-test:
     name: Build and Test
