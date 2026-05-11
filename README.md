@@ -20,6 +20,7 @@ builder.Build().Run();
 ```
 
 This:
+
 1. Writes a `./likec4/model.gen.c4` file from the Aspire resource graph.
 2. Starts a `ghcr.io/likec4/likec4` Docker container serving the live diagram.
 3. Watches for resource state changes and regenerates the file automatically.
@@ -107,41 +108,6 @@ builder.AddLikeC4Visualization(options =>
 
 ---
 
-## Error log surfacing
-
-When a resource that is in the `Running` state emits an error-level log entry, its diagram element transitions to the `HasErrorLogs` state (orange). The lifecycle hook captures the most recent error log lines and includes them in the element's description, making the error context visible directly in the diagram.
-
-### Configuration
-
-```csharp
-builder.AddLikeC4Visualization(options =>
-{
-    // Max error log lines shown per element (0 = colour-only, no text). Default: 5.
-    options.ErrorLogLinesInDiagram = 10;
-});
-```
-
-### How log lines are captured
-
-1. `ResourceLoggerService.WatchAsync(resource)` is subscribed for every visible resource.
-2. Each batch is filtered to lines where `IsErrorMessage == true`.
-3. Error lines are appended to a per-resource ring buffer capped at `ErrorLogLinesInDiagram`.
-4. Each new error batch schedules a debounced (300 ms) diagram regeneration.
-5. During regeneration, the ring buffer is snapshotted and passed to `LikeC4ModelBuilder.Build()`.
-6. `BuildElement()` appends a `**Recent errors:**` markdown section to the element's description when the state is `HasErrorLogs` and the buffer is non-empty.
-
-### Log sources
-
-Only **console logs** (from `ResourceLoggerService`) are used for the `HasErrorLogs` indicator and the in-diagram error text. Structured/OpenTelemetry logs are not subscribed to.
-
-For full log history, use the dashboard deep-links (Console Logs / Structured Logs pages).
-
-### Filtering
-
-`HasErrorLogs` activates only for messages where `LogEntry.IsErrorMessage == true` (stderr-routed or explicitly marked error lines). Info/warning lines do not trigger the state change.
-
----
-
 ## Configuration reference
 
 All options are set on `AspireC4DiagramOptions`:
@@ -161,9 +127,8 @@ All options are set on `AspireC4DiagramOptions`:
 | `ElementKindSpecs` | `[]` | Custom element kind specifications for the `specification {}` block |
 | `AutoIncludeAspireMetadata` | `All` | Which Aspire runtime metadata to inject (`None`, `Metadata`, `Links`, `All`) |
 | `NormaliseMetadataBehaviour` | `Normalise` | How invalid metadata key characters are handled |
-| `AdditionalDslFiles` | `[]` | Extra `.c4` files copied into the output directory alongside the generated file |
+| `AdditionalDSLFiles` | `[]` | Extra `.c4` files copied into the output directory alongside the generated file |
 | `IncludeAspireDashboardLinks` | `true` | Inject Aspire dashboard console/structured log links into each element |
-| `ErrorLogLinesInDiagram` | `5` | Max error log lines shown in the element description; `0` = state colour only |
 | `IconResolvers` | `[]` | Custom icon resolvers evaluated before built-in inference |
 
 ---
@@ -175,7 +140,7 @@ All options are set on `AspireC4DiagramOptions`:
 Uses a locally-installed `likec4` CLI (via `npx`/`pnpm`/`yarn`/`bun`/`deno`) instead of the Docker container:
 
 ```csharp
-builder.AddLikeC4Visualization().WithLocalCli();
+builder.AddLikeC4Visualization().WithLocalCLI();
 ```
 
 ### Hide from dashboard (`WithHideFromDashboard`)
@@ -185,10 +150,6 @@ Removes the LikeC4 sidecar resource from the Aspire dashboard resource list and 
 ```csharp
 builder.AddLikeC4Visualization().WithHideFromDashboard();
 ```
-
-### Container runtime override
-
-Set the `ASPIRE_CONTAINER_RUNTIME` environment variable to use an alternative Docker runtime (e.g. `podman`).
 
 ---
 
@@ -205,9 +166,7 @@ The LikeC4 sidecar resource itself is always excluded.
 
 ## Limitations
 
-- **Static diagram tool**: LikeC4 renders a static (file-based) diagram. Log streaming is not possible inside the diagram itself; live updates require file regeneration + HMR push.
-- **Console logs only**: Only `ResourceLoggerService` (console/stderr) lines are inspected for the `HasErrorLogs` state. Structured/OTLP logs are not subscribed to.
-- **Error log lines in diagram**: Long log lines may be truncated or wrap awkwardly in the LikeC4 element description tooltip. Keep `ErrorLogLinesInDiagram` small (3–10).
+- **Static diagram tool**: LikeC4 renders a static (file-based) diagram. State updates require a HMR refresh.
 - **Dashboard URL discovery**: If the Aspire dashboard hasn't started yet when the first diagram is generated, dashboard links will be absent until the dashboard reaches `Running` and triggers a regeneration.
 - **Browser token in generated file**: The Aspire browser token appears in the `.c4` file embedded in dashboard link URLs. Do not commit the generated file to source control.
-- **Windows HMR relay**: On Windows (and for LikeC4 images prior to 1.56), a TCP relay bridges the fixed host port `24678` to the dynamically-allocated Docker port for Hot Module Replacement.
+- **Windows HMR relay**: On Windows, a TCP relay bridges the fixed host port `24678` to the dynamically-allocated Docker port for Hot Module Replacement.

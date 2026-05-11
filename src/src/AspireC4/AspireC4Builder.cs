@@ -68,7 +68,7 @@ sealed class AspireC4Builder(
 
 		var absoluteSource = Path.GetFullPath(sourcePath);
 		ApplicationBuilder.Services.Configure<AspireC4DiagramOptions>(opts =>
-			opts.AdditionalDslFiles.Add(absoluteSource)
+			opts.AdditionalDSLFiles.Add(absoluteSource)
 		);
 
 		// For container resources, bind-mount the source directory directly into the container

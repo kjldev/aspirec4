@@ -39,11 +39,6 @@ public static class LikeC4ModelBuilder
 	/// dashboard links use a <c>/login?t=…&amp;returnUrl=…</c> redirect URL so clicking the link in LikeC4
 	/// authenticates the browser before navigating to the resource page.
 	/// </param>
-	/// <param name="errorLogLines">
-	/// Optional mapping of resource name → recent error log messages. When provided and a resource is in the
-	/// <see cref="LikeC4ResourceState.HasErrorLogs"/> state, the most recent lines are appended to the element
-	/// description so the error context is visible directly in the diagram.
-	/// </param>
 	/// <param name="resourceSnapshotUrls">
 	/// Optional mapping of resource name to externally-accessible endpoint URLs captured from Aspire resource
 	/// snapshots. When present for a resource, these URLs are used for endpoint links in preference to reading

@@ -117,7 +117,7 @@ sealed class AspireC4LifecycleHook(
 				if (notification.Snapshot.State?.Text != KnownResourceStates.Running)
 					continue;
 
-					var baseUrl = SelectDashboardBaseUrl(notification.Snapshot.Urls);
+				var baseUrl = SelectDashboardBaseUrl(notification.Snapshot.Urls);
 				if (baseUrl is null)
 					continue;
 
@@ -153,7 +153,7 @@ sealed class AspireC4LifecycleHook(
 	/// OTLP HTTP endpoint (<c>Name = "otlp-http"</c>). Filtering by endpoint name, not by
 	/// URL scheme alone, ensures the correct browser-facing URL is always selected first.
 	/// </remarks>
-	internal static string? SelectDashboardBaseUrl(IEnumerable<UrlSnapshot> urls)
+	public static string? SelectDashboardBaseUrl(IEnumerable<UrlSnapshot> urls)
 	{
 		var list = urls.Where(u => !u.IsInternal).ToList();
 
@@ -170,10 +170,7 @@ sealed class AspireC4LifecycleHook(
 				u.Url.StartsWith("http://", StringComparison.OrdinalIgnoreCase)
 			)?.Url;
 
-		if (rawUrl is null || !Uri.TryCreate(rawUrl, UriKind.Absolute, out var parsed))
-			return null;
-
-		return $"{parsed.Scheme}://{parsed.Authority}";
+		return rawUrl is null || !Uri.TryCreate(rawUrl, UriKind.Absolute, out var parsed) ? null : $"{parsed.Scheme}://{parsed.Authority}";
 	}
 
 	// ── Dashboard integration (hide & surface URL/command on project resources) ──
@@ -507,7 +504,7 @@ sealed class AspireC4LifecycleHook(
 
 		// Copy and optionally sync additional user-provided DSL files.
 		var bindMountedFiles = workspaceOptions.Value.BindMountedSourceFiles;
-		foreach (var sourcePath in opts.AdditionalDslFiles)
+		foreach (var sourcePath in opts.AdditionalDSLFiles)
 		{
 			var absoluteSource = Path.GetFullPath(sourcePath);
 			if (!File.Exists(absoluteSource))

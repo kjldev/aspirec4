@@ -111,7 +111,7 @@ public sealed class AspireC4DiagramOptions
 	/// <remarks>
 	/// Each entry should be an absolute path or a path relative to the AppHost working directory.
 	/// </remarks>
-	public List<string> AdditionalDslFiles { get; set; } = [];
+	public List<string> AdditionalDSLFiles { get; set; } = [];
 
 	/// <summary>
 	/// When <see langword="true"/>, adds links from each LikeC4 element back to the Aspire dashboard
