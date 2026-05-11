@@ -87,7 +87,9 @@ public static class LikeC4ModelBuilder
 			.GroupBy(r => r.Name, StringComparer.OrdinalIgnoreCase)
 			.ToDictionary(g => g.Key, g => g.First(), StringComparer.OrdinalIgnoreCase);
 
+#pragma warning disable IDE0028 // Simplify collection initialization
 		List<LikeC4Element> elements = new(visibleResources.Count);
+#pragma warning restore IDE0028 // Simplify collection initialization
 		List<LikeC4Relationship> relationships = [];
 		HashSet<(string Source, string Target)> visitedRelationships = [];
 
@@ -141,7 +143,9 @@ public static class LikeC4ModelBuilder
 
 	static HashSet<IResource> BuildVisibleSet(IReadOnlyList<IResource> resources)
 	{
+#pragma warning disable IDE0028 // Simplify collection initialization
 		HashSet<IResource> visible = new(resources.Count);
+#pragma warning restore IDE0028 // Simplify collection initialization
 
 		foreach (var resource in resources)
 		{
@@ -319,21 +323,8 @@ public static class LikeC4ModelBuilder
 				var consolePath = $"/consolelogs/resource/{Uri.EscapeDataString(resource.Name)}";
 				var structuredPath = $"/structuredlogs/resource/{Uri.EscapeDataString(resource.Name)}";
 
-				string consoleUrl,
-					structuredUrl;
-				if (dashboardBrowserToken is not null)
-				{
-					var encodedToken = Uri.EscapeDataString(dashboardBrowserToken);
-					consoleUrl =
-						$"{dashboardBaseUrl}/login?t={encodedToken}&returnUrl={Uri.EscapeDataString(consolePath)}";
-					structuredUrl =
-						$"{dashboardBaseUrl}/login?t={encodedToken}&returnUrl={Uri.EscapeDataString(structuredPath)}";
-				}
-				else
-				{
-					consoleUrl = $"{dashboardBaseUrl}{consolePath}";
-					structuredUrl = $"{dashboardBaseUrl}{structuredPath}";
-				}
+				var consoleUrl = BuildDashboardLink(dashboardBaseUrl, consolePath, dashboardBrowserToken);
+				var structuredUrl = BuildDashboardLink(dashboardBaseUrl, structuredPath, dashboardBrowserToken);
 
 				if (existingUris.Add(consoleUrl))
 				{
@@ -348,6 +339,15 @@ public static class LikeC4ModelBuilder
 		}
 
 		return (metadata, links);
+	}
+
+	static string BuildDashboardLink(string baseUrl, string path, string? browserToken)
+	{
+		if (browserToken is null)
+			return $"{baseUrl}{path}";
+
+		var encodedToken = Uri.EscapeDataString(browserToken);
+		return $"{baseUrl}/login?t={encodedToken}&returnUrl={Uri.EscapeDataString(path)}";
 	}
 
 	/// <summary>

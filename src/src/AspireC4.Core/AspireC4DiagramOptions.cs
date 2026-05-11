@@ -83,6 +83,8 @@ public sealed class AspireC4DiagramOptions
 	/// is emitted rather than a bare <c>element KIND</c> line.
 	/// </para>
 	/// </summary>
+	[System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1002:Do not expose generic lists")]
+	[System.Diagnostics.CodeAnalysis.SuppressMessage("Usage", "CA2227:Collection properties should be read only")]
 	public List<LikeC4ElementKindSpec> ElementKindSpecs { get; set; } = [];
 
 	/// <summary>
@@ -111,6 +113,8 @@ public sealed class AspireC4DiagramOptions
 	/// <remarks>
 	/// Each entry should be an absolute path or a path relative to the AppHost working directory.
 	/// </remarks>
+	[System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1002:Do not expose generic lists")]
+	[System.Diagnostics.CodeAnalysis.SuppressMessage("Usage", "CA2227:Collection properties should be read only")]
 	public List<string> AdditionalDSLFiles { get; set; } = [];
 
 	/// <summary>
@@ -133,6 +137,7 @@ public sealed class AspireC4DiagramOptions
 	/// Custom tags that match the default <c>state-*</c> names will still receive the default
 	/// style rules. Use <see cref="IncludeDefaultStateStyles"/> to opt out of the built-in styles.
 	/// </remarks>
+	[System.Diagnostics.CodeAnalysis.SuppressMessage("Usage", "CA2227:Collection properties should be read only")]
 	public Dictionary<LikeC4ResourceState, string?> StateTagMap { get; set; } =
 		new()
 		{
@@ -170,5 +175,6 @@ public sealed class AspireC4DiagramOptions
 	/// });
 	/// </code>
 	/// </example>
+	[System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1002:Do not expose generic lists")]
 	public List<LikeC4IconResolver> IconResolvers { get; } = [];
 }

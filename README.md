@@ -4,6 +4,13 @@
 
 ---
 
+## Prerequisites
+
+- **Docker** (required by default) — the LikeC4 server runs as a `ghcr.io/likec4/likec4` container sidecar.
+- Alternatively, use `.WithLocalCLI()` to run via a locally-installed Node.js CLI (`npx`, `pnpm`, `yarn`, `bun`, or `deno`).
+
+---
+
 ## Quick start
 
 ```csharp
@@ -14,7 +21,7 @@ var builder = DistributedApplication.CreateBuilder(args);
 var api = builder.AddProject<Projects.MyApi>("my-api");
 
 // Register the LikeC4 visualization sidecar.
-builder.AddLikeC4Visualization();
+builder.AddAspireC4();
 
 builder.Build().Run();
 ```
@@ -35,7 +42,7 @@ This:
 Aspire resources
      │
      ▼
-LikeC4ModelBuilder.Build()   ← resource states, error log lines, dashboard URL
+LikeC4ModelBuilder.Build()   ← resource states, dashboard URL
      │
      ▼
 LikeC4DSLGenerator.Generate()
@@ -51,18 +58,15 @@ ghcr.io/likec4/likec4        ← serves the diagram, hot-reloads on file change
 
 Each Aspire resource is represented as a LikeC4 element. Its colour reflects the live runtime state:
 
-| State            | Colour   | Notes                                             |
-|------------------|----------|---------------------------------------------------|
-| Unknown          | default  | Not yet started                                   |
-| Starting         | sky      | Resource is initialising                          |
-| Running          | green    | Healthy and running                               |
-| Stopping         | slate    | Winding down (60 % opacity)                       |
-| Exited           | muted    | Stopped cleanly (30 % opacity)                    |
-| Failed           | amber    | Exited with a non-zero code                       |
-| Error            | red      | Reported an error state                           |
-| HasErrorLogs     | orange   | Running, but at least one error-level log entry   |
-
-`orange` is declared as a custom LikeC4 colour (`#F97316`) in the generated `specification {}` block whenever needed — it is not a built-in LikeC4 colour.
+| State    | Colour  | Notes                              |
+|----------|---------|------------------------------------|
+| Unknown  | default | Not yet started                    |
+| Starting | sky     | Resource is initialising           |
+| Running  | green   | Healthy and running                |
+| Stopping | slate   | Winding down (60 % opacity)        |
+| Exited   | muted   | Stopped cleanly (30 % opacity)     |
+| Failed   | amber   | Exited with a non-zero code        |
+| Error    | red     | Reported an error state            |
 
 ---
 
@@ -100,7 +104,7 @@ https://localhost:15086/consolelogs/resource/my-api
 ### Disabling dashboard links
 
 ```csharp
-builder.AddLikeC4Visualization(options =>
+builder.AddAspireC4(options =>
 {
     options.IncludeAspireDashboardLinks = false;
 });
@@ -135,12 +139,12 @@ All options are set on `AspireC4DiagramOptions`:
 
 ## Alternative modes
 
-### Local CLI (`WithLocalCli`)
+### Local CLI (`WithLocalCLI`)
 
 Uses a locally-installed `likec4` CLI (via `npx`/`pnpm`/`yarn`/`bun`/`deno`) instead of the Docker container:
 
 ```csharp
-builder.AddLikeC4Visualization().WithLocalCLI();
+builder.AddAspireC4().WithLocalCLI();
 ```
 
 ### Hide from dashboard (`WithHideFromDashboard`)
@@ -148,7 +152,7 @@ builder.AddLikeC4Visualization().WithLocalCLI();
 Removes the LikeC4 sidecar resource from the Aspire dashboard resource list and surfaces the diagram URL as a link and command on each `ProjectResource`:
 
 ```csharp
-builder.AddLikeC4Visualization().WithHideFromDashboard();
+builder.AddAspireC4().WithHideFromDashboard();
 ```
 
 ---

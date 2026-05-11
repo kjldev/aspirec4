@@ -22,5 +22,7 @@ sealed class LikeC4ContainerWorkspaceOptions
 	/// The lifecycle hook skips volume-syncing these files to avoid duplicate definitions
 	/// in the container (the bind mount already makes the files accessible).
 	/// </summary>
+#pragma warning disable IDE0028 // Simplify collection initialization
 	public HashSet<string> BindMountedSourceFiles { get; } = new(StringComparer.OrdinalIgnoreCase);
+#pragma warning restore IDE0028 // Simplify collection initialization
 }

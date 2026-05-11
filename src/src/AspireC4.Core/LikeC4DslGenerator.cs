@@ -100,7 +100,7 @@ public static class LikeC4DSLGenerator
 			return;
 		}
 
-		sb.Append("  element ").AppendLine(spec.Name + " {");
+		sb.Append("  element ").Append(spec.Name).AppendLine(" {");
 
 		if (hasNotation)
 		{
@@ -152,10 +152,9 @@ public static class LikeC4DSLGenerator
 
 		// Top-level elements first, then nested.
 		var topLevel = model.Elements.Where(e => e.ParentName is null).ToList();
-		var nested = model
-			.Elements.Where(e => e.ParentName is not null)
-			.GroupBy(e => e.ParentName!)
-			.ToDictionary(g => g.Key, g => g.ToList());
+		var nested = model.Elements
+			.Where(e => e.ParentName is not null)
+			.ToLookup(e => e.ParentName!, StringComparer.OrdinalIgnoreCase);
 
 		foreach (var element in topLevel)
 		{
@@ -269,7 +268,7 @@ public static class LikeC4DSLGenerator
 		StringBuilder sb,
 		LikeC4Element element,
 		string indent,
-		Dictionary<string, List<LikeC4Element>> nested
+		ILookup<string, LikeC4Element> nested
 	)
 	{
 		sb.Append(indent)
@@ -280,7 +279,7 @@ public static class LikeC4DSLGenerator
 			.Append(EscapeQuote(element.Label))
 			.Append('\'');
 
-		var children = nested.GetValueOrDefault(element.Name);
+		var children = nested[element.Name];
 		var hasTags = element.Tags.Count > 0;
 		var hasTechnology = !string.IsNullOrWhiteSpace(element.Technology);
 		var hasDescription = !string.IsNullOrWhiteSpace(element.Description);
@@ -288,7 +287,7 @@ public static class LikeC4DSLGenerator
 		var hasIcon = !string.IsNullOrWhiteSpace(element.Icon);
 		var hasLinks = element.Links.Count > 0;
 		var hasMetadata = element.Metadata.Count > 0;
-		var hasChildren = children?.Count > 0;
+		var hasChildren = children.Any();
 
 		if (
 			!hasTags
@@ -367,7 +366,7 @@ public static class LikeC4DSLGenerator
 
 		if (hasChildren)
 		{
-			foreach (var child in children!)
+			foreach (var child in children)
 			{
 				WriteElement(sb, child, indent + "  ", nested);
 			}
