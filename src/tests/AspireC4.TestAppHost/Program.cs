@@ -24,6 +24,12 @@ if (Directory.Exists(extensionsDir))
 	visualization.WithAdditionalDSLFolder(extensionsDir);
 }
 
+var imagesDir = Path.Combine(Path.GetDirectoryName(typeof(TestAppHostProgram).Assembly.Location)!, "likec4-images");
+if (Directory.Exists(imagesDir))
+{
+	visualization.WithImageAliasFolder("@test-icons", imagesDir);
+}
+
 var azureManagerRedis = builder
 	.AddAzureManagedRedis("azure-redis")
 	// Run as container when local

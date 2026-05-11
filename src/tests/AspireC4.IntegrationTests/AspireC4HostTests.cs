@@ -6,22 +6,21 @@ using System.Text.Json;
 using System.Text.RegularExpressions;
 using Aspire.Hosting.ApplicationModel;
 using Aspire.Hosting.Testing;
+using Microsoft.Extensions.Configuration;
 
 namespace Aspire.Hosting.AspireC4;
 
 /// <summary>
 /// Integration tests that verify the LikeC4 visualization starts successfully in a real Aspire app host.
+/// Tests are isolated by unique output directories and inject configuration directly into the app
+/// builder — no process-wide environment variables are mutated, making tests safe to run in parallel.
 /// </summary>
-[NotInParallel]
 public sealed partial class AspireC4HostTests : IAsyncDisposable
 {
 	const string AspireC4ResourceName = AspireC4DistributedApplicationBuilderExtensions.AspireC4ResourceName;
 	static readonly TimeSpan LikeC4StartupTimeout = TimeSpan.FromSeconds(120);
 
 	DistributedApplication? _app;
-	EnvironmentVariableScope? _outputDirectoryScope;
-	EnvironmentVariableScope? _fileNameScope;
-	EnvironmentVariableScope? _titleScope;
 	string? _outputDir;
 	string? _modelPath;
 
@@ -30,11 +29,20 @@ public sealed partial class AspireC4HostTests : IAsyncDisposable
 	{
 		_outputDir = Path.Combine(Path.GetTempPath(), "likec4-integration-" + Guid.NewGuid().ToString("N")[..8]);
 		_modelPath = Path.Combine(_outputDir, "model.gen.c4");
-		_outputDirectoryScope = new EnvironmentVariableScope("AspireC4__OutputDirectory", _outputDir);
-		_fileNameScope = new EnvironmentVariableScope("AspireC4__FileName", "model.gen");
-		_titleScope = new EnvironmentVariableScope("AspireC4__Title", "Integration Test Architecture");
 
 		var appBuilder = await DistributedApplicationTestingBuilder.CreateAsync<TestAppHostProgram>(cancellationToken);
+
+		// Inject test-specific configuration directly into the builder's configuration system.
+		// This avoids mutating process-wide environment variables (which would break parallel test runs).
+		appBuilder.Configuration.AddInMemoryCollection(
+			new Dictionary<string, string?>
+			{
+				["AspireC4:OutputDirectory"] = _outputDir,
+				["AspireC4:FileName"] = "model.gen",
+				["AspireC4:Title"] = "Integration Test Architecture",
+			}
+		);
+
 		_app = await appBuilder.BuildAsync(cancellationToken);
 		await _app.StartAsync(cancellationToken);
 	}
@@ -51,13 +59,6 @@ public sealed partial class AspireC4HostTests : IAsyncDisposable
 		{
 			Directory.Delete(_outputDir, recursive: true);
 		}
-
-		_titleScope?.Dispose();
-		_titleScope = null;
-		_fileNameScope?.Dispose();
-		_fileNameScope = null;
-		_outputDirectoryScope?.Dispose();
-		_outputDirectoryScope = null;
 	}
 
 	[Test]
@@ -162,8 +163,56 @@ public sealed partial class AspireC4HostTests : IAsyncDisposable
 		var json = await File.ReadAllTextAsync(configPath, cancellationToken);
 		await Assert.That(json).Contains("aspirec4");
 		await Assert.That(json).Contains("Integration Test Architecture");
-		// The extensions folder is an include path; the config must reference it.
-		await Assert.That(json).Contains("likec4-extensions");
+	}
+
+	[Test]
+	public async Task ConfigFile_ContainsAdditionalDSLFolderPath(CancellationToken cancellationToken)
+	{
+		var configPath = Path.Combine(_outputDir!, "likec4.config.json");
+		var json = await File.ReadAllTextAsync(configPath, cancellationToken);
+
+		using var doc = JsonDocument.Parse(json);
+		var root = doc.RootElement;
+
+		await Assert.That(root.TryGetProperty("include", out var include)).IsTrue();
+		await Assert.That(include.TryGetProperty("paths", out var paths)).IsTrue();
+
+		var hasExtensionsPath = paths
+			.EnumerateArray()
+			.Any(p => p.GetString()?.Contains("likec4-extensions", StringComparison.OrdinalIgnoreCase) == true);
+
+		await Assert.That(hasExtensionsPath).IsTrue();
+	}
+
+	[Test]
+	public async Task ConfigFile_ContainsImageAliasEntry(CancellationToken cancellationToken)
+	{
+		var configPath = Path.Combine(_outputDir!, "likec4.config.json");
+		var json = await File.ReadAllTextAsync(configPath, cancellationToken);
+
+		using var doc = JsonDocument.Parse(json);
+		var root = doc.RootElement;
+
+		await Assert.That(root.TryGetProperty("imageAliases", out var aliases)).IsTrue();
+		await Assert.That(aliases.TryGetProperty("@test-icons", out _)).IsTrue();
+	}
+
+	[Test]
+	public async Task ImageAliasFolder_ContainsExpectedImageFiles()
+	{
+		var imagesDir = Path.Combine(
+			Path.GetDirectoryName(typeof(TestAppHostProgram).Assembly.Location)!,
+			"likec4-images"
+		);
+
+		await Assert.That(Directory.Exists(imagesDir)).IsTrue();
+
+		var files = Directory.GetFiles(imagesDir);
+		var svgCount = files.Count(f => f.EndsWith(".svg", StringComparison.OrdinalIgnoreCase));
+		var pngCount = files.Count(f => f.EndsWith(".png", StringComparison.OrdinalIgnoreCase));
+
+		await Assert.That(svgCount).IsGreaterThan(0);
+		await Assert.That(pngCount).IsGreaterThan(0);
 	}
 
 	[Test]
@@ -279,28 +328,6 @@ public sealed partial class AspireC4HostTests : IAsyncDisposable
 		if (_outputDir is not null && Directory.Exists(_outputDir))
 		{
 			Directory.Delete(_outputDir, recursive: true);
-		}
-
-		_titleScope?.Dispose();
-		_fileNameScope?.Dispose();
-		_outputDirectoryScope?.Dispose();
-	}
-
-	sealed class EnvironmentVariableScope : IDisposable
-	{
-		readonly string _name;
-		readonly string? _previousValue;
-
-		public EnvironmentVariableScope(string name, string value)
-		{
-			_name = name;
-			_previousValue = Environment.GetEnvironmentVariable(name);
-			Environment.SetEnvironmentVariable(name, value);
-		}
-
-		public void Dispose()
-		{
-			Environment.SetEnvironmentVariable(_name, _previousValue);
 		}
 	}
 

@@ -12,6 +12,7 @@
 
 	<ItemGroup>
 		<Content Include="likec4-extensions\*.c4" CopyToOutputDirectory="PreserveNewest" />
+		<Content Include="likec4-images\*" CopyToOutputDirectory="PreserveNewest" />
 	</ItemGroup>
 
 	<ItemGroup>

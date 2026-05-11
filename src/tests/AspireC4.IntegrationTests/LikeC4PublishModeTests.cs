@@ -4,7 +4,6 @@ namespace Aspire.Hosting.AspireC4;
 /// Tests the publish-mode code path: the lifecycle hook should generate the .c4 file
 /// but not start the live server.
 /// </summary>
-[NotInParallel]
 public sealed class LikeC4PublishModeTests
 {
 	[Test]
