@@ -34,8 +34,21 @@ public sealed class LikeC4ServerResource : ContainerResource
 	/// <summary>The container port used by LikeC4's Vite HMR channel.</summary>
 	internal const int DefaultContainerUpdatePort = 24678;
 
-	/// <summary>The path inside the container where <c>.c4</c> source files are mounted.</summary>
+	/// <summary>
+	/// Root path inside the container that LikeC4 watches. Additional DSL folders and image-alias
+	/// folders are bind-mounted as subdirectories here so that live edits reach the server directly,
+	/// without going through the named volume.
+	/// </summary>
 	internal const string WorkspacePath = "/data";
+
+	/// <summary>
+	/// Sub-path inside the container where the named Docker volume is mounted. Only auto-generated
+	/// files (the <c>.c4</c> model and <c>likec4.config.json</c>) live here.
+	/// Keeping generated files in a subdirectory separate from the workspace root ensures that
+	/// bind-mounts for additional DSL folders at <c>/data/ext/…</c> and image assets at
+	/// <c>/data/img/…</c> are <em>outside</em> the named volume and are therefore not shadowed by it.
+	/// </summary>
+	internal const string GeneratedPath = "/data/output";
 
 	internal static string GetImageReference(string imageTag) => $"{DefaultRegistry}/{DefaultImage}:{imageTag}";
 

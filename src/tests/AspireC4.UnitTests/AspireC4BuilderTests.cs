@@ -181,7 +181,7 @@ public sealed class AspireC4BuilderTests
 
 		await Assert.That(mounts).HasSingleItem();
 		await Assert.That(mounts[0].Source).IsEqualTo(expectedSource);
-		await Assert.That(mounts[0].Target).IsEqualTo(LikeC4ServerResource.WorkspacePath);
+		await Assert.That(mounts[0].Target).IsEqualTo(LikeC4ServerResource.GeneratedPath);
 		await Assert.That(mounts[0].Type).IsEqualTo(ContainerMountType.Volume);
 	}
 

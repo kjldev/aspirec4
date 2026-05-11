@@ -27,20 +27,25 @@ sealed class LikeC4ContainerWorkspaceOptions
 #pragma warning restore IDE0028 // Simplify collection initialization
 
 	/// <summary>
-	/// Maps absolute host folder path → container-relative path (e.g. <c>"ext/abc12345"</c>)
-	/// for each folder added via <see cref="IAspireC4Builder.WithAdditionalDSLFolder"/>.
-	/// Used when generating the <c>include.paths</c> section of the container-side
-	/// <c>likec4.config.json</c> that is synced to the Docker volume.
+	/// Maps absolute host folder path → workspace-root-relative path (e.g. <c>"ext/abc12345"</c>),
+	/// where the workspace root is <see cref="LikeC4ServerResource.WorkspacePath"/> (<c>/data</c>).
+	/// The actual bind-mount target is therefore <c>/data/ext/abc12345</c>, which is intentionally
+	/// <em>outside</em> the named volume that is mounted at
+	/// <see cref="LikeC4ServerResource.GeneratedPath"/> (<c>/data/output</c>).
+	/// Used when generating the container-side <c>likec4.config.json</c>; paths in that file are
+	/// prefixed with <c>"../"</c> because the config lives at <c>/data/output/likec4.config.json</c>.
 	/// </summary>
 #pragma warning disable IDE0028
 	public Dictionary<string, string> BindMountedFolderTargets { get; } = new(StringComparer.OrdinalIgnoreCase);
 #pragma warning restore IDE0028
 
 	/// <summary>
-	/// Maps image alias key (e.g. <c>"@icons"</c>) → container-relative path (e.g. <c>"img/def67890"</c>)
-	/// for each alias registered via <see cref="IAspireC4Builder.WithImageAliasFolder"/>.
-	/// Used when generating the <c>imageAliases</c> section of the container-side
-	/// <c>likec4.config.json</c> that is synced to the Docker volume.
+	/// Maps image alias key (e.g. <c>"@icons"</c>) → workspace-root-relative path
+	/// (e.g. <c>"img/def67890"</c>) for each alias registered via
+	/// <see cref="IAspireC4Builder.WithImageAliasFolder"/>.
+	/// The actual bind-mount target is <c>/data/img/def67890</c>, outside the named volume.
+	/// Config generation prefixes these values with <c>"../"</c> because the config file is at
+	/// <c>/data/output/likec4.config.json</c>.
 	/// </summary>
 #pragma warning disable IDE0028
 	public Dictionary<string, string> BindMountedImageAliasFolderTargets { get; } =

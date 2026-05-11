@@ -100,8 +100,13 @@ public static class AspireC4DistributedApplicationBuilderExtensions
 				.WithImage(LikeC4ServerResource.DefaultImage)
 				.WithImageTag(imageTag)
 				.WithImageRegistry(LikeC4ServerResource.DefaultRegistry)
-				.WithArgs("start", ".", "--port", $"{LikeC4ServerResource.DefaultContainerServePort}")
-				.WithVolume(workspaceVolumeName, LikeC4ServerResource.WorkspacePath)
+				.WithArgs(
+					"start",
+					LikeC4ServerResource.WorkspacePath,
+					"--port",
+					$"{LikeC4ServerResource.DefaultContainerServePort}"
+				)
+				.WithVolume(workspaceVolumeName, LikeC4ServerResource.GeneratedPath)
 				.WithHttpEndpoint(
 					port: port,
 					targetPort: LikeC4ServerResource.DefaultContainerServePort,

@@ -523,7 +523,7 @@ sealed class AspireC4LifecycleHook(
 		if (syncContainerWorkspace)
 		{
 			await SyncContainerVolumeFileAsync(
-				$"{LikeC4ServerResource.WorkspacePath}/{opts.FileName}.c4",
+				$"{LikeC4ServerResource.GeneratedPath}/{opts.FileName}.c4",
 				dsl,
 				resetContainerWorkspace,
 				cancellationToken
@@ -555,7 +555,7 @@ sealed class AspireC4LifecycleHook(
 			{
 				var additionalContent = await File.ReadAllTextAsync(destPath, cancellationToken);
 				await SyncContainerVolumeFileAsync(
-					$"{LikeC4ServerResource.WorkspacePath}/{fileNameWithoutExtension}.c4",
+					$"{LikeC4ServerResource.GeneratedPath}/{fileNameWithoutExtension}.c4",
 					additionalContent,
 					resetContainerWorkspace: false,
 					cancellationToken
@@ -691,20 +691,23 @@ sealed class AspireC4LifecycleHook(
 
 		if (syncContainerWorkspace)
 		{
-			// In Docker mode the folders are bind-mounted at /data/ext/{hash}/; the config path is
-			// /data/likec4.config.json; so container-relative include paths are simply "ext/{hash}".
+			// The generated files (config + model) live in the named volume at GeneratedPath
+			// (/data/output). Additional DSL folders are bind-mounted at /data/ext/{hash}/ and
+			// image alias folders at /data/img/{hash}/ — both OUTSIDE the volume. The config
+			// references those folders with "../ext/{hash}" / "../img/{hash}" (relative to the
+			// config file location at /data/output/).
 			var wsOpts = workspaceOptions.Value;
 
 			var containerIncludePaths = opts
 				.AdditionalDSLFolders.Where(f => wsOpts.BindMountedFolderTargets.ContainsKey(f))
-				.Select(f => wsOpts.BindMountedFolderTargets[f])
+				.Select(f => "../" + wsOpts.BindMountedFolderTargets[f])
 				.ToList();
 
 			var containerAliases = opts
 				.ImageAliases.Where(kvp => wsOpts.BindMountedImageAliasFolderTargets.ContainsKey(kvp.Key))
 				.ToDictionary(
 					kvp => kvp.Key,
-					kvp => wsOpts.BindMountedImageAliasFolderTargets[kvp.Key],
+					kvp => "../" + wsOpts.BindMountedImageAliasFolderTargets[kvp.Key],
 					StringComparer.OrdinalIgnoreCase
 				);
 
@@ -716,7 +719,7 @@ sealed class AspireC4LifecycleHook(
 			);
 
 			await SyncContainerVolumeFileAsync(
-				$"{LikeC4ServerResource.WorkspacePath}/likec4.config.json",
+				$"{LikeC4ServerResource.GeneratedPath}/likec4.config.json",
 				containerConfig,
 				resetContainerWorkspace: false,
 				cancellationToken
@@ -732,8 +735,9 @@ sealed class AspireC4LifecycleHook(
 	)
 	{
 		var workspace = workspaceOptions.Value;
+		var genPath = LikeC4ServerResource.GeneratedPath;
 		var syncScript = resetContainerWorkspace
-			? "const fs=require('node:fs'); const path=require('node:path'); for (const entry of fs.readdirSync('/data')) { if (entry.endsWith('.c4')) fs.rmSync(path.join('/data', entry), { force: true }); } fs.writeFileSync(process.argv[1], fs.readFileSync(0));"
+			? $"const fs=require('node:fs'); const p=require('node:path'); for (const entry of fs.readdirSync('{genPath}', {{withFileTypes:true}})) {{ if (!entry.isDirectory() && entry.name.endsWith('.c4')) fs.rmSync(p.join('{genPath}', entry.name), {{ force: true }}); }} fs.writeFileSync(process.argv[1], fs.readFileSync(0));"
 			: "const fs=require('node:fs');fs.writeFileSync(process.argv[1], fs.readFileSync(0));";
 
 		var startInfo = new ProcessStartInfo
@@ -750,7 +754,7 @@ sealed class AspireC4LifecycleHook(
 		startInfo.ArgumentList.Add("--rm");
 		startInfo.ArgumentList.Add("-i");
 		startInfo.ArgumentList.Add("-v");
-		startInfo.ArgumentList.Add($"{workspace.VolumeName}:{LikeC4ServerResource.WorkspacePath}");
+		startInfo.ArgumentList.Add($"{workspace.VolumeName}:{LikeC4ServerResource.GeneratedPath}");
 		startInfo.ArgumentList.Add("--entrypoint");
 		startInfo.ArgumentList.Add("node");
 		startInfo.ArgumentList.Add(workspace.ContainerImageReference);
