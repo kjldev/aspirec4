@@ -848,6 +848,30 @@ public sealed partial class LikeC4DSLGeneratorTests
 	}
 
 	[Test]
+	public async Task DefaultViewId_DefaultsToIndex()
+	{
+		var opts = new AspireC4DiagramOptions();
+
+		await Assert.That(opts.DefaultViewId).IsEqualTo("index");
+	}
+
+	[Test]
+	public async Task DefaultViewId_WhenNull_IsNull()
+	{
+		var opts = new AspireC4DiagramOptions { DefaultViewId = null };
+
+		await Assert.That(opts.DefaultViewId).IsNull();
+	}
+
+	[Test]
+	public async Task DefaultViewId_WhenCustomValue_ReturnsCustomValue()
+	{
+		var opts = new AspireC4DiagramOptions { DefaultViewId = "context" };
+
+		await Assert.That(opts.DefaultViewId).IsEqualTo("context");
+	}
+
+	[Test]
 	public async Task Generate_TitleWithSingleQuote_IsEscaped()
 	{
 		AspireC4DiagramOptions opts = new() { Title = "O'Reilly's App", OutputDirectory = "." };

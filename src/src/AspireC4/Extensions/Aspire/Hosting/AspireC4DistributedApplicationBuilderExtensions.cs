@@ -65,9 +65,7 @@ public static class AspireC4DistributedApplicationBuilderExtensions
 			// bridges incoming HMR connections to whatever dynamic port Docker happened to allocate.
 			var useHmrRelay = hmrPortMode == LikeC4HMRPortMode.FixedPort || OperatingSystem.IsWindows();
 			var workspaceVolumeName = ResolveWorkspaceVolumeName(builder.AppHostDirectory, name);
-			var defaultViewId = string.IsNullOrWhiteSpace(diagramOpts.DefaultViewId)
-				? "index"
-				: diagramOpts.DefaultViewId;
+			var defaultViewId = string.IsNullOrWhiteSpace(diagramOpts.DefaultViewId) ? null : diagramOpts.DefaultViewId;
 
 			builder
 				.Services.AddOptions<LikeC4ContainerWorkspaceOptions>()
@@ -119,7 +117,7 @@ public static class AspireC4DistributedApplicationBuilderExtensions
 						opts.DisplayText = "View LikeC4 Diagram";
 						opts.DisplayOrder = 0;
 						opts.DisplayLocation = UrlDisplayLocation.SummaryAndDetails;
-						opts.Url = $"/view/{defaultViewId}";
+						opts.Url = defaultViewId != null ? $"/view/{defaultViewId}" : "/";
 					}
 				)
 				//.WithExternalHttpEndpoints()

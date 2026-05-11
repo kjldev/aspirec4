@@ -24,10 +24,14 @@ public sealed class AspireC4DiagramOptions
 	/// </summary>
 	/// <remarks>
 	/// Override this when you want the dashboard link to open a different view — for example,
-	/// a hand-authored context diagram instead of the generated overview. Any <see langword="null"/>
-	/// or empty value is normalised to <c>"index"</c>.
+	/// a hand-authored context diagram instead of the generated overview.
+	/// <para>
+	/// Setting this to <see langword="null"/> or an empty string instructs the dashboard link
+	/// to navigate to the root of the LikeC4 server (<c>/</c>) rather than a specific view,
+	/// which is useful when you prefer the server's own landing page.
+	/// </para>
 	/// </remarks>
-	public string? DefaultViewId { get; set; }
+	public string? DefaultViewId { get; set; } = "index";
 
 	/// <summary>Title shown in the generated LikeC4 view. Defaults to "Architecture".</summary>
 	public string Title { get; set; } = "Architecture";
