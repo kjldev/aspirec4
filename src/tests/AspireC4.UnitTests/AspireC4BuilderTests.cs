@@ -63,6 +63,53 @@ public sealed class AspireC4BuilderTests
 		await Assert.That(args).Contains("9090");
 	}
 
+	// --- BuildLikeC4CliPrefix ---
+
+	[Test]
+	public async Task BuildLikeC4CliPrefix_Npx_ReturnsNpxWithLikeC4()
+	{
+		var (command, prefix) = AspireC4Builder.BuildLikeC4CliPrefix(LikeC4LocalCLIRuntime.Npx);
+
+		await Assert.That(command).IsEqualTo("npx");
+		await Assert.That(prefix).IsEquivalentTo(["likec4"]);
+	}
+
+	[Test]
+	public async Task BuildLikeC4CliPrefix_Pnpm_ReturnsPnpmExecLikeC4()
+	{
+		var (command, prefix) = AspireC4Builder.BuildLikeC4CliPrefix(LikeC4LocalCLIRuntime.Pnpm);
+
+		await Assert.That(command).IsEqualTo("pnpm");
+		await Assert.That(prefix).IsEquivalentTo(["exec", "likec4"]);
+	}
+
+	[Test]
+	public async Task BuildLikeC4CliPrefix_Bun_ReturnsBunxWithLikeC4()
+	{
+		var (command, prefix) = AspireC4Builder.BuildLikeC4CliPrefix(LikeC4LocalCLIRuntime.Bun);
+
+		await Assert.That(command).IsEqualTo("bunx");
+		await Assert.That(prefix).IsEquivalentTo(["likec4"]);
+	}
+
+	[Test]
+	public async Task BuildLikeC4CliPrefix_Yarn_ReturnsYarnDlxLikeC4()
+	{
+		var (command, prefix) = AspireC4Builder.BuildLikeC4CliPrefix(LikeC4LocalCLIRuntime.Yarn);
+
+		await Assert.That(command).IsEqualTo("yarn");
+		await Assert.That(prefix).IsEquivalentTo(["dlx", "likec4"]);
+	}
+
+	[Test]
+	public async Task BuildLikeC4CliPrefix_Deno_ReturnsDenoRunWithLikeC4()
+	{
+		var (command, prefix) = AspireC4Builder.BuildLikeC4CliPrefix(LikeC4LocalCLIRuntime.Deno);
+
+		await Assert.That(command).IsEqualTo("deno");
+		await Assert.That(prefix).IsEquivalentTo(["run", "--allow-all", "likec4"]);
+	}
+
 	[Test]
 	public async Task LikeC4HmrPortCompatibility_UsesConfigurableModeForCurrentMinimumVersion()
 	{

@@ -46,6 +46,12 @@ sealed class AspireC4Builder(
 			.WithExternalHttpEndpoints()
 			.WithAnnotation(new ExcludeFromLikeC4Annotation(), ResourceAnnotationMutationBehavior.Replace);
 
+		// Store the resolved runtime so the lifecycle hook can use the same JS runner
+		// when invoking host-side likec4 subcommands (format, validate).
+		ApplicationBuilder.Services.Configure<LikeC4ContainerWorkspaceOptions>(wsOpts =>
+			wsOpts.LocalCLIRuntime = resolvedRuntime
+		);
+
 		return new AspireC4Builder(ApplicationBuilder, localBuilder, OutputDirectory);
 	}
 
@@ -258,6 +264,27 @@ sealed class AspireC4Builder(
 			return false;
 		}
 	}
+
+	/// <summary>
+	/// Returns the executable and the argument prefix required to invoke <c>likec4</c> via
+	/// the given runtime — i.e. everything that comes BEFORE the likec4 subcommand.
+	/// Internal and visible for testing.
+	/// </summary>
+	/// <example>
+	/// Npx  → <c>("npx",  ["likec4"])</c> so the full call is <c>npx likec4 format ...</c>
+	/// Pnpm → <c>("pnpm", ["exec", "likec4"])</c>
+	/// Bun  → <c>("bunx", ["likec4"])</c>
+	/// </example>
+	internal static (string Command, string[] Prefix) BuildLikeC4CliPrefix(LikeC4LocalCLIRuntime runtime) =>
+		runtime switch
+		{
+			LikeC4LocalCLIRuntime.Npx => ("npx", ["likec4"]),
+			LikeC4LocalCLIRuntime.Pnpm => ("pnpm", ["exec", "likec4"]),
+			LikeC4LocalCLIRuntime.Yarn => ("yarn", ["dlx", "likec4"]),
+			LikeC4LocalCLIRuntime.Bun => ("bunx", ["likec4"]),
+			LikeC4LocalCLIRuntime.Deno => ("deno", ["run", "--allow-all", "likec4"]),
+			_ => throw new ArgumentOutOfRangeException(nameof(runtime), runtime, $"Unsupported runtime: {runtime}"),
+		};
 
 	/// <summary>
 	/// Resolves the executable command and arguments for the given local CLI runtime.

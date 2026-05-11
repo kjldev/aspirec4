@@ -52,7 +52,7 @@ sealed class AspireC4LifecycleHook(
 	readonly Lock _hmrRelayLock = new();
 
 	// Lazily checks once whether Graphviz `dot` is on PATH so we can pass --use-dot to likec4 validate.
-	static readonly Lazy<bool> _dotAvailable = new(
+	static readonly Lazy<bool> DotAvailable = new(
 		[System.Diagnostics.CodeAnalysis.SuppressMessage(
 			"Design",
 			"CA1031:Do not catch general exception types",
@@ -587,6 +587,17 @@ sealed class AspireC4LifecycleHook(
 		telemetry.LikeC4ModelWritten(outputPath);
 	}
 
+	/// <summary>
+	/// Returns the executable and argument prefix for invoking <c>likec4</c> via the configured
+	/// runtime. In Docker mode (<see cref="LikeC4ContainerWorkspaceOptions.LocalCLIRuntime"/> is
+	/// <see langword="null"/>), falls back to <c>npx</c> since the host still needs a JS runner
+	/// for host-side operations such as format and validate.
+	/// </summary>
+	(string Command, string[] Prefix) BuildCliPrefix() =>
+		workspaceOptions.Value.LocalCLIRuntime is { } runtime
+			? AspireC4Builder.BuildLikeC4CliPrefix(runtime)
+			: ("npx", ["likec4"]);
+
 	[System.Diagnostics.CodeAnalysis.SuppressMessage(
 		"Design",
 		"CA1031:Do not catch general exception types",
@@ -601,21 +612,24 @@ sealed class AspireC4LifecycleHook(
 	{
 		try
 		{
+			var (command, prefix) = BuildCliPrefix();
 			var startInfo = new ProcessStartInfo
 			{
-				FileName = "npx",
+				FileName = command,
 				RedirectStandardOutput = true,
 				RedirectStandardError = true,
 				UseShellExecute = false,
 				CreateNoWindow = true,
 			};
 
-			startInfo.ArgumentList.Add("likec4");
+			foreach (var arg in prefix)
+				startInfo.ArgumentList.Add(arg);
+
 			startInfo.ArgumentList.Add("validate");
 			startInfo.ArgumentList.Add("--json");
 			startInfo.ArgumentList.Add("--no-layout");
 
-			if (_dotAvailable.Value)
+			if (DotAvailable.Value)
 			{
 				startInfo.ArgumentList.Add("--use-dot");
 			}
@@ -682,9 +696,10 @@ sealed class AspireC4LifecycleHook(
 	{
 		try
 		{
+			var (command, prefix) = BuildCliPrefix();
 			var startInfo = new ProcessStartInfo
 			{
-				FileName = "npx",
+				FileName = command,
 				RedirectStandardOutput = true,
 				RedirectStandardError = true,
 				UseShellExecute = false,
@@ -692,7 +707,9 @@ sealed class AspireC4LifecycleHook(
 				WorkingDirectory = outputDir,
 			};
 
-			startInfo.ArgumentList.Add("likec4");
+			foreach (var arg in prefix)
+				startInfo.ArgumentList.Add(arg);
+
 			startInfo.ArgumentList.Add("format");
 			startInfo.ArgumentList.Add("--files");
 			startInfo.ArgumentList.Add(outputPath);

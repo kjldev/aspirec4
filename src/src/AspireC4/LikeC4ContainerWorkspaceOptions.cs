@@ -18,6 +18,13 @@ sealed class LikeC4ContainerWorkspaceOptions
 	public bool UseHMRRelay { get; set; }
 
 	/// <summary>
+	/// The resolved local CLI runtime when <c>WithLocalCLI()</c> was called.
+	/// <see langword="null"/> means Docker container mode — host-side CLI invocations
+	/// (format, validate) fall back to <c>npx</c>.
+	/// </summary>
+	public LikeC4LocalCLIRuntime? LocalCLIRuntime { get; set; }
+
+	/// <summary>
 	/// Absolute paths of additional DSL files that are covered by a container bind mount.
 	/// The lifecycle hook skips volume-syncing these files to avoid duplicate definitions
 	/// in the container (the bind mount already makes the files accessible).

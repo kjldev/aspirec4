@@ -183,6 +183,7 @@ public sealed class AspireC4DiagramOptions
 	/// path under <c>/data/img/</c>.
 	/// </remarks>
 	[System.Diagnostics.CodeAnalysis.SuppressMessage("Usage", "CA2227:Collection properties should be read only")]
+	[System.Diagnostics.CodeAnalysis.SuppressMessage("Style", "IDE0028:Simplify collection initialization")]
 	public Dictionary<string, string> ImageAliases { get; set; } = new(StringComparer.OrdinalIgnoreCase);
 
 	/// <summary>
