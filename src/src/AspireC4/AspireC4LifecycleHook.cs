@@ -126,25 +126,9 @@ sealed class AspireC4LifecycleHook(
 				if (notification.Snapshot.State?.Text != KnownResourceStates.Running)
 					continue;
 
-				// Mirror Aspire's own GetDashboardUrl logic: prefer HTTPS over HTTP so that
-				// OTLP/gRPC endpoints (which are typically HTTP) are not selected ahead of
-				// the browser-facing HTTPS frontend URL.
-				var rawUrl =
-					notification.Snapshot.Urls.FirstOrDefault(u =>
-						!u.IsInternal
-						&& u.Url.StartsWith("https://", StringComparison.OrdinalIgnoreCase)
-					)?.Url
-					?? notification.Snapshot.Urls.FirstOrDefault(u =>
-						!u.IsInternal
-						&& u.Url.StartsWith("http://", StringComparison.OrdinalIgnoreCase)
-					)?.Url;
-				if (rawUrl is null)
+					var baseUrl = SelectDashboardBaseUrl(notification.Snapshot.Urls);
+				if (baseUrl is null)
 					continue;
-
-				if (!Uri.TryCreate(rawUrl, UriKind.Absolute, out var parsed))
-					continue;
-
-				var baseUrl = $"{parsed.Scheme}://{parsed.Authority}";
 
 				// Only regenerate if the URL is genuinely new.
 				if (_dashboardBaseUrl == baseUrl)
@@ -166,6 +150,39 @@ sealed class AspireC4LifecycleHook(
 			telemetry.StateWatcherFailed(ex.Message);
 		}
 #pragma warning restore CA1031
+	}
+
+	/// <summary>
+	/// Selects the browser-facing Aspire dashboard base URL (<c>scheme://host:port</c>) from
+	/// a resource snapshot URL list, mirroring Aspire's own <c>PopulateDashboardUrls</c> logic.
+	/// </summary>
+	/// <remarks>
+	/// The <c>aspire-dashboard</c> resource exposes multiple non-internal HTTPS endpoints when
+	/// TLS is configured — most notably the browser frontend (<c>Name = "https"</c>) and the
+	/// OTLP HTTP endpoint (<c>Name = "otlp-http"</c>). Filtering by endpoint name, not by
+	/// URL scheme alone, ensures the correct browser-facing URL is always selected first.
+	/// </remarks>
+	internal static string? SelectDashboardBaseUrl(IEnumerable<UrlSnapshot> urls)
+	{
+		var list = urls.Where(u => !u.IsInternal).ToList();
+
+		// Primary strategy: endpoint name "https"/"http" identifies the browser frontend.
+		// This matches how Aspire itself selects the public frontend URL in PopulateDashboardUrls.
+		var rawUrl =
+			list.FirstOrDefault(u => u.Name == "https")?.Url
+			?? list.FirstOrDefault(u => u.Name == "http")?.Url
+			// Fallbacks for future-proofing in case endpoint names change.
+			?? list.FirstOrDefault(u =>
+				u.Url.StartsWith("https://", StringComparison.OrdinalIgnoreCase)
+			)?.Url
+			?? list.FirstOrDefault(u =>
+				u.Url.StartsWith("http://", StringComparison.OrdinalIgnoreCase)
+			)?.Url;
+
+		if (rawUrl is null || !Uri.TryCreate(rawUrl, UriKind.Absolute, out var parsed))
+			return null;
+
+		return $"{parsed.Scheme}://{parsed.Authority}";
 	}
 
 	// ── Dashboard integration (hide & surface URL/command on project resources) ──
