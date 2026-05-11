@@ -1230,89 +1230,85 @@ public sealed class LikeC4ModelBuilderTests
 
 	// ── Dashboard deep-link tests ─────────────────────────────────────────────
 
-	[Test]
-	public async Task Build_ErrorLogLines_HasErrorLogsState_AddsLinesToDescription()
-	{
-		var resource = CreateContainerResource("api");
-		var states = new Dictionary<string, LikeC4ResourceState> { { "api", LikeC4ResourceState.HasErrorLogs } };
-		var errorLines = new Dictionary<string, IReadOnlyList<string>>
-		{
-			{ "api", ["Error: connection refused", "Error: timeout"] },
-		};
-
-		var model = LikeC4ModelBuilder.Build([resource], resourceStates: states, errorLogLines: errorLines);
-
-		var element = model.Elements[0];
-		await Assert.That(element.State).IsEqualTo(LikeC4ResourceState.HasErrorLogs);
-		await Assert.That(element.Description).IsNotNull();
-		await Assert.That(element.Description!).Contains("Recent errors");
-		await Assert.That(element.Description).Contains("connection refused");
-		await Assert.That(element.Description).Contains("timeout");
-	}
+	// ── StateTagMap tests ─────────────────────────────────────────────────────
 
 	[Test]
-	public async Task Build_ErrorLogLines_RunningState_DoesNotAddDescription()
+	public async Task Build_StateTagMap_DefaultMap_PrependsStateTagToElementTags()
 	{
 		var resource = CreateContainerResource("api");
 		var states = new Dictionary<string, LikeC4ResourceState> { { "api", LikeC4ResourceState.Running } };
-		var errorLines = new Dictionary<string, IReadOnlyList<string>>
+		var stateTagMap = new Dictionary<LikeC4ResourceState, string?>
 		{
-			// Lines supplied, but state is Running — should not appear in description.
-			{ "api", ["Error: something"] },
+			[LikeC4ResourceState.Running] = "state-running",
 		};
 
-		var model = LikeC4ModelBuilder.Build([resource], resourceStates: states, errorLogLines: errorLines);
+		var model = LikeC4ModelBuilder.Build([resource], resourceStates: states, stateTagMap: stateTagMap);
 
 		var element = model.Elements[0];
-		await Assert.That(element.State).IsEqualTo(LikeC4ResourceState.Running);
-		await Assert.That(element.Description).IsNull();
+		await Assert.That(element.Tags).Contains("state-running");
 	}
 
 	[Test]
-	public async Task Build_ErrorLogLines_HasErrorLogsState_PreservesUserDescription()
+	public async Task Build_StateTagMap_NullMapEntry_DoesNotPrependTag()
 	{
 		var resource = CreateContainerResource("api");
-		resource.Annotations.Add(new LikeC4NodeDetailsAnnotation("API").WithDescription("My component"));
-
-		var states = new Dictionary<string, LikeC4ResourceState> { { "api", LikeC4ResourceState.HasErrorLogs } };
-		var errorLines = new Dictionary<string, IReadOnlyList<string>> { { "api", ["Error: disk full"] } };
-
-		var model = LikeC4ModelBuilder.Build([resource], resourceStates: states, errorLogLines: errorLines);
-
-		var element = model.Elements[0];
-		await Assert.That(element.Description).IsNotNull();
-		await Assert.That(element.Description!).Contains("My component");
-		await Assert.That(element.Description).Contains("Recent errors");
-		await Assert.That(element.Description).Contains("disk full");
-	}
-
-	[Test]
-	public async Task Build_ErrorLogLines_EmptyList_DoesNotAddDescription()
-	{
-		var resource = CreateContainerResource("api");
-		var states = new Dictionary<string, LikeC4ResourceState> { { "api", LikeC4ResourceState.HasErrorLogs } };
-		var errorLines = new Dictionary<string, IReadOnlyList<string>>
+		var states = new Dictionary<string, LikeC4ResourceState> { { "api", LikeC4ResourceState.Unknown } };
+		var stateTagMap = new Dictionary<LikeC4ResourceState, string?>
 		{
-			// Empty list — no lines to show.
-			{ "api", [] },
+			[LikeC4ResourceState.Unknown] = null,
 		};
 
-		var model = LikeC4ModelBuilder.Build([resource], resourceStates: states, errorLogLines: errorLines);
+		var model = LikeC4ModelBuilder.Build([resource], resourceStates: states, stateTagMap: stateTagMap);
 
 		var element = model.Elements[0];
-		await Assert.That(element.Description).IsNull();
+		await Assert.That(element.Tags).IsEmpty();
 	}
 
 	[Test]
-	public async Task Build_ErrorLogLines_NullDictionary_DoesNotAddDescription()
+	public async Task Build_StateTagMap_NullMap_NoStateTagOnElement()
 	{
 		var resource = CreateContainerResource("api");
-		var states = new Dictionary<string, LikeC4ResourceState> { { "api", LikeC4ResourceState.HasErrorLogs } };
+		var states = new Dictionary<string, LikeC4ResourceState> { { "api", LikeC4ResourceState.Running } };
 
-		var model = LikeC4ModelBuilder.Build([resource], resourceStates: states, errorLogLines: null);
+		var model = LikeC4ModelBuilder.Build([resource], resourceStates: states, stateTagMap: null);
 
 		var element = model.Elements[0];
-		await Assert.That(element.Description).IsNull();
+		await Assert.That(element.Tags).IsEmpty();
+	}
+
+	[Test]
+	public async Task Build_StateTagMap_StateTagPrependsBeforeUserTags()
+	{
+		var resource = CreateContainerResource("api");
+		resource.Annotations.Add(new LikeC4NodeDetailsAnnotation("API").WithTag("backend").WithTag("v2"));
+
+		var states = new Dictionary<string, LikeC4ResourceState> { { "api", LikeC4ResourceState.Error } };
+		var stateTagMap = new Dictionary<LikeC4ResourceState, string?>
+		{
+			[LikeC4ResourceState.Error] = "state-error",
+		};
+
+		var model = LikeC4ModelBuilder.Build([resource], resourceStates: states, stateTagMap: stateTagMap);
+
+		var tags = model.Elements[0].Tags;
+		await Assert.That(tags[0]).IsEqualTo("state-error");
+		await Assert.That(tags).Contains("backend");
+		await Assert.That(tags).Contains("v2");
+	}
+
+	[Test]
+	public async Task Build_StateTagMap_CustomTagName_UsedAsStateTag()
+	{
+		var resource = CreateContainerResource("api");
+		var states = new Dictionary<string, LikeC4ResourceState> { { "api", LikeC4ResourceState.Failed } };
+		var stateTagMap = new Dictionary<LikeC4ResourceState, string?>
+		{
+			[LikeC4ResourceState.Failed] = "my-custom-failed-tag",
+		};
+
+		var model = LikeC4ModelBuilder.Build([resource], resourceStates: states, stateTagMap: stateTagMap);
+
+		await Assert.That(model.Elements[0].Tags).Contains("my-custom-failed-tag");
 	}
 
 	[Test]

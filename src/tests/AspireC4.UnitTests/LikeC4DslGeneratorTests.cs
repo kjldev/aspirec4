@@ -1,6 +1,6 @@
 namespace Aspire.Hosting.AspireC4;
 
-public sealed partial class LikeC4DslGeneratorTests
+public sealed partial class LikeC4DSLGeneratorTests
 {
 	static readonly AspireC4DiagramOptions DefaultOptions = new()
 	{
@@ -881,10 +881,12 @@ public sealed partial class LikeC4DslGeneratorTests
 	[MethodDataSource(nameof(StateStyleMappings))]
 	public async Task Generate_ElementWithState_RendersExpectedStyle(
 		LikeC4ResourceState state,
+		string? stateTag,
 		string? expectedColor,
 		int? expectedOpacity
 	)
 	{
+		var tags = stateTag is not null ? (IReadOnlyList<string>)[stateTag] : [];
 		LikeC4Model model = new()
 		{
 			Elements =
@@ -895,6 +897,7 @@ public sealed partial class LikeC4DslGeneratorTests
 					Label = "API",
 					Kind = LikeC4ElementKind.Component,
 					State = state,
+					Tags = tags,
 				},
 			],
 			Relationships = [],
@@ -909,13 +912,11 @@ public sealed partial class LikeC4DslGeneratorTests
 		}
 		else
 		{
-			// Color overrides must appear inside a style rule in the views section.
-			await Assert.That(dsl).Contains($"style api {{");
+			// Color overrides must appear inside a tag-predicate style rule in the views section.
+			var viewsIdx = dsl.IndexOf("views {", StringComparison.Ordinal);
+			await Assert.That(dsl).Contains($"style element.tag = #{stateTag}");
 			await Assert.That(dsl).Contains($"color {expectedColor}");
 
-			var viewsIdx = dsl.IndexOf("views {", StringComparison.Ordinal);
-			// Search from viewsIdx to skip any spec-level color declaration (e.g. HasErrorLogs
-			// emits "color orange #F97316" in specification{} before views{}).
 			var colorIdx = dsl.IndexOf($"color {expectedColor}", viewsIdx, StringComparison.Ordinal);
 			await Assert.That(colorIdx).IsGreaterThan(viewsIdx);
 
@@ -935,7 +936,7 @@ public sealed partial class LikeC4DslGeneratorTests
 	}
 
 	/// <summary>
-	/// State → (color, opacity) style mappings.
+	/// State → (tag, color, opacity) style mappings.
 	/// <para>
 	/// Opacity differentiates transitional from terminal states:
 	/// <list type="bullet">
@@ -944,16 +945,15 @@ public sealed partial class LikeC4DslGeneratorTests
 	/// </list>
 	/// </para>
 	/// </summary>
-	public static IEnumerable<(LikeC4ResourceState State, string? Color, int? Opacity)> StateStyleMappings()
+	public static IEnumerable<(LikeC4ResourceState State, string? StateTag, string? Color, int? Opacity)> StateStyleMappings()
 	{
-		yield return (LikeC4ResourceState.Unknown, null, null);
-		yield return (LikeC4ResourceState.Starting, "sky", null);
-		yield return (LikeC4ResourceState.Running, "green", null);
-		yield return (LikeC4ResourceState.Stopping, "slate", 60);
-		yield return (LikeC4ResourceState.Exited, "muted", 30);
-		yield return (LikeC4ResourceState.Failed, "amber", null);
-		yield return (LikeC4ResourceState.Error, "red", null);
-		yield return (LikeC4ResourceState.HasErrorLogs, "orange", null);
+		yield return (LikeC4ResourceState.Unknown, null, null, null);
+		yield return (LikeC4ResourceState.Starting, "state-starting", "sky", null);
+		yield return (LikeC4ResourceState.Running, "state-running", "green", null);
+		yield return (LikeC4ResourceState.Stopping, "state-stopping", "slate", 60);
+		yield return (LikeC4ResourceState.Exited, "state-exited", "muted", 30);
+		yield return (LikeC4ResourceState.Failed, "state-failed", "amber", null);
+		yield return (LikeC4ResourceState.Error, "state-error", "red", null);
 	}
 
 	[Test]
@@ -970,6 +970,7 @@ public sealed partial class LikeC4DslGeneratorTests
 					Kind = LikeC4ElementKind.Component,
 					Technology = ".NET",
 					State = LikeC4ResourceState.Error,
+					Tags = ["state-error"],
 				},
 			],
 			Relationships = [],
@@ -1004,6 +1005,7 @@ public sealed partial class LikeC4DslGeneratorTests
 					Kind = LikeC4ElementKind.Component,
 					Icon = "tech:dotnet",
 					State = LikeC4ResourceState.Running,
+					Tags = ["state-running"],
 				},
 			],
 			Relationships = [],
@@ -1022,7 +1024,7 @@ public sealed partial class LikeC4DslGeneratorTests
 	[Test]
 	public async Task Generate_ElementWithUnknownState_NoStyleRuleRendered()
 	{
-		// An element with Unknown state should produce no style block in views.
+		// An element with Unknown state (no state tag) should produce no tag-predicate style block.
 		LikeC4Model model = new()
 		{
 			Elements =
@@ -1040,16 +1042,15 @@ public sealed partial class LikeC4DslGeneratorTests
 
 		var dsl = LikeC4DSLGenerator.Generate(model, DefaultOptions);
 
-		await Assert.That(dsl).DoesNotContain("style api");
+		await Assert.That(dsl).DoesNotContain("style element.tag");
 		await Assert.That(dsl).DoesNotContain("color");
 	}
 
 	[Test]
-	public async Task Generate_ElementWithHasErrorLogsState_DeclaresOrangeColorInSpecification()
+	public async Task Generate_IncludeDefaultStateStyles_False_DoesNotRenderTagStyleRules()
 	{
-		// `orange` is not a LikeC4 built-in colour token. The spec block must
-		// declare it with the LikeC4 syntax  `color IDENTIFIER #HEX`  (there is
-		// no `colors { }` sub-block in the DSL grammar).
+		// When IncludeDefaultStateStyles is false, no tag-predicate style rules should be emitted
+		// even when elements carry state tags.
 		LikeC4Model model = new()
 		{
 			Elements =
@@ -1059,30 +1060,25 @@ public sealed partial class LikeC4DslGeneratorTests
 					Name = "api",
 					Label = "API",
 					Kind = LikeC4ElementKind.Component,
-					State = LikeC4ResourceState.HasErrorLogs,
+					State = LikeC4ResourceState.Running,
+					Tags = ["state-running"],
 				},
 			],
 			Relationships = [],
 		};
 
-		var dsl = LikeC4DSLGenerator.Generate(model, DefaultOptions);
+		var opts = new AspireC4DiagramOptions
+		{
+			Title = DefaultOptions.Title,
+			OutputDirectory = DefaultOptions.OutputDirectory,
+			FileName = DefaultOptions.FileName,
+			IncludeDefaultStateStyles = false,
+		};
 
-		var specIdx = dsl.IndexOf("specification {", StringComparison.Ordinal);
-		var modelIdx = dsl.IndexOf("model {", StringComparison.Ordinal);
-		var viewsIdx = dsl.IndexOf("views {", StringComparison.Ordinal);
+		var dsl = LikeC4DSLGenerator.Generate(model, opts);
 
-		// `color orange #F97316` must appear inside specification, before model
-		var colorDeclIdx = dsl.IndexOf("color orange #F97316", StringComparison.Ordinal);
-		await Assert.That(colorDeclIdx).IsGreaterThan(specIdx);
-		await Assert.That(colorDeclIdx).IsLessThan(modelIdx);
-
-		// The generated view must also contain a `color orange` style rule
-		// (this is a different occurrence — the view-level style rule, not the declaration).
-		var colorStyleIdx = dsl.IndexOf("color orange", viewsIdx, StringComparison.Ordinal);
-		await Assert.That(colorStyleIdx).IsGreaterThan(viewsIdx);
-
-		// There must be NO `colors {` anywhere — that sub-block doesn't exist in LikeC4.
-		await Assert.That(dsl).DoesNotContain("colors {");
+		await Assert.That(dsl).DoesNotContain("style element.tag");
+		await Assert.That(dsl).DoesNotContain("color ");
 	}
 
 	[Test]

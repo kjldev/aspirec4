@@ -65,7 +65,7 @@ public static class LikeC4ModelBuilder
 		bool includeDashboardLinks = true,
 		string? dashboardBaseUrl = null,
 		string? dashboardBrowserToken = null,
-		IReadOnlyDictionary<string, IReadOnlyList<string>>? errorLogLines = null,
+		IReadOnlyDictionary<LikeC4ResourceState, string?>? stateTagMap = null,
 		IReadOnlyDictionary<string, IReadOnlyList<(string Url, string Name)>>? resourceSnapshotUrls = null
 	)
 	{
@@ -103,9 +103,6 @@ public static class LikeC4ModelBuilder
 					? s
 					: LikeC4ResourceState.Unknown;
 
-			var resourceErrorLines =
-				errorLogLines is not null && errorLogLines.TryGetValue(resource.Name, out var lines) ? lines : null;
-
 			elements.Add(
 				BuildElement(
 					resource,
@@ -118,7 +115,7 @@ public static class LikeC4ModelBuilder
 					includeDashboardLinks,
 					dashboardBaseUrl,
 					dashboardBrowserToken,
-					resourceErrorLines,
+					stateTagMap,
 					resourceSnapshotUrls?.GetValueOrDefault(resource.Name)
 				)
 			);
@@ -188,7 +185,7 @@ public static class LikeC4ModelBuilder
 		bool includeDashboardLinks = true,
 		string? dashboardBaseUrl = null,
 		string? dashboardBrowserToken = null,
-		IReadOnlyList<string>? errorLogLines = null,
+		IReadOnlyDictionary<LikeC4ResourceState, string?>? stateTagMap = null,
 		IReadOnlyList<(string Url, string Name)>? snapshotEndpointUrls = null
 	)
 	{
@@ -215,15 +212,13 @@ public static class LikeC4ModelBuilder
 			snapshotEndpointUrls
 		);
 
-		// When the resource is in the HasErrorLogs state, append the captured error log lines
-		// to the description so the error context is visible directly in the diagram.
+		// Prepend the state tag (when configured) to the element's user-defined tags.
+		IReadOnlyList<string> stateTags = [];
+		if (stateTagMap is not null && stateTagMap.TryGetValue(state, out var stateTag) && stateTag is not null)
+			stateTags = [LikeC4TagHelper.Normalize(stateTag)];
+
 		var description = details?.Description;
 		var summary = details?.Summary;
-		if (state == LikeC4ResourceState.HasErrorLogs && errorLogLines is { Count: > 0 })
-		{
-			var errorSection = "**Recent errors:**\n" + string.Join("\n", errorLogLines.Select(l => $"- {l}"));
-			description = string.IsNullOrWhiteSpace(description) ? errorSection : description + "\n\n" + errorSection;
-		}
 
 		return new()
 		{
@@ -236,7 +231,7 @@ public static class LikeC4ModelBuilder
 			Icon = icon,
 			ParentName = parentName,
 			State = state,
-			Tags = details?.Tags ?? [],
+			Tags = [.. stateTags, .. (details?.Tags ?? [])],
 			Links = [.. userLinks, .. autoLinks],
 			Metadata = [.. userMetadata, .. autoMetadata],
 			Group = group,

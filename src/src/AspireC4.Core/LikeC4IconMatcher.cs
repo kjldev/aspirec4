@@ -191,12 +191,7 @@ static class LikeC4IconMatcher
 			}
 		}
 
-		if (bestTechScore >= MinScore)
-		{
-			return bestTechIcon;
-		}
-
-		return null;
+		return bestTechScore >= MinScore ? bestTechIcon : null;
 	}
 
 	// Returns true when the token consists entirely of digits (e.g. "16", "3", "2022").

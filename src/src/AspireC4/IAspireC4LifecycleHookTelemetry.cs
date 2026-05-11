@@ -18,9 +18,6 @@ interface IAspireC4LifecycleHookTelemetry
 	void ResourceStateChanged(string resourceName, string newState);
 
 	[Info]
-	void ResourceErrorLogDetected(string resourceName);
-
-	[Info]
 	void DashboardUrlDiscovered(string dashboardBaseUrl);
 
 	[Info]

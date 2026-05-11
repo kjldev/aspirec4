@@ -54,17 +54,6 @@ public static class LikeC4DSLGenerator
 
 		sb.AppendLine("specification {");
 
-		// `orange` is not a LikeC4 built-in colour token.
-		// Declare it as a named custom colour only when at least one element uses
-		// the HasErrorLogs state that maps to it.  The LikeC4 syntax for a custom
-		// colour declaration is a bare  `color IDENTIFIER #HEX`  line inside the
-		// specification block — there is no `colors { }` sub-block.
-		if (model.Elements.Any(e => e.State == LikeC4ResourceState.HasErrorLogs))
-		{
-			sb.AppendLine("  color orange #F97316");
-			sb.AppendLine();
-		}
-
 		foreach (var kind in allElementKinds)
 		{
 			if (specsByName.TryGetValue(kind, out var spec))
@@ -394,26 +383,24 @@ public static class LikeC4DSLGenerator
 	readonly record struct LikeC4ElementStyleOverride(string? Color, int? Opacity);
 
 	/// <summary>
-	/// Maps a <see cref="LikeC4ResourceState"/> to a view-level style override.
+	/// Default tag-to-style mappings for the built-in <c>state-*</c> state tags.
 	/// <para>
 	/// Opacity is used to distinguish transitional from terminal states:
 	/// <list type="bullet">
-	///   <item><description><see cref="LikeC4ResourceState.Stopping"/> — 60 % opacity: visible but clearly winding down.</description></item>
-	///   <item><description><see cref="LikeC4ResourceState.Exited"/> — 30 % opacity: very faded, fully inactive.</description></item>
+	///   <item><description><c>state-stopping</c> — 60 % opacity: visible but clearly winding down.</description></item>
+	///   <item><description><c>state-exited</c> — 30 % opacity: very faded, fully inactive.</description></item>
 	/// </list>
 	/// </para>
 	/// </summary>
-	static LikeC4ElementStyleOverride GetStateStyle(LikeC4ResourceState state) =>
-		state switch
+	static readonly IReadOnlyDictionary<string, LikeC4ElementStyleOverride> DefaultStateStyles =
+		new Dictionary<string, LikeC4ElementStyleOverride>(StringComparer.OrdinalIgnoreCase)
 		{
-			LikeC4ResourceState.Starting => new("sky", null),
-			LikeC4ResourceState.Running => new("green", null),
-			LikeC4ResourceState.Stopping => new("slate", 60),
-			LikeC4ResourceState.Exited => new("muted", 30),
-			LikeC4ResourceState.Failed => new("amber", null),
-			LikeC4ResourceState.Error => new("red", null),
-			LikeC4ResourceState.HasErrorLogs => new("orange", null),
-			_ => new(null, null),
+			["state-starting"] = new("sky", null),
+			["state-running"] = new("green", null),
+			["state-stopping"] = new("slate", 60),
+			["state-exited"] = new("muted", 30),
+			["state-failed"] = new("amber", null),
+			["state-error"] = new("red", null),
 		};
 
 	static void WriteViews(StringBuilder sb, LikeC4Model model, AspireC4DiagramOptions options)
@@ -441,29 +428,33 @@ public static class LikeC4DSLGenerator
 
 			sb.AppendLine("    include *");
 
-			// Emit style overrides grouped by (color, opacity) for elements with a non-default state.
+			// Emit tag-predicate style rules for elements carrying known state tags.
 			// In LikeC4, element colors must be set via view-level style rules, not in the
 			// model block.
-			var byStyle = model
-				.Elements.Select(e => (Element: e, Style: GetStateStyle(e.State)))
-				.Where(t => t.Style.Color is not null || t.Style.Opacity is not null)
-				.GroupBy(t => t.Style, t => t.Element);
-
-			foreach (var group in byStyle)
+			if (options.IncludeDefaultStateStyles)
 			{
-				var names = string.Join(", ", group.Select(e => Sanitize(e.Name)));
-				sb.Append("    style ").Append(names).AppendLine(" {");
-				if (group.Key.Color is not null)
-				{
-					sb.Append("      color ").AppendLine(group.Key.Color);
-				}
+				var tagsInModel = model
+					.Elements.SelectMany(e => e.Tags)
+					.ToHashSet(StringComparer.OrdinalIgnoreCase);
 
-				if (group.Key.Opacity is not null)
+				foreach (var (tag, styleOverride) in DefaultStateStyles)
 				{
-					sb.Append("      opacity ").Append(group.Key.Opacity).AppendLine("%");
-				}
+					if (!tagsInModel.Contains(tag))
+						continue;
 
-				sb.AppendLine("    }");
+					sb.Append("    style element.tag = #").Append(tag).AppendLine(" {");
+					if (styleOverride.Color is not null)
+					{
+						sb.Append("      color ").AppendLine(styleOverride.Color);
+					}
+
+					if (styleOverride.Opacity is not null)
+					{
+						sb.Append("      opacity ").Append(styleOverride.Opacity).AppendLine("%");
+					}
+
+					sb.AppendLine("    }");
+				}
 			}
 		}
 

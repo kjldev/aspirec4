@@ -1,7 +1,6 @@
 using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Text.Json;
-using Aspire.Hosting.ApplicationModel;
 
 namespace Aspire.Hosting.AspireC4;
 
@@ -11,7 +10,7 @@ namespace Aspire.Hosting.AspireC4;
 /// writes it to a temporary project directory, runs the validator and asserts that the
 /// number of validation errors in the generated file is zero.
 /// </summary>
-public sealed class LikeC4DslValidationTests
+public sealed class LikeC4DSLValidationTests
 {
 	static readonly AspireC4DiagramOptions DefaultOptions = new()
 	{
@@ -147,33 +146,6 @@ public sealed class LikeC4DslValidationTests
 					Name = "api",
 					Label = "API",
 					Kind = LikeC4ElementKind.Component,
-				},
-			],
-			Relationships = [],
-		};
-
-		var dsl = LikeC4DSLGenerator.Generate(model, DefaultOptions);
-		var result = await RunValidateAsync(dsl);
-		AssertNoValidationErrors(result, dsl);
-		await Assert.That(result.FilteredErrors).IsEqualTo(0);
-	}
-
-	[Test]
-	public async Task ValidatedDsl_HasErrorLogsState_ProducesNoErrors()
-	{
-		// This is the primary regression test for the `orange` color declaration.
-		// `orange` is not a LikeC4 built-in; it must be declared as a custom colour
-		// in the specification block using `color orange #F97316`.
-		var model = new LikeC4Model
-		{
-			Elements =
-			[
-				new LikeC4Element
-				{
-					Name = "api",
-					Label = "API",
-					Kind = LikeC4ElementKind.Component,
-					State = LikeC4ResourceState.HasErrorLogs,
 				},
 			],
 			Relationships = [],
@@ -324,34 +296,6 @@ public sealed class LikeC4DslValidationTests
 	}
 
 	[Test]
-	public async Task ValidatedDsl_ElementWithErrorLogLines_ProducesNoErrors()
-	{
-		// Error log lines are injected into the element description as Markdown.
-		// Verify the description syntax (triple-quote block) remains valid DSL.
-		var model = new LikeC4Model
-		{
-			Elements =
-			[
-				new LikeC4Element
-				{
-					Name = "api",
-					Label = "API",
-					Kind = LikeC4ElementKind.Component,
-					State = LikeC4ResourceState.HasErrorLogs,
-					Description =
-						"Main API service\n\n**Recent errors:**\n- Connection refused: db:5432\n- Timeout after 30s",
-				},
-			],
-			Relationships = [],
-		};
-
-		var dsl = LikeC4DSLGenerator.Generate(model, DefaultOptions);
-		var result = await RunValidateAsync(dsl);
-		AssertNoValidationErrors(result, dsl);
-		await Assert.That(result.FilteredErrors).IsEqualTo(0);
-	}
-
-	[Test]
 	public async Task ValidatedDsl_ElementKindSpecWithStyleAndNotation_ProducesNoErrors()
 	{
 		var options = new AspireC4DiagramOptions
@@ -393,8 +337,7 @@ public sealed class LikeC4DslValidationTests
 	[Test]
 	public async Task ValidatedDsl_MultipleElementsAllStatesSimultaneously_ProducesNoErrors()
 	{
-		// Stress-test: all state variants co-existing in one diagram (including HasErrorLogs
-		// which requires the custom `color orange` declaration).
+		// Stress-test: all state variants co-existing in one diagram.
 		var elements = Enum.GetValues<LikeC4ResourceState>()
 			.Select(
 				(state, idx) =>

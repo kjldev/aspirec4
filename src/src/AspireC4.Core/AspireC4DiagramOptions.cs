@@ -124,12 +124,34 @@ public sealed class AspireC4DiagramOptions
 	public bool IncludeAspireDashboardLinks { get; set; } = true;
 
 	/// <summary>
-	/// Maximum number of recent error log lines to include in the description of a LikeC4 element
-	/// that is in the <see cref="LikeC4ResourceState.HasErrorLogs"/> state.
-	/// Set to <c>0</c> to disable log lines in the diagram.
-	/// Defaults to <c>5</c>.
+	/// Maps each <see cref="LikeC4ResourceState"/> to the tag applied to the corresponding
+	/// element in the generated diagram. Set a state's tag to <see langword="null"/> to suppress
+	/// tag assignment for that state.
+	/// Defaults to the built-in <c>state-*</c> tag names.
 	/// </summary>
-	public int ErrorLogLinesInDiagram { get; set; } = 5;
+	/// <remarks>
+	/// Custom tags that match the default <c>state-*</c> names will still receive the default
+	/// style rules. Use <see cref="IncludeDefaultStateStyles"/> to opt out of the built-in styles.
+	/// </remarks>
+	public Dictionary<LikeC4ResourceState, string?> StateTagMap { get; set; } =
+		new()
+		{
+			[LikeC4ResourceState.Unknown] = null,
+			[LikeC4ResourceState.Starting] = "state-starting",
+			[LikeC4ResourceState.Running] = "state-running",
+			[LikeC4ResourceState.Stopping] = "state-stopping",
+			[LikeC4ResourceState.Exited] = "state-exited",
+			[LikeC4ResourceState.Failed] = "state-failed",
+			[LikeC4ResourceState.Error] = "state-error",
+		};
+
+	/// <summary>
+	/// When <see langword="true"/>, emits <c>style element.tag = #state-* { }</c> rules in the
+	/// generated view for each state tag that is present in the model.
+	/// Set to <see langword="false"/> if you prefer to define state styles in your own DSL file.
+	/// Defaults to <see langword="true"/>.
+	/// </summary>
+	public bool IncludeDefaultStateStyles { get; set; } = true;
 
 	/// <summary>
 	/// Custom icon resolvers that are evaluated before the built-in auto-icon inference.
