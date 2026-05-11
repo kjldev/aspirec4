@@ -66,4 +66,18 @@
 		<TestType Include="Unit" />
 		<TestType Include="WhiteBox" />
 	</ItemGroup>
+	<Target
+		Name="InternalsVisibleTo"
+		BeforeTargets="BeforeCompile"
+		Condition="'$(IsCSharpProject)' == 'true' AND '$(IsTestProject)' != 'true'"
+		Inputs="@(TestType)"
+		Outputs="%(TestType.Identity)"
+		Label="Generates InternalsVisibleToAttribute for Non-Test Projects based on Defined Testing Types"
+	>
+		<ItemGroup>
+			<AssemblyAttribute Include="System.Runtime.CompilerServices.InternalsVisibleTo">
+				<_Parameter1>$(MSBuildProjectName).%(TestType.Identity)Tests</_Parameter1>
+			</AssemblyAttribute>
+		</ItemGroup>
+	</Target>
 </Project>

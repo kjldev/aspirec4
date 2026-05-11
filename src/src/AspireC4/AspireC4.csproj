@@ -3,6 +3,17 @@
 		<IsPackable>true</IsPackable>
 		<AssemblyTitle>AspireC4 Hosting</AssemblyTitle>
 		<Description>Aspire hosting extensions for the AspireC4 plugin: builder API, lifecycle hook, and server resource.</Description>
+		<COPYRIGHT_YEAR>2025</COPYRIGHT_YEAR>
+		<PackageId>AspireC4</PackageId>
+		<Title>AspireC4 - Aspire LikeC4 Visualization</Title>
+		<Authors>Kieron Lanning</Authors>
+		<Company>KJL Solutions Ltd.</Company>
+		<Copyright>KJL Solutions Ltd., $(COPYRIGHT_YEAR) | All rights reserved.</Copyright>
+		<PackageIcon>kjldev-logo.png</PackageIcon>
+		<PackageLicenseFile>LICENSE.md</PackageLicenseFile>
+		<PackageReadmeFile>README.md</PackageReadmeFile>
+		<PackageProjectUrl>https://github.com/kjldev/aspirec4</PackageProjectUrl>
+		<PackageTags>aspire;dotnet;aspnetcore;c4;likec4;architecture;diagram;visualization;</PackageTags>
 	</PropertyGroup>
 
 	<ItemGroup>
@@ -10,9 +21,9 @@
 	</ItemGroup>
 
 	<ItemGroup>
-		<AssemblyAttribute Include="System.Runtime.CompilerServices.InternalsVisibleToAttribute">
-			<_Parameter1>AspireC4.UnitTests</_Parameter1>
-		</AssemblyAttribute>
+		<None Include="kjldev-logo.png" Pack="true" PackagePath="" />
+		<None Include="..\..\..\LICENSE.md" Pack="true" PackagePath="\" />
+		<None Include="..\..\..\README.md" Pack="true" PackagePath="\" />
 	</ItemGroup>
 
 	<ItemGroup>
