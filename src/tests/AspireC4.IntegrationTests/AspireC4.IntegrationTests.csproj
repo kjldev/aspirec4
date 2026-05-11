@@ -15,4 +15,14 @@
 		<!--<ProjectReference Include="..\..\src\AspireC4\AspireC4.csproj" />-->
 		<ProjectReference Include="..\AspireC4.TestAppHost\AspireC4.TestAppHost.csproj" />
 	</ItemGroup>
+
+	<!-- Propagate TestAppHost extension DSL files into the integration-test output directory
+	     so that typeof(TestAppHostProgram).Assembly.Location resolves them at runtime. -->
+	<ItemGroup>
+		<Content
+			Include="..\AspireC4.TestAppHost\likec4-extensions\*.c4"
+			CopyToOutputDirectory="PreserveNewest"
+			Link="likec4-extensions\%(Filename)%(Extension)"
+		/>
+	</ItemGroup>
 </Project>

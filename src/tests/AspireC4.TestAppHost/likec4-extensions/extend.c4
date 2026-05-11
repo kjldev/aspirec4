@@ -1,0 +1,27 @@
+// This file extends the auto-generated model with additional documentation, links, and metadata.
+// It is intentionally hand-authored; do not overwrite.
+
+model {
+  extend azure_redis {
+    link https://aka.ms/azure-cache-for-redis 'Azure Cache for Redis Docs'
+    metadata {
+      team 'Platform'
+      tier 'data'
+    }
+  }
+
+  extend azure_postgres {
+    link https://aka.ms/azure-postgresql 'Azure PostgreSQL Flexible Server Docs'
+    metadata {
+      team 'Platform'
+      tier 'data'
+    }
+  }
+
+  extend node_app {
+    link https://nodejs.org 'Node.js'
+    metadata {
+      tier 'app'
+    }
+  }
+}

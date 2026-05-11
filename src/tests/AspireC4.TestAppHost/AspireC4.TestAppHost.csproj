@@ -11,6 +11,10 @@
 	</ItemGroup>
 
 	<ItemGroup>
+		<Content Include="likec4-extensions\*.c4" CopyToOutputDirectory="PreserveNewest" />
+	</ItemGroup>
+
+	<ItemGroup>
 		<ProjectReference
 			Include="..\..\src\AspireC4\AspireC4.csproj"
 			IsAspireProjectResource="false"

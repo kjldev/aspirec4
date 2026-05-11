@@ -1,5 +1,8 @@
+using System.Diagnostics;
 using System.Globalization;
 using System.Net.WebSockets;
+using System.Runtime.InteropServices;
+using System.Text.Json;
 using System.Text.RegularExpressions;
 using Aspire.Hosting.ApplicationModel;
 using Aspire.Hosting.Testing;
@@ -148,6 +151,116 @@ public sealed partial class AspireC4HostTests : IAsyncDisposable
 				cancellationToken
 			)
 			.WaitAsync(LikeC4StartupTimeout, cancellationToken);
+	}
+
+	[Test]
+	public async Task AdditionalDSLFiles_AreCopiedToOutputDirectory()
+	{
+		await Assert.That(File.Exists(Path.Combine(_outputDir!, "extend.c4"))).IsTrue();
+		await Assert.That(File.Exists(Path.Combine(_outputDir!, "views.c4"))).IsTrue();
+	}
+
+	[Test]
+	public async Task GeneratedAndAdditionalDSLFiles_PassLikeC4Validate(CancellationToken cancellationToken)
+	{
+		var (totalErrors, rawOutput) = await RunLikeC4ValidateDirectoryAsync(_outputDir!, cancellationToken);
+
+		if (totalErrors < 0)
+		{
+			throw new InvalidOperationException(
+				$"LikeC4 validation did not produce JSON output.\n\n{rawOutput}"
+			);
+		}
+
+		if (totalErrors != 0)
+		{
+			throw new InvalidOperationException(
+				$"Expected 0 LikeC4 validation errors but got {totalErrors}.\n\nValidator output:\n{rawOutput}"
+			);
+		}
+
+		await Assert.That(totalErrors).IsEqualTo(0);
+	}
+
+	static async Task<(int TotalErrors, string RawOutput)> RunLikeC4ValidateDirectoryAsync(
+		string directory,
+		CancellationToken cancellationToken
+	)
+	{
+		var useDotFlag = IsDotAvailable() ? " --use-dot" : "";
+
+		string shellFile,
+			shellArgs;
+		if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+		{
+			shellFile = "cmd.exe";
+			shellArgs = $"/c npx --yes likec4 validate --json --no-layout{useDotFlag} \"{directory}\"";
+		}
+		else
+		{
+			shellFile = "/bin/sh";
+			shellArgs = $"-c \"npx --yes likec4 validate --json --no-layout{useDotFlag} '{directory}'\"";
+		}
+
+		using var process = new Process
+		{
+			StartInfo = new ProcessStartInfo
+			{
+				FileName = shellFile,
+				Arguments = shellArgs,
+				RedirectStandardOutput = true,
+				RedirectStandardError = true,
+				UseShellExecute = false,
+				WorkingDirectory = directory,
+				CreateNoWindow = true,
+			},
+		};
+
+		process.Start();
+		var stdout = await process.StandardOutput.ReadToEndAsync(cancellationToken);
+		var stderr = await process.StandardError.ReadToEndAsync(cancellationToken);
+		await process.WaitForExitAsync(cancellationToken);
+
+		var rawOutput = $"stdout:\n{stdout}\nstderr:\n{stderr}";
+
+		var jsonStart = stdout.IndexOf('{', StringComparison.Ordinal);
+		var jsonEnd = stdout.LastIndexOf('}');
+		if (jsonStart < 0 || jsonEnd < 0)
+		{
+			return (-1, rawOutput);
+		}
+
+		var json = stdout[jsonStart..(jsonEnd + 1)];
+		using var doc = JsonDocument.Parse(json);
+		var stats = doc.RootElement.GetProperty("stats");
+		var totalErrors = stats.GetProperty("totalErrors").GetInt32();
+		return (totalErrors, rawOutput);
+	}
+
+	[System.Diagnostics.CodeAnalysis.SuppressMessage(
+		"Design",
+		"CA1031:Do not catch general exception types",
+		Justification = "dot availability check is best-effort; any failure means dot is unavailable"
+	)]
+	static bool IsDotAvailable()
+	{
+		try
+		{
+			using var proc = Process.Start(new ProcessStartInfo
+			{
+				FileName = "dot",
+				Arguments = "-V",
+				RedirectStandardError = true,
+				UseShellExecute = false,
+				CreateNoWindow = true,
+			});
+			proc?.WaitForExit();
+			return proc?.ExitCode == 0;
+		}
+		catch
+		{
+			return false;
+		}
 	}
 
 	public async ValueTask DisposeAsync()

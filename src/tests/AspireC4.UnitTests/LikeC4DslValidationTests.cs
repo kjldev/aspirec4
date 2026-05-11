@@ -47,22 +47,41 @@ public sealed class LikeC4DSLValidationTests
 
 	readonly record struct ValidationResult(bool Valid, int FilteredErrors, int TotalErrors, string RawOutput);
 
-	async Task<ValidationResult> RunValidateAsync(string dsl)
+	async Task<ValidationResult> RunValidateAsync(
+		string dsl,
+		(string FileName, string Content)[]? additionalFiles = null
+	)
 	{
 		await File.WriteAllTextAsync(_dslFile, dsl);
+
+		var filesToValidate = new List<string> { _dslFile };
+
+		if (additionalFiles != null)
+		{
+			foreach (var (fileName, content) in additionalFiles)
+			{
+				var path = Path.Combine(_tempDir, fileName);
+				await File.WriteAllTextAsync(path, content);
+				filesToValidate.Add(path);
+			}
+		}
+
+		var useDotFlag = IsDotAvailable() ? " --use-dot" : "";
 
 		// npx on Windows is a .cmd wrapper, so it must be invoked through the shell.
 		string shellFile,
 			shellArgs;
 		if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
 		{
+			var fileArgs = string.Join(" ", filesToValidate.Select(f => $"--file \"{f}\""));
 			shellFile = "cmd.exe";
-			shellArgs = $"/c npx --yes likec4 validate --json --no-layout --file \"{_dslFile}\" \"{_tempDir}\"";
+			shellArgs = $"/c npx --yes likec4 validate --json --no-layout{useDotFlag} {fileArgs} \"{_tempDir}\"";
 		}
 		else
 		{
+			var fileArgs = string.Join(" ", filesToValidate.Select(f => $"--file '{f}'"));
 			shellFile = "/bin/sh";
-			shellArgs = $"-c \"npx --yes likec4 validate --json --no-layout --file '{_dslFile}' '{_tempDir}'\"";
+			shellArgs = $"-c \"npx --yes likec4 validate --json --no-layout{useDotFlag} {fileArgs} '{_tempDir}'\"";
 		}
 
 		using var process = new Process
@@ -107,6 +126,33 @@ public sealed class LikeC4DSLValidationTests
 			TotalErrors: totalErrors,
 			RawOutput: rawOut
 		);
+	}
+
+	[System.Diagnostics.CodeAnalysis.SuppressMessage(
+		"Design",
+		"CA1031:Do not catch general exception types",
+		Justification = "dot availability check is best-effort; any failure means dot is unavailable"
+	)]
+	static bool IsDotAvailable()
+	{
+		try
+		{
+			using var proc = Process.Start(new ProcessStartInfo
+			{
+				FileName = "dot",
+				Arguments = "-V",
+				RedirectStandardOutput = true,
+				RedirectStandardError = true,
+				UseShellExecute = false,
+				CreateNoWindow = true,
+			});
+			proc?.WaitForExit();
+			return proc?.ExitCode == 0;
+		}
+		catch
+		{
+			return false;
+		}
 	}
 
 	static void AssertNoValidationErrors(ValidationResult result, string dsl)
@@ -356,5 +402,49 @@ public sealed class LikeC4DSLValidationTests
 		var result = await RunValidateAsync(dsl);
 		AssertNoValidationErrors(result, dsl);
 		await Assert.That(result.FilteredErrors).IsEqualTo(0);
+	}
+
+	[Test]
+	public async Task ValidatedDsl_WithAdditionalExtensionFile_ProducesNoErrors()
+	{
+		// Arrange: a model with two elements and a relationship.
+		var model = new LikeC4Model
+		{
+			Elements =
+			[
+				new LikeC4Element { Name = "api", Label = "API", Kind = LikeC4ElementKind.Component },
+				new LikeC4Element { Name = "db", Label = "Database", Kind = LikeC4ElementKind.Database },
+			],
+			Relationships =
+			[
+				new LikeC4Relationship { SourceName = "api", TargetName = "db", Label = "reads" },
+			],
+		};
+
+		var dsl = LikeC4DSLGenerator.Generate(model, DefaultOptions);
+
+		// Act: validate the generated DSL alongside a hand-authored extension file that
+		// extends the model with extra metadata and adds custom views.
+		const string extensionDsl = """
+			model {
+			  extend api {
+			    link https://example.com/api-docs 'API Docs'
+			    metadata { team 'Backend' }
+			  }
+			}
+
+			views {
+			  view api_detail {
+			    title 'API Detail'
+			    include api
+			    include -> api ->
+			  }
+			}
+			""";
+
+		var result = await RunValidateAsync(dsl, [("extensions.c4", extensionDsl)]);
+
+		AssertNoValidationErrors(result, $"main:\n{dsl}\nextension:\n{extensionDsl}");
+		await Assert.That(result.TotalErrors).IsEqualTo(0);
 	}
 }

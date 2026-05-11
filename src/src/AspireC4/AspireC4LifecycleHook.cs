@@ -51,6 +51,35 @@ sealed class AspireC4LifecycleHook(
 	TcpListener? _hmrRelayListener;
 	readonly Lock _hmrRelayLock = new();
 
+	// Lazily checks once whether Graphviz `dot` is on PATH so we can pass --use-dot to likec4 validate.
+	static readonly Lazy<bool> _dotAvailable = new(
+		[System.Diagnostics.CodeAnalysis.SuppressMessage(
+			"Design",
+			"CA1031:Do not catch general exception types",
+			Justification = "dot availability check is best-effort; any failure means dot is unavailable"
+		)]
+		static () =>
+		{
+			try
+			{
+				using var proc = Process.Start(new ProcessStartInfo
+				{
+					FileName = "dot",
+					Arguments = "-V",
+					RedirectStandardError = true,
+					UseShellExecute = false,
+					CreateNoWindow = true,
+				});
+				proc?.WaitForExit();
+				return proc?.ExitCode == 0;
+			}
+			catch
+			{
+				return false;
+			}
+		}
+	);
+
 	public Task SubscribeAsync(
 		IDistributedApplicationEventing eventing,
 		DistributedApplicationExecutionContext executionContext,
@@ -491,11 +520,6 @@ sealed class AspireC4LifecycleHook(
 		var outputPath = Path.Combine(outputDir, filename);
 		await File.WriteAllTextAsync(outputPath, dsl, cancellationToken);
 
-		if (opts.ValidateBeforeStart)
-		{
-			await RunValidationAsync(outputDir, outputPath, cancellationToken);
-		}
-
 		// Sync the main model file to the container workspace.
 		if (syncContainerWorkspace)
 		{
@@ -503,6 +527,7 @@ sealed class AspireC4LifecycleHook(
 		}
 
 		// Copy and optionally sync additional user-provided DSL files.
+		var additionalDestPaths = new List<string>();
 		var bindMountedFiles = workspaceOptions.Value.BindMountedSourceFiles;
 		foreach (var sourcePath in opts.AdditionalDSLFiles)
 		{
@@ -515,6 +540,7 @@ sealed class AspireC4LifecycleHook(
 			var destFileName = Path.GetFileName(absoluteSource);
 			var destPath = Path.Combine(outputDir, destFileName);
 			File.Copy(absoluteSource, destPath, overwrite: true);
+			additionalDestPaths.Add(destPath);
 
 			var fileNameWithoutExtension = Path.GetFileNameWithoutExtension(absoluteSource);
 			telemetry.AdditionalDSLFileSynced(fileNameWithoutExtension);
@@ -533,6 +559,12 @@ sealed class AspireC4LifecycleHook(
 			}
 		}
 
+		// Validate after ALL files (generated model + additional DSL) are in the output directory.
+		if (opts.ValidateBeforeStart)
+		{
+			await RunValidationAsync(outputDir, outputPath, additionalDestPaths, cancellationToken);
+		}
+
 		telemetry.LikeC4ModelWritten(outputPath);
 	}
 
@@ -541,7 +573,12 @@ sealed class AspireC4LifecycleHook(
 		"CA1031:Do not catch general exception types",
 		Justification = "Validation is non-blocking; failures are logged as warnings only"
 	)]
-	async Task RunValidationAsync(string outputDir, string outputPath, CancellationToken cancellationToken)
+	async Task RunValidationAsync(
+		string outputDir,
+		string outputPath,
+		IReadOnlyList<string> additionalFilePaths,
+		CancellationToken cancellationToken
+	)
 	{
 		try
 		{
@@ -558,8 +595,21 @@ sealed class AspireC4LifecycleHook(
 			startInfo.ArgumentList.Add("validate");
 			startInfo.ArgumentList.Add("--json");
 			startInfo.ArgumentList.Add("--no-layout");
+
+			if (_dotAvailable.Value)
+			{
+				startInfo.ArgumentList.Add("--use-dot");
+			}
+
 			startInfo.ArgumentList.Add("--file");
 			startInfo.ArgumentList.Add(outputPath);
+
+			foreach (var additionalPath in additionalFilePaths)
+			{
+				startInfo.ArgumentList.Add("--file");
+				startInfo.ArgumentList.Add(additionalPath);
+			}
+
 			startInfo.ArgumentList.Add(outputDir);
 
 			using var process = Process.Start(startInfo);

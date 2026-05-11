@@ -1,7 +1,7 @@
 var builder = DistributedApplication.CreateBuilder(args);
 
 // Add LikeC4 visualization to the application. This will allow us to visualize the components and their relationships in a C4 model.
-builder.AddAspireC4(configure: opts =>
+var visualization = builder.AddAspireC4(configure: opts =>
 {
 	// Disable HMR (Hot Module Replacement) when in publish mode for better performance and stability.
 	// HMR is typically used in development to allow live updates without restarting the application, but it can
@@ -10,6 +10,22 @@ builder.AddAspireC4(configure: opts =>
 	// Validate the C4 model before starting the application to catch any issues early.
 	opts.ValidateBeforeStart = true;
 });
+
+// Register hand-authored extension files (custom styles, views, model extensions).
+// The files sit next to the TestAppHost assembly so they are available in both the normal
+// run context (when the TestAppHost is launched directly) and the integration-test context
+// (where the TestAppHost assembly is copied to the test output directory).
+var extensionsDir = Path.Combine(
+	Path.GetDirectoryName(typeof(TestAppHostProgram).Assembly.Location)!,
+	"likec4-extensions"
+);
+if (Directory.Exists(extensionsDir))
+{
+	foreach (var c4File in Directory.GetFiles(extensionsDir, "*.c4", SearchOption.TopDirectoryOnly).Order())
+	{
+		visualization.WithAdditionalDSLFile(c4File);
+	}
+}
 
 var azureManagerRedis = builder
 	.AddAzureManagedRedis("azure-redis")
