@@ -718,7 +718,7 @@ sealed class AspireC4LifecycleHook(
 	/// <see cref="LikeC4ServerResource"/>, populates <see cref="LikeC4ContainerWorkspaceOptions.ContainerServePath"/>,
 	/// and appends the <c>likec4 start</c> command-line arguments.
 	/// </summary>
-	void SetupContainerBindMount(DistributedApplicationModel appModel, LikeC4ServerResource serverResource)
+	void SetupContainerBindMount(DistributedApplicationModel _, LikeC4ServerResource serverResource)
 	{
 		var opts = options.Value;
 		var outputDir = Path.GetFullPath(opts.OutputDirectory);

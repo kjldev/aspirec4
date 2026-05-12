@@ -21,9 +21,9 @@ public sealed partial class AspireC4HostTests
 	static readonly TimeSpan LikeC4StartupTimeout = TimeSpan.FromSeconds(120);
 
 	// Shared across all tests in this class — set once in ClassSetUpAsync.
-	static DistributedApplication? _app;
-	static string? _outputDir;
-	static string? _modelPath;
+	static DistributedApplication? s_app;
+	static string? s_outputDir;
+	static string? s_modelPath;
 
 	[Before(Class)]
 	public static async Task ClassSetUpAsync(CancellationToken cancellationToken)
@@ -32,8 +32,8 @@ public sealed partial class AspireC4HostTests
 		// (extensions, image aliases, output) share the same drive — required by the
 		// single-bind-mount architecture that computes a common ancestor.
 		var testHostDir = Path.GetDirectoryName(typeof(TestAppHostProgram).Assembly.Location)!;
-		_outputDir = Path.Combine(testHostDir, "test-output-" + Guid.NewGuid().ToString("N")[..8]);
-		_modelPath = Path.Combine(_outputDir, "model.gen.c4");
+		s_outputDir = Path.Combine(testHostDir, "test-output-" + Guid.NewGuid().ToString("N")[..8]);
+		s_modelPath = Path.Combine(s_outputDir, "model.gen.c4");
 
 		var appBuilder = await DistributedApplicationTestingBuilder.CreateAsync<TestAppHostProgram>(cancellationToken);
 
@@ -41,7 +41,7 @@ public sealed partial class AspireC4HostTests
 		appBuilder.Configuration.AddInMemoryCollection(
 			new Dictionary<string, string?>
 			{
-				["AspireC4:OutputDirectory"] = _outputDir,
+				["AspireC4:OutputDirectory"] = s_outputDir,
 				["AspireC4:FileName"] = "model.gen",
 				["AspireC4:Title"] = "Integration Test Architecture",
 				// Disable HMR so no relay port is bound during testing.
@@ -59,35 +59,35 @@ public sealed partial class AspireC4HostTests
 			opts.FormatGeneratedFile = false;
 		});
 
-		_app = await appBuilder.BuildAsync(cancellationToken);
-		await _app.StartAsync(cancellationToken);
+		s_app = await appBuilder.BuildAsync(cancellationToken);
+		await s_app.StartAsync(cancellationToken);
 	}
 
 	[After(Class)]
 	public static async Task ClassTearDownAsync(CancellationToken cancellationToken)
 	{
-		if (_app is not null)
+		if (s_app is not null)
 		{
-			await _app.StopAsync(cancellationToken);
+			await s_app.StopAsync(cancellationToken);
 		}
 
-		if (_outputDir is not null && Directory.Exists(_outputDir))
+		if (s_outputDir is not null && Directory.Exists(s_outputDir))
 		{
-			Directory.Delete(_outputDir, recursive: true);
+			Directory.Delete(s_outputDir, recursive: true);
 		}
 	}
 
 	[Test]
 	public async Task C4FileIsGeneratedDuringStartup()
 	{
-		await Assert.That(_modelPath).IsNotNull();
-		await Assert.That(File.Exists(_modelPath!)).IsTrue();
+		await Assert.That(s_modelPath).IsNotNull();
+		await Assert.That(File.Exists(s_modelPath!)).IsTrue();
 	}
 
 	[Test]
 	public async Task C4FileContainsExpectedDslStructure(CancellationToken cancellationToken)
 	{
-		var content = await File.ReadAllTextAsync(_modelPath!, cancellationToken);
+		var content = await File.ReadAllTextAsync(s_modelPath!, cancellationToken);
 
 		await Assert.That(content).Contains("specification {");
 		await Assert.That(content).Contains("model {");
@@ -109,7 +109,7 @@ public sealed partial class AspireC4HostTests
 	{
 		await WaitForLikeC4ServerRunningAsync(cancellationToken);
 
-		using var client = _app!.CreateHttpClient(AspireC4ResourceName, LikeC4ServerResource.HttpEndpointName);
+		using var client = s_app!.CreateHttpClient(AspireC4ResourceName, LikeC4ServerResource.HttpEndpointName);
 
 		HttpResponseMessage? response = null;
 		for (var attempt = 0; attempt < 10; attempt++)
@@ -139,7 +139,7 @@ public sealed partial class AspireC4HostTests
 
 		try
 		{
-			await foreach (var evt in _app!.ResourceNotifications.WatchAsync(cts.Token))
+			await foreach (var evt in s_app!.ResourceNotifications.WatchAsync(cts.Token))
 			{
 				if (!evt.Resource.Name.Equals(AspireC4ResourceName, StringComparison.OrdinalIgnoreCase))
 					continue;
@@ -174,7 +174,7 @@ public sealed partial class AspireC4HostTests
 	[Test]
 	public async Task ConfigFile_IsGeneratedInOutputDirectory(CancellationToken cancellationToken)
 	{
-		var configPath = Path.Combine(_outputDir!, "likec4.config.json");
+		var configPath = Path.Combine(s_outputDir!, "likec4.config.json");
 		await Assert.That(File.Exists(configPath)).IsTrue();
 
 		var json = await File.ReadAllTextAsync(configPath, cancellationToken);
@@ -185,7 +185,7 @@ public sealed partial class AspireC4HostTests
 	[Test]
 	public async Task ConfigFile_ContainsAdditionalDSLFolderPath(CancellationToken cancellationToken)
 	{
-		var configPath = Path.Combine(_outputDir!, "likec4.config.json");
+		var configPath = Path.Combine(s_outputDir!, "likec4.config.json");
 		var json = await File.ReadAllTextAsync(configPath, cancellationToken);
 
 		using var doc = JsonDocument.Parse(json);
@@ -204,7 +204,7 @@ public sealed partial class AspireC4HostTests
 	[Test]
 	public async Task ConfigFile_ContainsImageAliasEntry(CancellationToken cancellationToken)
 	{
-		var configPath = Path.Combine(_outputDir!, "likec4.config.json");
+		var configPath = Path.Combine(s_outputDir!, "likec4.config.json");
 		var json = await File.ReadAllTextAsync(configPath, cancellationToken);
 
 		using var doc = JsonDocument.Parse(json);
@@ -235,7 +235,7 @@ public sealed partial class AspireC4HostTests
 	[Test]
 	public async Task GeneratedAndAdditionalDSLFiles_PassLikeC4Validate(CancellationToken cancellationToken)
 	{
-		var (totalErrors, rawOutput) = await RunLikeC4ValidateDirectoryAsync(_outputDir!, cancellationToken);
+		var (totalErrors, rawOutput) = await RunLikeC4ValidateDirectoryAsync(s_outputDir!, cancellationToken);
 
 		if (totalErrors < 0)
 		{
