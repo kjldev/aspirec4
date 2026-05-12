@@ -155,7 +155,6 @@ jobs:
             --configuration "${CONFIGURATION}" \
             --no-build \
             --output "${ARTIFACTS_DIR}" \
-            --include-symbols \
             "/p:Version=${PACKAGE_VERSION}" \
             "/p:RepositoryBranch=${GITHUB_REF_NAME}" \
             "/p:RepositoryCommit=${GITHUB_SHA}" \
