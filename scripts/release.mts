@@ -224,11 +224,25 @@ if (aspireMajorMinor !== currentMajorMinor) {
   const aspireBase = `${aspireVersion.split('.').slice(0, 2).join('.')}.0`
   newBase = semver.inc(aspireBase, effectiveBump === 'major' ? 'patch' : effectiveBump) ?? aspireBase
 } else {
+  // MAJOR.MINOR is Aspire-locked; all conventional-commit bump types only increment PATCH.
   const base = `${currentSemver.major}.${currentSemver.minor}.${currentSemver.patch}`
-  newBase = semver.inc(base, effectiveBump) ?? base
+  newBase = semver.inc(base, 'patch') ?? base
 }
 
-const newVersion = isPrerelease ? `${newBase}-prerelease.0` : newBase
+// For prerelease: if the current version is already a prerelease on the same base, increment
+// the prerelease counter; otherwise start at .0.
+let newVersion: string
+if (isPrerelease) {
+  const prereleaseMatch = currentVersion.match(/^(.+)-prerelease\.(\d+)$/)
+  if (prereleaseMatch && prereleaseMatch[1] === newBase) {
+    // Same base — bump the prerelease counter
+    newVersion = `${newBase}-prerelease.${parseInt(prereleaseMatch[2], 10) + 1}`
+  } else {
+    newVersion = `${newBase}-prerelease.0`
+  }
+} else {
+  newVersion = newBase
+}
 console.log(`\nNew version: ${currentVersion} → ${newVersion}`)
 
 // ---------------------------------------------------------------------------
