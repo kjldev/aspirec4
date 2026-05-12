@@ -7,6 +7,7 @@ namespace Aspire.Hosting.AspireC4;
 /// package manager CLI (npx, pnpm, yarn, or bun). Used as a fallback when Docker is not
 /// available or when explicitly requested via <see cref="IAspireC4Builder.WithLocalCLI"/>.
 /// </summary>
+[AspireExport]
 public sealed class LikeC4LocalServerResource : ExecutableResource
 {
 	/// <summary>The name of the HTTP endpoint exposed by the LikeC4 server.</summary>

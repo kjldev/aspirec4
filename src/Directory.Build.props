@@ -1,6 +1,7 @@
 <Project>
 	<PropertyGroup>
 		<NamespacePrefix>Aspire.Hosting</NamespacePrefix>
+		<NoWarn>$(NoWarn);ASPIREATS001</NoWarn>
 	</PropertyGroup>
 	<Import Project="../.dotnet/Directory.Build.props" />
 </Project>
