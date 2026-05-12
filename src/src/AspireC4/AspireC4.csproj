@@ -12,7 +12,7 @@
 		<PackageIcon>likec4-logo.png</PackageIcon>
 		<PackageLicenseFile>LICENSE.md</PackageLicenseFile>
 		<PackageReadmeFile>README.md</PackageReadmeFile>
-		<PackageProjectUrl>https://github.com/kjldev/aspirec4</PackageProjectUrl>
+		<PackageProjectUrl>https://kjl.dev/projects/aspirec4/</PackageProjectUrl>
 		<PackageTags>aspire;dotnet;aspnetcore;c4;likec4;architecture;diagram;visualisation;visualization;</PackageTags>
 		<IncludeSymbols>true</IncludeSymbols>
 		<SymbolPackageFormat>snupkg</SymbolPackageFormat>
