@@ -2,10 +2,10 @@
 	<PropertyGroup>
 		<IsPackable>true</IsPackable>
 		<AssemblyTitle>AspireC4 Hosting</AssemblyTitle>
-		<Description>Aspire hosting extensions for the AspireC4 plugin: builder API, lifecycle hook, and server resource.</Description>
-		<COPYRIGHT_YEAR>2025</COPYRIGHT_YEAR>
+		<Description>Aspire hosting extensions for the AspireC4 plugin, generating dynamic a LikeC4 model for your Aspire application.</Description>
+		<COPYRIGHT_YEAR>2026</COPYRIGHT_YEAR>
 		<PackageId>AspireC4</PackageId>
-		<Title>AspireC4 - Aspire LikeC4 Visualization</Title>
+		<Title>AspireC4 - Aspire LikeC4 Visualisation</Title>
 		<Authors>Kieron Lanning</Authors>
 		<Company>KJL Solutions Ltd.</Company>
 		<Copyright>KJL Solutions Ltd., $(COPYRIGHT_YEAR) | All rights reserved.</Copyright>
@@ -13,7 +13,7 @@
 		<PackageLicenseFile>LICENSE.md</PackageLicenseFile>
 		<PackageReadmeFile>README.md</PackageReadmeFile>
 		<PackageProjectUrl>https://github.com/kjldev/aspirec4</PackageProjectUrl>
-		<PackageTags>aspire;dotnet;aspnetcore;c4;likec4;architecture;diagram;visualization;</PackageTags>
+		<PackageTags>aspire;dotnet;aspnetcore;c4;likec4;architecture;diagram;visualisation;visualization;</PackageTags>
 	</PropertyGroup>
 
 	<ItemGroup>

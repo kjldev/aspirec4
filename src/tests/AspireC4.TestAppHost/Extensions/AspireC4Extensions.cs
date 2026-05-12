@@ -19,6 +19,7 @@ static class AspireC4Extensions
 			builder.WithAdditionalDSLFolder(extensionsDir);
 		}
 
+		// There are some assets in the repo root that we'll include.
 		builder.WithImageAliasFolder("@", Path.Combine(AppContext.BaseDirectory, "../../../../../../assets/images/"));
 		var imagesDir = Path.Combine(
 			Path.GetDirectoryName(typeof(TestAppHostProgram).Assembly.Location)!,

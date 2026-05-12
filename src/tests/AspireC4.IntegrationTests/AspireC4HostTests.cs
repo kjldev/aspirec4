@@ -53,7 +53,7 @@ public sealed partial class AspireC4HostTests
 		// configure callback that sets ValidateBeforeStart=true and the default FormatGeneratedFile=true.
 		// Both invoke `npx likec4 …` which traverses up the directory tree and scans the entire
 		// repository workspace when run from within the repo — hanging the BeforeStartEvent handler.
-		appBuilder.Services.PostConfigure<AspireC4DiagramOptions>(opts =>
+		appBuilder.Services.PostConfigure<AspireC4DiagramOptions>(static opts =>
 		{
 			opts.ValidateBeforeStart = false;
 			opts.FormatGeneratedFile = false;
@@ -257,7 +257,7 @@ public sealed partial class AspireC4HostTests
 		CancellationToken cancellationToken
 	)
 	{
-		var useDotFlag = IsDotAvailable() ? " --use-dot" : "";
+		var useDotFlag = await IsDotAvailableAsync(cancellationToken) ? " --use-dot" : "";
 
 		string shellFile,
 			shellArgs;
@@ -312,7 +312,7 @@ public sealed partial class AspireC4HostTests
 		"CA1031:Do not catch general exception types",
 		Justification = "dot availability check is best-effort; any failure means dot is unavailable"
 	)]
-	static bool IsDotAvailable()
+	static async Task<bool> IsDotAvailableAsync(CancellationToken cancellationToken)
 	{
 		try
 		{
@@ -326,8 +326,12 @@ public sealed partial class AspireC4HostTests
 					CreateNoWindow = true,
 				}
 			);
-			proc?.WaitForExit();
-			return proc?.ExitCode == 0;
+
+			if (proc is null)
+				return false;
+
+			await proc.WaitForExitAsync(cancellationToken);
+			return proc.ExitCode == 0;
 		}
 		catch
 		{

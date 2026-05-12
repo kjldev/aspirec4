@@ -142,7 +142,7 @@ sealed class AspireC4Builder(
 	/// On non-Windows the path is returned unchanged.
 	/// </remarks>
 	internal static string NormalizeBindMountPath(string absolutePath) =>
-		NormalizeBindMountPath(absolutePath, _containerRuntime.Value);
+		NormalizeBindMountPath(absolutePath, ContainerRuntime.Value);
 
 	/// <summary>Overload with an explicit runtime — used by unit tests to avoid
 	/// spawning a <c>docker</c> process.</summary>
@@ -153,7 +153,7 @@ sealed class AspireC4Builder(
 		// Rancher Desktop exposes Windows drives under /mnt/<letter>/ inside WSL2.
 		// CA1308: intentional — Linux paths require lower-case.
 		if (
-			runtime == ContainerRuntime.RancherDesktop
+			runtime == AspireC4.ContainerRuntime.RancherDesktop
 			&& fullPath.Length >= 2
 			&& char.IsAsciiLetter(fullPath[0])
 			&& fullPath[1] == ':'
@@ -171,7 +171,7 @@ sealed class AspireC4Builder(
 		return fullPath;
 	}
 
-	static readonly Lazy<ContainerRuntime> _containerRuntime = new(
+	static readonly Lazy<ContainerRuntime> ContainerRuntime = new(
 		DetectContainerRuntime,
 		LazyThreadSafetyMode.ExecutionAndPublication
 	);
@@ -184,12 +184,12 @@ sealed class AspireC4Builder(
 	internal static ContainerRuntime DetectContainerRuntime()
 	{
 		if (!OperatingSystem.IsWindows())
-			return ContainerRuntime.Linux;
+			return AspireC4.ContainerRuntime.Linux;
 
 		// If Podman is explicitly requested, podman.exe handles path translation itself.
 		var runtimeEnv = Environment.GetEnvironmentVariable("ASPIRE_CONTAINER_RUNTIME");
 		if (runtimeEnv?.Equals("podman", StringComparison.OrdinalIgnoreCase) == true)
-			return ContainerRuntime.Podman;
+			return AspireC4.ContainerRuntime.Podman;
 
 		// Query the Docker daemon OS string to distinguish Docker Desktop from Rancher Desktop.
 		try
@@ -210,11 +210,11 @@ sealed class AspireC4Builder(
 			var os = process?.StandardOutput.ReadToEnd().Trim() ?? "";
 
 			if (os.Contains("Rancher Desktop", StringComparison.OrdinalIgnoreCase))
-				return ContainerRuntime.RancherDesktop;
+				return AspireC4.ContainerRuntime.RancherDesktop;
 		}
 		catch { }
 
-		return ContainerRuntime.DockerDesktop;
+		return AspireC4.ContainerRuntime.DockerDesktop;
 	}
 
 	static LikeC4LocalCLIRuntime DetectRuntime()
