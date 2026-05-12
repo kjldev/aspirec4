@@ -43,10 +43,10 @@ lintcheck:
 [group('dotnet')]
 lintfix:
     dotnet csharpier format src
-# Build and produce NuGet packages into artifacts/nuget
+# Build and produce NuGet packages into artifacts/nuget (version read from package.json)
 [group('dotnet')]
 pack configuration=config_default: (build configuration)
-    dotnet pack {{ _solution }} --no-build --no-restore --configuration {{ configuration }} --output artifacts/nuget
+    dotnet pack {{ _solution }} --no-build --no-restore --configuration {{ configuration }} --output artifacts/nuget "/p:Version=$(node -p "require('./package.json').version")"
 # ── Icon manifest ─────────────────────────────────────────────────────────────
 
 # Regenerate the LikeC4 icon manifest from the upstream GitHub repository
