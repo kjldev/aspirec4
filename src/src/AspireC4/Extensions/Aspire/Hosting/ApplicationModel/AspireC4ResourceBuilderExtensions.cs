@@ -92,12 +92,12 @@ public static partial class AspireC4ResourceBuilderExtensions
 		/// <summary>
 		/// Excludes a resource from the generated LikeC4 diagram.
 		/// </summary>
-		public IResourceBuilder<T> ExcludeFromLikeC4(bool exclude = true)
+		public IResourceBuilder<T> ExcludeFromLikeC4()
 		{
 			ArgumentNullException.ThrowIfNull(builder);
 
 			return builder.WithAnnotation(
-				new ExcludeFromLikeC4Annotation(exclude),
+				new ExcludeFromLikeC4Annotation(),
 				ResourceAnnotationMutationBehavior.Replace
 			);
 		}

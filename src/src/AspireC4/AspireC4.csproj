@@ -29,4 +29,10 @@
 	<ItemGroup>
 		<ProjectReference Include="..\AspireC4.Core\AspireC4.Core.csproj" />
 	</ItemGroup>
+
+	<ItemGroup>
+		<AssemblyAttribute Include="System.Runtime.CompilerServices.InternalsVisibleTo">
+			<_Parameter1>AspireC4.UnitTests</_Parameter1>
+		</AssemblyAttribute>
+	</ItemGroup>
 </Project>

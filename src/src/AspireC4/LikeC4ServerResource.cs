@@ -35,20 +35,12 @@ public sealed class LikeC4ServerResource : ContainerResource
 	internal const int DefaultContainerUpdatePort = 24678;
 
 	/// <summary>
-	/// Root path inside the container that LikeC4 watches. Additional DSL folders and image-alias
-	/// folders are bind-mounted as subdirectories here so that live edits reach the server directly,
-	/// without going through the named volume.
+	/// Root path inside the container where the host directory tree is bind-mounted.
+	/// <c>likec4 start</c> is pointed at a subdirectory of this root that corresponds to the
+	/// output directory on the host; the full path is computed at startup and stored in
+	/// <see cref="LikeC4ContainerWorkspaceOptions.ContainerServePath"/>.
 	/// </summary>
 	internal const string WorkspacePath = "/data";
-
-	/// <summary>
-	/// Sub-path inside the container where the named Docker volume is mounted. Only auto-generated
-	/// files (the <c>.c4</c> model and <c>likec4.config.json</c>) live here.
-	/// Keeping generated files in a subdirectory separate from the workspace root ensures that
-	/// bind-mounts for additional DSL folders at <c>/data/ext/…</c> and image assets at
-	/// <c>/data/img/…</c> are <em>outside</em> the named volume and are therefore not shadowed by it.
-	/// </summary>
-	internal const string GeneratedPath = "/data/output";
 
 	internal static string GetImageReference(string imageTag) => $"{DefaultRegistry}/{DefaultImage}:{imageTag}";
 

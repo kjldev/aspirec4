@@ -43,7 +43,7 @@ public sealed class AspireC4BuilderTests
 		var (command, args) = AspireC4Builder.BuildLocalCliCommand(LikeC4LocalCLIRuntime.Bun, "/tmp/likec4", 5173);
 
 		await Assert.That(command).IsEqualTo("bunx");
-		await Assert.That(args).IsEquivalentTo(["likec4", "serve", "/tmp/likec4", "--port", "5173"]);
+		await Assert.That(args).IsEquivalentTo(["--bun", "likec4", "serve", "/tmp/likec4", "--port", "5173"]);
 	}
 
 	[Test]
@@ -213,41 +213,186 @@ public sealed class AspireC4BuilderTests
 	}
 
 	[Test]
-	public async Task AddAspireC4_UsesNamedWorkspaceVolumeForDefaultOutputDirectory()
+	public async Task AddAspireC4_HasNoContainerMountAnnotationsAtConfigureTime()
 	{
+		// Bind mounts are set up lazily by the lifecycle hook in BeforeStartEvent,
+		// not by the builder — so there must be zero annotations at configure-time.
 		var appBuilder = DistributedApplication.CreateBuilder([]);
 
 		var visualization = appBuilder.AddAspireC4();
-		var expectedSource = AspireC4DistributedApplicationBuilderExtensions.ResolveWorkspaceVolumeName(
-			appBuilder.AppHostDirectory,
-			AspireC4DistributedApplicationBuilderExtensions.AspireC4ResourceName
-		);
 		var mounts = visualization
 			.LikeC4ResourceBuilder.Resource.Annotations.OfType<ContainerMountAnnotation>()
 			.ToArray();
 
-		await Assert.That(mounts).HasSingleItem();
-		await Assert.That(mounts[0].Source).IsEqualTo(expectedSource);
-		await Assert.That(mounts[0].Target).IsEqualTo(LikeC4ServerResource.GeneratedPath);
-		await Assert.That(mounts[0].Type).IsEqualTo(ContainerMountType.Volume);
+		await Assert.That(mounts).IsEmpty();
 	}
 
 	[Test]
-	public async Task ResolveWorkspaceVolumeName_IsStableForTheSameAppHostDirectory()
+	public async Task WithAdditionalDSLFile_RegistersPathInDiagramOptions_NotBindMount()
 	{
-		var appHostDir = $"{Guid.NewGuid()}/subdir/{Guid.CreateVersion7()}/";
+		var appBuilder = DistributedApplication.CreateBuilder([]);
 
-		var first = AspireC4DistributedApplicationBuilderExtensions.ResolveWorkspaceVolumeName(
-			appHostDir,
-			AspireC4DistributedApplicationBuilderExtensions.AspireC4ResourceName
-		);
-		var second = AspireC4DistributedApplicationBuilderExtensions.ResolveWorkspaceVolumeName(
-			appHostDir,
-			AspireC4DistributedApplicationBuilderExtensions.AspireC4ResourceName
-		);
+		var tempDir = Path.Combine(Path.GetTempPath(), "likec4-unit-" + Guid.NewGuid().ToString("N")[..8]);
+		Directory.CreateDirectory(tempDir);
+		var tempFile = Path.Combine(tempDir, "extra.c4");
 
-		await Assert.That(first).IsEqualTo(second);
-		await Assert.That(first).StartsWith("aspirec4-aspirec4-");
+		try
+		{
+			await File.WriteAllTextAsync(tempFile, "// extra");
+
+			var visualization = appBuilder.AddAspireC4();
+			visualization.WithAdditionalDSLFile(tempFile);
+
+			// No ContainerMountAnnotation from the builder — the lifecycle hook handles mounts.
+			var mounts = visualization
+				.LikeC4ResourceBuilder.Resource.Annotations.OfType<ContainerMountAnnotation>()
+				.ToArray();
+			await Assert.That(mounts).IsEmpty();
+
+			// The file path must be registered so the lifecycle hook can copy + mount it.
+			using var sp = appBuilder.Services.BuildServiceProvider();
+			var opts = sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<AspireC4DiagramOptions>>().Value;
+			await Assert.That(opts.AdditionalDSLFiles).Contains(Path.GetFullPath(tempFile));
+		}
+		finally
+		{
+			if (Directory.Exists(tempDir))
+				Directory.Delete(tempDir, recursive: true);
+		}
+	}
+
+	[Test]
+	public async Task WithAdditionalDSLFolder_RegistersPathInDiagramOptions_NotBindMount()
+	{
+		var appBuilder = DistributedApplication.CreateBuilder([]);
+		var tempDir = Path.Combine(Path.GetTempPath(), "likec4-unit-" + Guid.NewGuid().ToString("N")[..8]);
+		Directory.CreateDirectory(tempDir);
+
+		try
+		{
+			var visualization = appBuilder.AddAspireC4();
+			visualization.WithAdditionalDSLFolder(tempDir);
+
+			var mounts = visualization
+				.LikeC4ResourceBuilder.Resource.Annotations.OfType<ContainerMountAnnotation>()
+				.ToArray();
+			await Assert.That(mounts).IsEmpty();
+
+			using var sp = appBuilder.Services.BuildServiceProvider();
+			var opts = sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<AspireC4DiagramOptions>>().Value;
+			await Assert.That(opts.AdditionalDSLFolders).Contains(Path.GetFullPath(tempDir));
+		}
+		finally
+		{
+			if (Directory.Exists(tempDir))
+				Directory.Delete(tempDir, recursive: true);
+		}
+	}
+
+	[Test]
+	public async Task WithImageAliasFolder_RegistersAliasInDiagramOptions_NotBindMount()
+	{
+		var appBuilder = DistributedApplication.CreateBuilder([]);
+		var tempDir = Path.Combine(Path.GetTempPath(), "likec4-unit-" + Guid.NewGuid().ToString("N")[..8]);
+		Directory.CreateDirectory(tempDir);
+
+		try
+		{
+			var visualization = appBuilder.AddAspireC4();
+			visualization.WithImageAliasFolder("@icons", tempDir);
+
+			var mounts = visualization
+				.LikeC4ResourceBuilder.Resource.Annotations.OfType<ContainerMountAnnotation>()
+				.ToArray();
+			await Assert.That(mounts).IsEmpty();
+
+			using var sp = appBuilder.Services.BuildServiceProvider();
+			var opts = sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<AspireC4DiagramOptions>>().Value;
+			await Assert.That(opts.ImageAliases.ContainsKey("@icons")).IsTrue();
+		}
+		finally
+		{
+			if (Directory.Exists(tempDir))
+				Directory.Delete(tempDir, recursive: true);
+		}
+	}
+
+	// --- ComputeCommonAncestor ---
+
+	[Test]
+	public async Task ComputeCommonAncestor_SinglePath_ReturnsThatPath()
+	{
+		var path = Path.GetTempPath().TrimEnd(Path.DirectorySeparatorChar);
+		var result = AspireC4LifecycleHook.ComputeCommonAncestor([path]);
+
+		await Assert.That(result).IsEqualTo(Path.GetFullPath(path));
+	}
+
+	[Test]
+	public async Task ComputeCommonAncestor_TwoPaths_SameDirectory_ReturnsThatDirectory()
+	{
+		var parent = Path.Combine(Path.GetTempPath(), "likec4-ancestor-" + Guid.NewGuid().ToString("N")[..8]);
+		var child1 = Path.Combine(parent, "a");
+		var child2 = Path.Combine(parent, "b");
+		Directory.CreateDirectory(child1);
+		Directory.CreateDirectory(child2);
+
+		try
+		{
+			var result = AspireC4LifecycleHook.ComputeCommonAncestor([child1, child2]);
+			await Assert.That(result).IsEqualTo(Path.GetFullPath(parent));
+		}
+		finally
+		{
+			Directory.Delete(parent, recursive: true);
+		}
+	}
+
+	[Test]
+	public async Task ComputeCommonAncestor_NestedPaths_ReturnsShallowerParent()
+	{
+		var root = Path.Combine(Path.GetTempPath(), "likec4-ancestor-" + Guid.NewGuid().ToString("N")[..8]);
+		var deep = Path.Combine(root, "sub1", "sub2", "output");
+		var sibling = Path.Combine(root, "assets");
+		Directory.CreateDirectory(deep);
+		Directory.CreateDirectory(sibling);
+
+		try
+		{
+			var result = AspireC4LifecycleHook.ComputeCommonAncestor([deep, sibling]);
+			await Assert.That(result).IsEqualTo(Path.GetFullPath(root));
+		}
+		finally
+		{
+			Directory.Delete(root, recursive: true);
+		}
+	}
+
+	[Test]
+	public async Task ComputeCommonAncestor_PathThatIsPrefixOfAnother_DoesNotFalselyMatch()
+	{
+		// e.g. C:\foo\bar vs C:\foo\barcode — should resolve to C:\foo
+		var parent = Path.Combine(Path.GetTempPath(), "likec4-ancestor-" + Guid.NewGuid().ToString("N")[..8]);
+		var bar = Path.Combine(parent, "bar");
+		var barcode = Path.Combine(parent, "barcode");
+		Directory.CreateDirectory(bar);
+		Directory.CreateDirectory(barcode);
+
+		try
+		{
+			var result = AspireC4LifecycleHook.ComputeCommonAncestor([bar, barcode]);
+			await Assert.That(result).IsEqualTo(Path.GetFullPath(parent));
+		}
+		finally
+		{
+			Directory.Delete(parent, recursive: true);
+		}
+	}
+
+	[Test]
+	public async Task ComputeCommonAncestor_EmptyList_ThrowsArgumentException()
+	{
+		await Assert.That(() => AspireC4LifecycleHook.ComputeCommonAncestor([])).Throws<ArgumentException>();
 	}
 
 	[Test]
@@ -273,108 +418,6 @@ public sealed class AspireC4BuilderTests
 	}
 
 	[Test]
-	public async Task WithAdditionalDSLFile_AddsBindMountForSourceDirectory()
-	{
-		var appBuilder = DistributedApplication.CreateBuilder([]);
-
-		// Create a temp file so Path.GetFullPath has a realistic absolute path.
-		var tempDir = Path.Combine(Path.GetTempPath(), "likec4-unit-" + Guid.NewGuid().ToString("N")[..8]);
-		Directory.CreateDirectory(tempDir);
-		var tempFile = Path.Combine(tempDir, "extra.c4");
-
-		try
-		{
-			await File.WriteAllTextAsync(tempFile, "// extra");
-
-			var visualization = appBuilder.AddAspireC4();
-			visualization.WithAdditionalDSLFile(tempFile);
-
-			var mounts = visualization
-				.LikeC4ResourceBuilder.Resource.Annotations.OfType<ContainerMountAnnotation>()
-				.ToArray();
-
-			// 1 named volume (workspace) + 1 bind mount (extra.c4 directory).
-			await Assert.That(mounts.Length).EqualTo(2);
-
-			var bindMount = mounts.FirstOrDefault(m => m.Type == ContainerMountType.BindMount);
-			await Assert.That(bindMount).IsNotNull();
-			await Assert.That(bindMount!.Source).IsEqualTo(tempDir);
-			await Assert.That(bindMount.Target).StartsWith($"{LikeC4ServerResource.WorkspacePath}/ext/");
-			await Assert.That(bindMount.IsReadOnly).IsTrue();
-		}
-		finally
-		{
-			if (Directory.Exists(tempDir))
-				Directory.Delete(tempDir, recursive: true);
-		}
-	}
-
-	[Test]
-	public async Task WithAdditionalDSLFile_SameDirectoryTwice_OnlyOneBindMount(CancellationToken cancellationToken)
-	{
-		var appBuilder = DistributedApplication.CreateBuilder([]);
-
-		var tempDir = Path.Combine(Path.GetTempPath(), "likec4-unit-" + Guid.NewGuid().ToString("N")[..8]);
-		Directory.CreateDirectory(tempDir);
-
-		try
-		{
-			await File.WriteAllTextAsync(Path.Combine(tempDir, "a.c4"), "// a", cancellationToken);
-			await File.WriteAllTextAsync(Path.Combine(tempDir, "b.c4"), "// b", cancellationToken);
-
-			var visualization = appBuilder.AddAspireC4();
-			visualization
-				.WithAdditionalDSLFile(Path.Combine(tempDir, "a.c4"))
-				.WithAdditionalDSLFile(Path.Combine(tempDir, "b.c4"));
-
-			var bindMounts = visualization
-				.LikeC4ResourceBuilder.Resource.Annotations.OfType<ContainerMountAnnotation>()
-				.Where(m => m.Type == ContainerMountType.BindMount)
-				.ToArray();
-
-			// Both files are in the same directory — only one bind mount should be added.
-			await Assert.That(bindMounts).HasSingleItem();
-		}
-		finally
-		{
-			if (Directory.Exists(tempDir))
-				Directory.Delete(tempDir, recursive: true);
-		}
-	}
-
-	[Test]
-	public async Task WithAdditionalDSLFolder_AddsBindMountForFolder()
-	{
-		var appBuilder = DistributedApplication.CreateBuilder([]);
-		var tempDir = Path.Combine(Path.GetTempPath(), "likec4-unit-" + Guid.NewGuid().ToString("N")[..8]);
-		Directory.CreateDirectory(tempDir);
-
-		try
-		{
-			var visualization = appBuilder.AddAspireC4();
-			visualization.WithAdditionalDSLFolder(tempDir);
-
-			var mounts = visualization
-				.LikeC4ResourceBuilder.Resource.Annotations.OfType<ContainerMountAnnotation>()
-				.ToArray();
-
-			// 1 named volume (workspace) + 1 bind mount (the folder).
-			await Assert.That(mounts.Length).EqualTo(2);
-
-			var bindMount = mounts.FirstOrDefault(m => m.Type == ContainerMountType.BindMount);
-			await Assert.That(bindMount).IsNotNull();
-			await Assert.That(bindMount!.Source).IsEqualTo(tempDir);
-			await Assert.That(bindMount.Target).StartsWith($"{LikeC4ServerResource.WorkspacePath}/ext/");
-			await Assert.That(bindMount.IsReadOnly).IsTrue();
-		}
-		finally
-		{
-			if (Directory.Exists(tempDir))
-				Directory.Delete(tempDir, recursive: true);
-		}
-	}
-
-	[Test]
 	public async Task WithAdditionalDSLFolder_FolderDoesNotExist_ThrowsDirectoryNotFoundException()
 	{
 		var appBuilder = DistributedApplication.CreateBuilder([]);
@@ -385,86 +428,6 @@ public sealed class AspireC4BuilderTests
 		await Assert
 			.That(() => visualization.WithAdditionalDSLFolder(nonExistent))
 			.Throws<DirectoryNotFoundException>();
-	}
-
-	[Test]
-	public async Task WithAdditionalDSLFolder_SameFolderTwice_OnlyOneBindMount()
-	{
-		var appBuilder = DistributedApplication.CreateBuilder([]);
-		var tempDir = Path.Combine(Path.GetTempPath(), "likec4-unit-" + Guid.NewGuid().ToString("N")[..8]);
-		Directory.CreateDirectory(tempDir);
-
-		try
-		{
-			var visualization = appBuilder.AddAspireC4();
-			visualization.WithAdditionalDSLFolder(tempDir).WithAdditionalDSLFolder(tempDir);
-
-			var bindMounts = visualization
-				.LikeC4ResourceBuilder.Resource.Annotations.OfType<ContainerMountAnnotation>()
-				.Where(m => m.Type == ContainerMountType.BindMount)
-				.ToArray();
-
-			await Assert.That(bindMounts).HasSingleItem();
-		}
-		finally
-		{
-			if (Directory.Exists(tempDir))
-				Directory.Delete(tempDir, recursive: true);
-		}
-	}
-
-	[Test]
-	public async Task WithAdditionalDSLFolder_RegistersFolderTarget_InWorkspaceOptions()
-	{
-		var appBuilder = DistributedApplication.CreateBuilder([]);
-		var tempDir = Path.Combine(Path.GetTempPath(), "likec4-unit-" + Guid.NewGuid().ToString("N")[..8]);
-		Directory.CreateDirectory(tempDir);
-
-		try
-		{
-			var visualization = appBuilder.AddAspireC4();
-			visualization.WithAdditionalDSLFolder(tempDir);
-
-			using var sp = appBuilder.Services.BuildServiceProvider();
-			var wsOpts =
-				sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<LikeC4ContainerWorkspaceOptions>>().Value;
-
-			await Assert.That(wsOpts.BindMountedFolderTargets.ContainsKey(tempDir)).IsTrue();
-			await Assert.That(wsOpts.BindMountedFolderTargets[tempDir]).StartsWith("ext/");
-		}
-		finally
-		{
-			if (Directory.Exists(tempDir))
-				Directory.Delete(tempDir, recursive: true);
-		}
-	}
-
-	[Test]
-	public async Task WithImageAliasFolder_AddsBindMountForImageFolder()
-	{
-		var appBuilder = DistributedApplication.CreateBuilder([]);
-		var tempDir = Path.Combine(Path.GetTempPath(), "likec4-unit-" + Guid.NewGuid().ToString("N")[..8]);
-		Directory.CreateDirectory(tempDir);
-
-		try
-		{
-			var visualization = appBuilder.AddAspireC4();
-			visualization.WithImageAliasFolder("@icons", tempDir);
-
-			var bindMount = visualization
-				.LikeC4ResourceBuilder.Resource.Annotations.OfType<ContainerMountAnnotation>()
-				.FirstOrDefault(m => m.Type == ContainerMountType.BindMount);
-
-			await Assert.That(bindMount).IsNotNull();
-			await Assert.That(bindMount!.Source).IsEqualTo(tempDir);
-			await Assert.That(bindMount.Target).StartsWith($"{LikeC4ServerResource.WorkspacePath}/img/");
-			await Assert.That(bindMount.IsReadOnly).IsTrue();
-		}
-		finally
-		{
-			if (Directory.Exists(tempDir))
-				Directory.Delete(tempDir, recursive: true);
-		}
 	}
 
 	[Test]
@@ -511,5 +474,152 @@ public sealed class AspireC4BuilderTests
 		var opts = sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<AspireC4DiagramOptions>>().Value;
 
 		await Assert.That(opts.GenerateConfigFile).IsFalse();
+	}
+
+	// --- NormalizeBindMountPath ---
+
+	[Test]
+	[Arguments(@"C:\Users\foo\bar", "/mnt/c/users/foo/bar")]
+	[Arguments(@"P:\GitHub\myrepo\src", "/mnt/p/github/myrepo/src")]
+	[Arguments(@"D:\", "/mnt/d/")]
+	[Arguments(@"D:\Data\Projects\MyApp", "/mnt/d/data/projects/myapp")]
+	[Arguments(@"Z:\very\deep\nested\path\here", "/mnt/z/very/deep/nested/path/here")]
+	public async Task NormalizeBindMountPath_OnWindows_RancherDesktop_ConvertsToWsl2MntFormat(
+		string windowsPath,
+		string expected
+	)
+	{
+		if (!OperatingSystem.IsWindows())
+			return;
+
+		await Assert
+			.That(AspireC4Builder.NormalizeBindMountPath(windowsPath, isRancherDesktop: true))
+			.IsEqualTo(expected);
+	}
+
+	[Test]
+	[Arguments(@"C:\Users\foo\bar")]
+	[Arguments(@"P:\GitHub\myrepo\src")]
+	[Arguments(@"D:\Data\Projects")]
+	public async Task NormalizeBindMountPath_OnWindows_RancherDesktop_PathStartsWithMntSlash(string windowsPath)
+	{
+		if (!OperatingSystem.IsWindows())
+			return;
+
+		var result = AspireC4Builder.NormalizeBindMountPath(windowsPath, isRancherDesktop: true);
+
+		await Assert.That(result).StartsWith("/mnt/");
+		await Assert.That(result).DoesNotContain(":");
+		await Assert.That(result).DoesNotContain(@"\");
+	}
+
+	[Test]
+	[Arguments(@"C:\Users\foo\bar")]
+	[Arguments(@"P:\GitHub\myrepo\src")]
+	[Arguments(@"D:\Data\Projects")]
+	public async Task NormalizeBindMountPath_OnWindows_DockerDesktop_ReturnsWindowsPath(string windowsPath)
+	{
+		if (!OperatingSystem.IsWindows())
+			return;
+
+		var result = AspireC4Builder.NormalizeBindMountPath(windowsPath, isRancherDesktop: false);
+
+		await Assert.That(result).StartsWith(windowsPath[0].ToString(), StringComparison.OrdinalIgnoreCase);
+		await Assert.That(result).Contains(@"\");
+	}
+
+	[Test]
+	[Arguments("/home/user/projects/myapp")]
+	[Arguments("/var/data/output")]
+	[Arguments("/tmp/likec4")]
+	public async Task NormalizeBindMountPath_OnNonWindows_ReturnsPathUnchanged(string linuxPath)
+	{
+		if (OperatingSystem.IsWindows())
+			return;
+
+		await Assert
+			.That(AspireC4Builder.NormalizeBindMountPath(linuxPath, isRancherDesktop: false))
+			.IsEqualTo(linuxPath);
+	}
+
+	// --- ComputeCommonAncestor (additional cases) ---
+
+	[Test]
+	public async Task ComputeCommonAncestor_ThreePaths_FindsCommonRoot()
+	{
+		var root = Path.Combine(Path.GetTempPath(), "likec4-ancestor-" + Guid.NewGuid().ToString("N")[..8]);
+		var a = Path.Combine(root, "src", "output");
+		var b = Path.Combine(root, "assets", "images");
+		var c = Path.Combine(root, "extensions");
+		Directory.CreateDirectory(a);
+		Directory.CreateDirectory(b);
+		Directory.CreateDirectory(c);
+
+		try
+		{
+			var result = AspireC4LifecycleHook.ComputeCommonAncestor([a, b, c]);
+			await Assert.That(result).IsEqualTo(Path.GetFullPath(root));
+		}
+		finally
+		{
+			Directory.Delete(root, recursive: true);
+		}
+	}
+
+	[Test]
+	public async Task ComputeCommonAncestor_AllPathsSame_ReturnsThatPath()
+	{
+		var dir = Path.Combine(Path.GetTempPath(), "likec4-ancestor-" + Guid.NewGuid().ToString("N")[..8]);
+		Directory.CreateDirectory(dir);
+
+		try
+		{
+			var result = AspireC4LifecycleHook.ComputeCommonAncestor([dir, dir, dir]);
+			await Assert.That(result).IsEqualTo(Path.GetFullPath(dir));
+		}
+		finally
+		{
+			Directory.Delete(dir, recursive: true);
+		}
+	}
+
+	[Test]
+	public async Task ComputeCommonAncestor_OneIsDirectParentOfOthers_ReturnsParent()
+	{
+		var parent = Path.Combine(Path.GetTempPath(), "likec4-ancestor-" + Guid.NewGuid().ToString("N")[..8]);
+		var child1 = Path.Combine(parent, "output");
+		var child2 = Path.Combine(parent, "dsl");
+		Directory.CreateDirectory(child1);
+		Directory.CreateDirectory(child2);
+
+		try
+		{
+			var result = AspireC4LifecycleHook.ComputeCommonAncestor([parent, child1, child2]);
+			await Assert.That(result).IsEqualTo(Path.GetFullPath(parent));
+		}
+		finally
+		{
+			Directory.Delete(parent, recursive: true);
+		}
+	}
+
+	[Test]
+	public async Task ComputeCommonAncestor_DeepHierarchy_FindsShallowAncestor()
+	{
+		var root = Path.Combine(Path.GetTempPath(), "likec4-ancestor-" + Guid.NewGuid().ToString("N")[..8]);
+		var deep = Path.Combine(root, "a", "b", "c", "d", "output");
+		var sibling = Path.Combine(root, "a", "assets");
+		Directory.CreateDirectory(deep);
+		Directory.CreateDirectory(sibling);
+
+		try
+		{
+			var result = AspireC4LifecycleHook.ComputeCommonAncestor([deep, sibling]);
+			await Assert.That(result).IsEqualTo(Path.GetFullPath(Path.Combine(root, "a")));
+		}
+		finally
+		{
+			Directory.Delete(root, recursive: true);
+		}
 	}
 }

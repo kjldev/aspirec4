@@ -2,11 +2,10 @@ var builder = DistributedApplication.CreateBuilder(args);
 
 // Add LikeC4 visualization to the application. This will allow us to visualize the components and their relationships in a C4 model.
 builder
-	.AddAspireC4(configure: opts =>
-	{
+	.AddAspireC4(configure: static opts =>
 		// Validate the C4 model before starting the application to catch any issues early.
-		opts.ValidateBeforeStart = true;
-	})
+		opts.ValidateBeforeStart = true
+	)
 	.ConfigureTestHost();
 
 var azureManagerRedis = builder
@@ -15,7 +14,7 @@ var azureManagerRedis = builder
 	.RunAsContainer()
 	// Add LikeC4 details to the component for better visualization in the C4 model.
 	.WithLikeC4Details(opts =>
-		opts.WithLabel("Redis")
+		opts.WithLabel("Azure Redis")
 			.WithTechnology("Azure Redis")
 			.WithDescription(
 				@"A **Managed Azure** Redis instance allowing fast access to previously cached data and values.
@@ -46,7 +45,7 @@ var azurePostgres = builder
 	.RunAsContainer()
 	// Add LikeC4 details to the component for better visualization in the C4 model.
 	.WithLikeC4Details(static c4 =>
-		c4.WithLabel("Postgres")
+		c4.WithLabel("Azure Postgres")
 			.WithSummary("Azure Managed Postgres Flexible Server")
 			.WithDescription("An **Azure Managed** Postgres instance for testing")
 			.WithLink(

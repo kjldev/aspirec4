@@ -91,22 +91,27 @@ sealed class AspireC4LifecycleHook(
 		eventing.Subscribe<BeforeStartEvent>(
 			async (evt, ct) =>
 			{
-				var syncContainerWorkspace = evt.Model.Resources.OfType<LikeC4ServerResource>().Any();
+				var serverResource = evt.Model.Resources.OfType<LikeC4ServerResource>().FirstOrDefault();
 
 				if (executionContext.IsPublishMode)
 				{
-					await WriteC4FileAsync(evt.Model, syncContainerWorkspace, resetContainerWorkspace: false, ct);
+					await WriteC4FileAsync(evt.Model, ct);
 					telemetry.PublishMode();
 					return;
 				}
 
-				if (syncContainerWorkspace && !options.Value.DisableHMR)
+				if (serverResource is not null)
 				{
-					EnsureLegacyHostHmrPortAvailable();
-					StartLegacyHmrRelay(evt.Model, ct);
+					SetupContainerBindMount(evt.Model, serverResource);
+
+					if (!options.Value.DisableHMR)
+					{
+						EnsureLegacyHostHmrPortAvailable();
+						StartLegacyHmrRelay(evt.Model, ct);
+					}
 				}
 
-				await WriteC4FileAsync(evt.Model, syncContainerWorkspace, resetContainerWorkspace: true, ct);
+				await WriteC4FileAsync(evt.Model, ct);
 
 				if (options.Value.HideFromDashboard)
 				{
@@ -115,11 +120,11 @@ sealed class AspireC4LifecycleHook(
 
 				// Fire-and-forget: watch for resource state changes and regenerate the file.
 				// The ct is the application lifetime token; it is cancelled on shutdown.
-				_ = WatchResourceStatesAsync(evt.Model, syncContainerWorkspace, ct);
+				_ = WatchResourceStatesAsync(evt.Model, ct);
 
 				if (options.Value.IncludeAspireDashboardLinks)
 				{
-					_ = WatchDashboardUrlAsync(evt.Model, syncContainerWorkspace, ct);
+					_ = WatchDashboardUrlAsync(evt.Model, ct);
 				}
 			}
 		);
@@ -133,11 +138,7 @@ sealed class AspireC4LifecycleHook(
 	/// Watches for the Aspire dashboard resource to start, captures its base URL, and triggers
 	/// a diagram regeneration so that dashboard deep-links are injected into the generated file.
 	/// </summary>
-	async Task WatchDashboardUrlAsync(
-		DistributedApplicationModel appModel,
-		bool syncContainerWorkspace,
-		CancellationToken cancellationToken
-	)
+	async Task WatchDashboardUrlAsync(DistributedApplicationModel appModel, CancellationToken cancellationToken)
 	{
 		try
 		{
@@ -158,7 +159,7 @@ sealed class AspireC4LifecycleHook(
 
 				_dashboardBaseUrl = baseUrl;
 				telemetry.DashboardUrlDiscovered(baseUrl);
-				ScheduleRegeneration(appModel, syncContainerWorkspace, cancellationToken);
+				ScheduleRegeneration(appModel, cancellationToken);
 				break;
 			}
 		}
@@ -371,11 +372,7 @@ sealed class AspireC4LifecycleHook(
 #pragma warning restore CA1031
 	}
 
-	async Task WatchResourceStatesAsync(
-		DistributedApplicationModel appModel,
-		bool syncContainerWorkspace,
-		CancellationToken cancellationToken
-	)
+	async Task WatchResourceStatesAsync(DistributedApplicationModel appModel, CancellationToken cancellationToken)
 	{
 		try
 		{
@@ -417,7 +414,7 @@ sealed class AspireC4LifecycleHook(
 				_resourceStates[notification.Resource.Name] = newState;
 				telemetry.ResourceStateChanged(notification.Resource.Name, newState.ToString());
 
-				ScheduleRegeneration(appModel, syncContainerWorkspace, cancellationToken);
+				ScheduleRegeneration(appModel, cancellationToken);
 			}
 		}
 		catch (OperationCanceledException)
@@ -432,11 +429,7 @@ sealed class AspireC4LifecycleHook(
 #pragma warning restore CA1031
 	}
 
-	void ScheduleRegeneration(
-		DistributedApplicationModel appModel,
-		bool syncContainerWorkspace,
-		CancellationToken cancellationToken
-	)
+	void ScheduleRegeneration(DistributedApplicationModel appModel, CancellationToken cancellationToken)
 	{
 		CancellationTokenSource newCts;
 		lock (_debounceLock)
@@ -453,12 +446,7 @@ sealed class AspireC4LifecycleHook(
 				{
 					await Task.Delay(TimeSpan.FromMilliseconds(300), newCts.Token);
 					telemetry.RegeneratingDiagramDueToStateChange();
-					await WriteC4FileAsync(
-						appModel,
-						syncContainerWorkspace,
-						resetContainerWorkspace: false,
-						cancellationToken
-					);
+					await WriteC4FileAsync(appModel, cancellationToken);
 				}
 				catch (OperationCanceledException)
 				{
@@ -471,12 +459,7 @@ sealed class AspireC4LifecycleHook(
 
 	// ── File generation ───────────────────────────────────────────────────────
 
-	async Task WriteC4FileAsync(
-		DistributedApplicationModel appModel,
-		bool syncContainerWorkspace,
-		bool resetContainerWorkspace,
-		CancellationToken cancellationToken
-	)
+	async Task WriteC4FileAsync(DistributedApplicationModel appModel, CancellationToken cancellationToken)
 	{
 		var opts = options.Value;
 
@@ -520,28 +503,14 @@ sealed class AspireC4LifecycleHook(
 		await File.WriteAllTextAsync(outputPath, dsl, cancellationToken);
 
 		// Format the generated file in-place (best-effort) so the on-disk file is human-readable.
-		// Re-read after formatting so the container sync receives the formatted content.
-		var syncContent = dsl;
 		if (opts.FormatGeneratedFile)
 		{
 			await RunFormatAsync(outputPath, outputDir, cancellationToken);
-			syncContent = await File.ReadAllTextAsync(outputPath, cancellationToken);
 		}
 
-		// Sync the main model file to the container workspace.
-		if (syncContainerWorkspace)
-		{
-			await SyncContainerVolumeFileAsync(
-				$"{LikeC4ServerResource.GeneratedPath}/{opts.FileName}.c4",
-				syncContent,
-				resetContainerWorkspace,
-				cancellationToken
-			);
-		}
-
-		// Copy and optionally sync additional user-provided DSL files.
+		// Copy additional user-provided DSL files into the output directory so LikeC4
+		// picks them up as part of the workspace.
 		var additionalDestPaths = new List<string>();
-		var bindMountedFiles = workspaceOptions.Value.BindMountedSourceFiles;
 		foreach (var sourcePath in opts.AdditionalDSLFiles)
 		{
 			var absoluteSource = Path.GetFullPath(sourcePath);
@@ -555,27 +524,13 @@ sealed class AspireC4LifecycleHook(
 			File.Copy(absoluteSource, destPath, overwrite: true);
 			additionalDestPaths.Add(destPath);
 
-			var fileNameWithoutExtension = Path.GetFileNameWithoutExtension(absoluteSource);
-			telemetry.AdditionalDSLFileSynced(fileNameWithoutExtension);
-
-			// Files covered by a container bind mount are already visible inside the container;
-			// syncing them to the named volume would create duplicate definitions.
-			if (syncContainerWorkspace && !bindMountedFiles.Contains(absoluteSource))
-			{
-				var additionalContent = await File.ReadAllTextAsync(destPath, cancellationToken);
-				await SyncContainerVolumeFileAsync(
-					$"{LikeC4ServerResource.GeneratedPath}/{fileNameWithoutExtension}.c4",
-					additionalContent,
-					resetContainerWorkspace: false,
-					cancellationToken
-				);
-			}
+			telemetry.AdditionalDSLFileSynced(Path.GetFileNameWithoutExtension(absoluteSource));
 		}
 
 		// Generate likec4.config.json when opted in (default).
 		if (opts.GenerateConfigFile)
 		{
-			await WriteConfigFileAsync(opts, outputDir, syncContainerWorkspace, cancellationToken);
+			await WriteConfigFileAsync(opts, outputDir, cancellationToken);
 		}
 
 		// Validate after ALL files (generated model + additional DSL) are in the output directory.
@@ -730,141 +685,110 @@ sealed class AspireC4LifecycleHook(
 		}
 	}
 
-	async Task WriteConfigFileAsync(
+	static async Task WriteConfigFileAsync(
 		AspireC4DiagramOptions opts,
 		string outputDir,
-		bool syncContainerWorkspace,
 		CancellationToken cancellationToken
 	)
 	{
-		// Build host-side include paths (relative to outputDir, using forward slashes for JSON).
-		var hostIncludePaths = opts
+		// Paths in the config are relative to the output directory. Because all referenced folders
+		// (DSL folders, image-alias folders) are accessible via the single bind mount, these same
+		// relative paths work correctly inside the container without any translation.
+		var includePaths = opts
 			.AdditionalDSLFolders.Select(absoluteFolder =>
 				Path.GetRelativePath(outputDir, absoluteFolder).Replace('\\', '/')
 			)
 			.ToList();
 
-		// Build host-side image alias paths (relative to outputDir, forward slashes).
-		var hostAliases = opts.ImageAliases.ToDictionary(
+		var aliases = opts.ImageAliases.ToDictionary(
 			kvp => kvp.Key,
 			kvp => Path.GetRelativePath(outputDir, kvp.Value).Replace('\\', '/'),
 			StringComparer.OrdinalIgnoreCase
 		);
 
-		var hostConfig = LikeC4ConfigGenerator.Generate("aspirec4", opts.Title, hostIncludePaths, hostAliases);
+		var config = LikeC4ConfigGenerator.Generate("aspirec4", opts.Title, includePaths, aliases);
 		var configPath = Path.Combine(outputDir, "likec4.config.json");
-		await File.WriteAllTextAsync(configPath, hostConfig, cancellationToken);
-
-		if (syncContainerWorkspace)
-		{
-			// The generated files (config + model) live in the named volume at GeneratedPath
-			// (/data/output). Additional DSL folders are bind-mounted at /data/ext/{hash}/ and
-			// image alias folders at /data/img/{hash}/ — both OUTSIDE the volume. The config
-			// references those folders with "../ext/{hash}" / "../img/{hash}" (relative to the
-			// config file location at /data/output/).
-			var wsOpts = workspaceOptions.Value;
-
-			var containerIncludePaths = opts
-				.AdditionalDSLFolders.Where(f => wsOpts.BindMountedFolderTargets.ContainsKey(f))
-				.Select(f => "../" + wsOpts.BindMountedFolderTargets[f])
-				.ToList();
-
-			var containerAliases = opts
-				.ImageAliases.Where(kvp => wsOpts.BindMountedImageAliasFolderTargets.ContainsKey(kvp.Key))
-				.ToDictionary(
-					kvp => kvp.Key,
-					kvp => "../" + wsOpts.BindMountedImageAliasFolderTargets[kvp.Key],
-					StringComparer.OrdinalIgnoreCase
-				);
-
-			var containerConfig = LikeC4ConfigGenerator.Generate(
-				"aspirec4",
-				opts.Title,
-				containerIncludePaths,
-				containerAliases
-			);
-
-			await SyncContainerVolumeFileAsync(
-				$"{LikeC4ServerResource.GeneratedPath}/likec4.config.json",
-				containerConfig,
-				resetContainerWorkspace: false,
-				cancellationToken
-			);
-		}
+		await File.WriteAllTextAsync(configPath, config, cancellationToken);
 	}
 
-	async Task SyncContainerVolumeFileAsync(
-		string containerFilePath,
-		string content,
-		bool resetContainerWorkspace,
-		CancellationToken cancellationToken
-	)
+	// ── Container bind-mount setup ────────────────────────────────────────────
+
+	/// <summary>
+	/// Computes the single common-ancestor bind mount for the container, adds it to the
+	/// <see cref="LikeC4ServerResource"/>, populates <see cref="LikeC4ContainerWorkspaceOptions.ContainerServePath"/>,
+	/// and appends the <c>likec4 start</c> command-line arguments.
+	/// </summary>
+	void SetupContainerBindMount(DistributedApplicationModel appModel, LikeC4ServerResource serverResource)
 	{
-		var workspace = workspaceOptions.Value;
-		var genPath = LikeC4ServerResource.GeneratedPath;
-		var syncScript = resetContainerWorkspace
-			? $"const fs=require('node:fs'); const p=require('node:path'); for (const entry of fs.readdirSync('{genPath}', {{withFileTypes:true}})) {{ if (!entry.isDirectory() && entry.name.endsWith('.c4')) fs.rmSync(p.join('{genPath}', entry.name), {{ force: true }}); }} fs.writeFileSync(process.argv[1], fs.readFileSync(0));"
-			: "const fs=require('node:fs');fs.writeFileSync(process.argv[1], fs.readFileSync(0));";
+		var opts = options.Value;
+		var outputDir = Path.GetFullPath(opts.OutputDirectory);
 
-		var startInfo = new ProcessStartInfo
+		// Collect all host-side directory paths that must be visible inside the container.
+		var allPaths = new List<string> { outputDir };
+		allPaths.AddRange(opts.AdditionalDSLFolders.Select(Path.GetFullPath));
+		allPaths.AddRange(opts.ImageAliases.Values.Select(Path.GetFullPath));
+
+		var commonAncestor = ComputeCommonAncestor(allPaths);
+		var normalizedSource = AspireC4Builder.NormalizeBindMountPath(commonAncestor);
+
+		serverResource.Annotations.Add(
+			new ContainerMountAnnotation(
+				normalizedSource,
+				LikeC4ServerResource.WorkspacePath,
+				ContainerMountType.BindMount,
+				isReadOnly: true
+			)
+		);
+
+		// Compute the container path for the output directory: /data/{rel-from-ancestor-to-outputDir}
+		var relOutputDir = Path.GetRelativePath(commonAncestor, outputDir).Replace('\\', '/');
+		var servePath = $"{LikeC4ServerResource.WorkspacePath}/{relOutputDir}";
+		// ContainerServePath is read by the WithArgs callback registered at configure time in AddAspireC4.
+		workspaceOptions.Value.ContainerServePath = servePath;
+	}
+
+	/// <summary>
+	/// Returns the common ancestor directory of all provided absolute paths.
+	/// All paths must reside on the same drive (Windows) or under the same root (Unix).
+	/// </summary>
+	internal static string ComputeCommonAncestor(IReadOnlyList<string> absolutePaths)
+	{
+		if (absolutePaths.Count == 0)
+			throw new ArgumentException("At least one path is required.", nameof(absolutePaths));
+
+		var sep = Path.DirectorySeparatorChar;
+
+		// Normalize each path: absolute + trailing separator for reliable prefix matching.
+		static string WithTrailingSep(string p) =>
+			Path.GetFullPath(p).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)
+			+ Path.DirectorySeparatorChar;
+
+		var first = WithTrailingSep(absolutePaths[0]);
+		var commonPrefix = first;
+		var pathRoot = Path.GetPathRoot(first)!;
+
+		foreach (var path in absolutePaths.Skip(1))
 		{
-			FileName = workspace.ContainerRuntimeExecutable,
-			RedirectStandardError = true,
-			RedirectStandardInput = true,
-			RedirectStandardOutput = true,
-			UseShellExecute = false,
-			CreateNoWindow = true,
-		};
+			var normalized = WithTrailingSep(path);
 
-		startInfo.ArgumentList.Add("run");
-		startInfo.ArgumentList.Add("--rm");
-		startInfo.ArgumentList.Add("-i");
-		startInfo.ArgumentList.Add("-v");
-		startInfo.ArgumentList.Add($"{workspace.VolumeName}:{LikeC4ServerResource.GeneratedPath}");
-		startInfo.ArgumentList.Add("--entrypoint");
-		startInfo.ArgumentList.Add("node");
-		startInfo.ArgumentList.Add(workspace.ContainerImageReference);
-		startInfo.ArgumentList.Add("-e");
-		startInfo.ArgumentList.Add(syncScript);
-		startInfo.ArgumentList.Add(containerFilePath);
-
-		using var process =
-			Process.Start(startInfo)
-			?? throw new DistributedApplicationException(
-				$"Failed to start '{workspace.ContainerRuntimeExecutable}' to sync the LikeC4 workspace volume."
-			);
-
-		try
-		{
-			await process.StandardInput.WriteAsync(content.AsMemory(), cancellationToken);
-			await process.StandardInput.FlushAsync(cancellationToken);
-			process.StandardInput.Close();
-
-			var stdoutTask = process.StandardOutput.ReadToEndAsync(cancellationToken);
-			var stderrTask = process.StandardError.ReadToEndAsync(cancellationToken);
-
-			await process.WaitForExitAsync(cancellationToken);
-
-			var stdout = await stdoutTask;
-			var stderr = await stderrTask;
-
-			if (process.ExitCode != 0)
+			while (!normalized.StartsWith(commonPrefix, StringComparison.OrdinalIgnoreCase))
 			{
-				var message = string.IsNullOrWhiteSpace(stderr) ? stdout : stderr;
-				throw new DistributedApplicationException(
-					$"Failed to sync the LikeC4 workspace volume '{workspace.VolumeName}': {message.Trim()}"
-				);
+				if (commonPrefix == pathRoot)
+					throw new InvalidOperationException(
+						"The provided paths share no common ancestor directory. "
+							+ "Ensure all paths used by AddAspireC4 reside on the same drive."
+					);
+
+				// Back up one directory level.
+				var trimmed = commonPrefix[..^1]; // Remove trailing separator
+				var idx = trimmed.LastIndexOf(sep);
+				commonPrefix = idx >= 0 ? trimmed[..(idx + 1)] : pathRoot;
 			}
 		}
-		catch (OperationCanceledException)
-		{
-			if (!process.HasExited)
-			{
-				process.Kill(entireProcessTree: true);
-			}
 
-			throw;
-		}
+		// Return without trailing separator, unless that would yield an invalid rooted path.
+		var result = commonPrefix.TrimEnd(sep);
+		return Path.IsPathRooted(result) ? result : commonPrefix;
 	}
 
 	void EnsureLegacyHostHmrPortAvailable()

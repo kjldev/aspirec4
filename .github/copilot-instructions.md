@@ -1,5 +1,10 @@
 # Copilot Instructions
 
+## Non-negotiables
+
+- **Always run `just test` (unit + integration) to verify changes** — running only `just test-unit` is not acceptable. Unit tests prove nothing about the wider system; integration tests exercise Docker, container startup, bind mounts, and the full Aspire lifecycle.
+- **Always run `just lintcheck` (or `just lintfix`) before committing** — CSharpier formatting is enforced and CI will reject unformatted code.
+
 ## Build, test, and lint
 
 This repo uses [just](https://just.systems/) as a task runner. All commands operate on `src/AspireC4.slnx`.

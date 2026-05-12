@@ -1,5 +1,3 @@
-using System.Security.Cryptography;
-using System.Text;
 using Aspire.Hosting.ApplicationModel;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -77,33 +75,6 @@ sealed class AspireC4Builder(
 			opts.AdditionalDSLFiles.Add(absoluteSource)
 		);
 
-		// For container resources, bind-mount the source directory directly into the container
-		// so the LikeC4 server sees live edits without Aspire restarting.
-		if (LikeC4ResourceBuilder.Resource is ContainerResource containerResource)
-		{
-			var sourceDir = Path.GetDirectoryName(absoluteSource)!;
-			var hash = ComputeShortHash(sourceDir);
-			var mountTarget = $"{LikeC4ServerResource.WorkspacePath}/ext/{hash}";
-
-			// De-duplicate: only add the bind mount once per unique source directory.
-			var alreadyMounted = containerResource
-				.Annotations.OfType<ContainerMountAnnotation>()
-				.Any(a => a.Target == mountTarget);
-
-			if (!alreadyMounted)
-			{
-				containerResource.Annotations.Add(
-					new ContainerMountAnnotation(sourceDir, mountTarget, ContainerMountType.BindMount, isReadOnly: true)
-				);
-			}
-
-			// Tell the lifecycle hook not to also sync this file into the named Docker volume,
-			// which would create a duplicate definition visible to LikeC4.
-			ApplicationBuilder.Services.Configure<LikeC4ContainerWorkspaceOptions>(wsOpts =>
-				wsOpts.BindMountedSourceFiles.Add(absoluteSource)
-			);
-		}
-
 		return this;
 	}
 
@@ -118,33 +89,6 @@ sealed class AspireC4Builder(
 		ApplicationBuilder.Services.Configure<AspireC4DiagramOptions>(opts =>
 			opts.AdditionalDSLFolders.Add(absoluteFolder)
 		);
-
-		if (LikeC4ResourceBuilder.Resource is ContainerResource containerResource)
-		{
-			var hash = ComputeShortHash(absoluteFolder);
-			var containerRelative = $"ext/{hash}";
-			var mountTarget = $"{LikeC4ServerResource.WorkspacePath}/{containerRelative}";
-
-			var alreadyMounted = containerResource
-				.Annotations.OfType<ContainerMountAnnotation>()
-				.Any(a => a.Target == mountTarget);
-
-			if (!alreadyMounted)
-			{
-				containerResource.Annotations.Add(
-					new ContainerMountAnnotation(
-						absoluteFolder,
-						mountTarget,
-						ContainerMountType.BindMount,
-						isReadOnly: true
-					)
-				);
-			}
-
-			ApplicationBuilder.Services.Configure<LikeC4ContainerWorkspaceOptions>(wsOpts =>
-				wsOpts.BindMountedFolderTargets.TryAdd(absoluteFolder, containerRelative)
-			);
-		}
 
 		return this;
 	}
@@ -165,33 +109,6 @@ sealed class AspireC4Builder(
 			opts.ImageAliases[aliasKey] = absoluteFolder
 		);
 
-		if (LikeC4ResourceBuilder.Resource is ContainerResource containerResource)
-		{
-			var hash = ComputeShortHash(absoluteFolder);
-			var containerRelative = $"img/{hash}";
-			var mountTarget = $"{LikeC4ServerResource.WorkspacePath}/{containerRelative}";
-
-			var alreadyMounted = containerResource
-				.Annotations.OfType<ContainerMountAnnotation>()
-				.Any(a => a.Target == mountTarget);
-
-			if (!alreadyMounted)
-			{
-				containerResource.Annotations.Add(
-					new ContainerMountAnnotation(
-						absoluteFolder,
-						mountTarget,
-						ContainerMountType.BindMount,
-						isReadOnly: true
-					)
-				);
-			}
-
-			ApplicationBuilder.Services.Configure<LikeC4ContainerWorkspaceOptions>(wsOpts =>
-				wsOpts.BindMountedImageAliasFolderTargets.TryAdd(aliasKey, containerRelative)
-			);
-		}
-
 		return this;
 	}
 
@@ -202,12 +119,89 @@ sealed class AspireC4Builder(
 		return this;
 	}
 
-	static string ComputeShortHash(string value)
+	/// <summary>
+	/// Returns the correct bind-mount source path for the given host directory.
+	/// </summary>
+	/// <remarks>
+	/// On Windows the correct format depends on the container runtime:
+	/// <list type="bullet">
+	///   <item><description>
+	///     <b>Docker Desktop (official)</b> — natively understands Windows paths
+	///     (<c>C:\…</c>); DCP passes them verbatim to the Docker API so the path is
+	///     returned unchanged.
+	///   </description></item>
+	///   <item><description>
+	///     <b>Rancher Desktop</b> — runs a Linux <c>dockerd</c> inside WSL2 that only
+	///     understands Linux paths.  Windows drives are accessible inside WSL2 at
+	///     <c>/mnt/&lt;drive&gt;/…</c> (standard WSL2 mount points), so the path is
+	///     converted to that format.
+	///   </description></item>
+	/// </list>
+	/// On non-Windows the path is returned unchanged.
+	/// </remarks>
+	internal static string NormalizeBindMountPath(string absolutePath) =>
+		NormalizeBindMountPath(absolutePath, _isRancherDesktop.Value);
+
+	/// <summary>Overload with an explicit runtime flag — used by unit tests to avoid
+	/// spawning a <c>docker</c> process.</summary>
+	internal static string NormalizeBindMountPath(string absolutePath, bool isRancherDesktop)
 	{
-		var hashBytes = SHA256.HashData(Encoding.UTF8.GetBytes(value));
-#pragma warning disable CA1308 // Normalize strings to uppercase
-		return Convert.ToHexString(hashBytes)[..8].ToLowerInvariant();
-#pragma warning restore CA1308 // Normalize strings to uppercase
+		if (!OperatingSystem.IsWindows())
+			return absolutePath;
+
+		var fullPath = Path.GetFullPath(absolutePath);
+
+		// Rancher Desktop exposes Windows drives under /mnt/<letter>/ inside WSL2.
+		// CA1308: intentional — Linux paths require lower-case.
+		if (isRancherDesktop && fullPath.Length >= 2 && char.IsAsciiLetter(fullPath[0]) && fullPath[1] == ':')
+		{
+#pragma warning disable CA1308
+			return $"/mnt/{char.ToLowerInvariant(fullPath[0])}{fullPath[2..].Replace('\\', '/')}".ToLowerInvariant();
+#pragma warning restore CA1308
+		}
+
+		// Docker Desktop or other runtime: return Windows path as-is; DCP / Docker Desktop
+		// translate it internally.
+		return fullPath;
+	}
+
+	static readonly Lazy<bool> _isRancherDesktop = new(
+		DetectRancherDesktop,
+		LazyThreadSafetyMode.ExecutionAndPublication
+	);
+
+	[System.Diagnostics.CodeAnalysis.SuppressMessage(
+		"Design",
+		"CA1031:Do not catch general exception types",
+		Justification = "Runtime detection must not throw; failure falls back to Docker Desktop behavior."
+	)]
+	static bool DetectRancherDesktop()
+	{
+		if (!OperatingSystem.IsWindows())
+			return false;
+
+		try
+		{
+			using var process = System.Diagnostics.Process.Start(
+				new System.Diagnostics.ProcessStartInfo
+				{
+					FileName = "docker",
+					Arguments = "info --format {{.OperatingSystem}}",
+					RedirectStandardOutput = true,
+					RedirectStandardError = true,
+					UseShellExecute = false,
+					CreateNoWindow = true,
+				}
+			);
+
+			process?.WaitForExit(5_000);
+			var os = process?.StandardOutput.ReadToEnd().Trim() ?? "";
+			return os.Contains("Rancher Desktop", StringComparison.OrdinalIgnoreCase);
+		}
+		catch
+		{
+			return false;
+		}
 	}
 
 	static LikeC4LocalCLIRuntime DetectRuntime()
@@ -231,7 +225,7 @@ sealed class AspireC4Builder(
 		throw new DistributedApplicationException(
 			"No supported JavaScript package manager was found on the system PATH. "
 				+ "Install one of: Node.js (npx), pnpm, yarn, bun, or Deno, then retry. "
-				+ "Alternatively, remove WithLocalCli() to use the Docker container (default)."
+				+ "Alternatively, remove WithLocalCLI() to use the Docker container (default)."
 		);
 	}
 
@@ -273,7 +267,9 @@ sealed class AspireC4Builder(
 	/// <example>
 	/// Npx  → <c>("npx",  ["likec4"])</c> so the full call is <c>npx likec4 format ...</c>
 	/// Pnpm → <c>("pnpm", ["exec", "likec4"])</c>
-	/// Bun  → <c>("bunx", ["likec4"])</c>
+	/// Yarn → <c>("yarn", ["dlx", "likec4"])</c>
+	/// Bun  → <c>("bunx", ["--bun", "likec4"])</c>
+	/// Deno → <c>("deno", ["run", "--allow-all", "likec4"])</c>
 	/// </example>
 	internal static (string Command, string[] Prefix) BuildLikeC4CliPrefix(LikeC4LocalCLIRuntime runtime) =>
 		runtime switch
@@ -302,7 +298,7 @@ sealed class AspireC4Builder(
 			LikeC4LocalCLIRuntime.Npx => ("npx", ["likec4", "serve", outputDirectory, "--port", portStr]),
 			LikeC4LocalCLIRuntime.Pnpm => ("pnpm", ["exec", "likec4", "serve", outputDirectory, "--port", portStr]),
 			LikeC4LocalCLIRuntime.Yarn => ("yarn", ["dlx", "likec4", "serve", outputDirectory, "--port", portStr]),
-			LikeC4LocalCLIRuntime.Bun => ("bunx", ["likec4", "serve", outputDirectory, "--port", portStr]),
+			LikeC4LocalCLIRuntime.Bun => ("bunx", ["--bun", "likec4", "serve", outputDirectory, "--port", portStr]),
 			LikeC4LocalCLIRuntime.Deno => (
 				"deno",
 				["run", "--allow-all", "likec4", "serve", outputDirectory, "--port", portStr]

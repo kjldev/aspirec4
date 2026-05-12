@@ -4,6 +4,7 @@ using System.Text.Json;
 using Aspire.Hosting.ApplicationModel;
 using Aspire.Hosting.Testing;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Aspire.Hosting.AspireC4;
 
@@ -25,7 +26,11 @@ public sealed partial class AspireC4HostTests : IAsyncDisposable
 	[Before(Test)]
 	public async Task SetUpAsync(CancellationToken cancellationToken)
 	{
-		_outputDir = Path.Combine(Path.GetTempPath(), "likec4-integration-" + Guid.NewGuid().ToString("N")[..8]);
+		// Use a directory alongside the TestAppHost output so all relevant paths
+		// (extensions, image aliases, output) share the same drive — required by the
+		// single-bind-mount architecture that computes a common ancestor.
+		var testHostDir = Path.GetDirectoryName(typeof(TestAppHostProgram).Assembly.Location)!;
+		_outputDir = Path.Combine(testHostDir, "test-output-" + Guid.NewGuid().ToString("N")[..8]);
 		_modelPath = Path.Combine(_outputDir, "model.gen.c4");
 
 		var appBuilder = await DistributedApplicationTestingBuilder.CreateAsync<TestAppHostProgram>(cancellationToken);
@@ -42,6 +47,16 @@ public sealed partial class AspireC4HostTests : IAsyncDisposable
 				["AspireC4:DisableHMR"] = "true",
 			}
 		);
+
+		// PostConfigure wins over all Configure callbacks, including the TestAppHost's
+		// configure callback that sets ValidateBeforeStart=true and the default FormatGeneratedFile=true.
+		// Both invoke `npx likec4 …` which traverses up the directory tree and scans the entire
+		// repository workspace when run from within the repo — hanging the BeforeStartEvent handler.
+		appBuilder.Services.PostConfigure<AspireC4DiagramOptions>(opts =>
+		{
+			opts.ValidateBeforeStart = false;
+			opts.FormatGeneratedFile = false;
+		});
 
 		_app = await appBuilder.BuildAsync(cancellationToken);
 		await _app.StartAsync(cancellationToken);
@@ -81,12 +96,14 @@ public sealed partial class AspireC4HostTests : IAsyncDisposable
 	}
 
 	[Test]
+	[Timeout(120_000)]
 	public async Task LikeC4Visualization_ReachesRunningState(CancellationToken cancellationToken)
 	{
 		await WaitForLikeC4ServerRunningAsync(cancellationToken);
 	}
 
 	[Test]
+	[Timeout(120_000)]
 	public async Task LikeC4Visualization_EndpointReturnsSuccess(CancellationToken cancellationToken)
 	{
 		await WaitForLikeC4ServerRunningAsync(cancellationToken);
@@ -113,13 +130,44 @@ public sealed partial class AspireC4HostTests : IAsyncDisposable
 
 	async Task WaitForLikeC4ServerRunningAsync(CancellationToken cancellationToken)
 	{
-		await _app!
-			.ResourceNotifications.WaitForResourceAsync(
-				AspireC4ResourceName,
-				KnownResourceStates.Running,
-				cancellationToken
-			)
-			.WaitAsync(LikeC4StartupTimeout, cancellationToken);
+		// Watch all resource events, filtering to the aspirec4 resource.
+		// Report terminal states immediately rather than timing out silently.
+		string? lastObservedState = null;
+		using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+		cts.CancelAfter(LikeC4StartupTimeout);
+
+		try
+		{
+			await foreach (var evt in _app!.ResourceNotifications.WatchAsync(cts.Token))
+			{
+				if (!evt.Resource.Name.Equals(AspireC4ResourceName, StringComparison.OrdinalIgnoreCase))
+					continue;
+
+				lastObservedState = evt.Snapshot.State?.Text;
+
+				if (lastObservedState == KnownResourceStates.Running)
+					return;
+
+				// Terminal failure states — no point waiting further.
+				if (
+					lastObservedState == KnownResourceStates.FailedToStart
+					|| lastObservedState == KnownResourceStates.RuntimeUnhealthy
+					|| lastObservedState == KnownResourceStates.Exited
+				)
+				{
+					throw new InvalidOperationException(
+						$"LikeC4 container reached terminal state '{lastObservedState}' instead of Running."
+					);
+				}
+			}
+		}
+		catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+		{
+			throw new TimeoutException(
+				$"LikeC4 container did not reach Running within {LikeC4StartupTimeout.TotalSeconds}s. "
+					+ $"Last observed state: '{lastObservedState ?? "(none)"}'"
+			);
+		}
 	}
 
 	[Test]

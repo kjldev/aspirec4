@@ -1,9 +1,8 @@
 using System.ComponentModel;
-using System.Security.Cryptography;
-using System.Text;
 using Aspire.Hosting.ApplicationModel;
 using Aspire.Hosting.Lifecycle;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 
 namespace Aspire.Hosting;
 
@@ -57,23 +56,18 @@ public static class AspireC4DistributedApplicationBuilderExtensions
 			var outputDir = ResolveOutputDirectory(builder.AppHostDirectory, diagramOpts.OutputDirectory);
 			Directory.CreateDirectory(outputDir);
 			var imageTag = diagramOpts.ContainerImageTag ?? LikeC4ServerResource.DefaultTag;
-			var imageReference = LikeC4ServerResource.GetImageReference(imageTag);
 			var hmrPortMode = LikeC4HmrPortCompatibility.Resolve(imageTag);
 			// Use the relay on Windows even in Configurable mode: Docker Desktop may fail to publish
 			// the well-known port (24678) reliably due to Hyper-V port reservations or port-cleanup
 			// races between container restarts. The relay owns port 24678 on the host side and
 			// bridges incoming HMR connections to whatever dynamic port Docker happened to allocate.
 			var useHmrRelay = hmrPortMode == LikeC4HMRPortMode.FixedPort || OperatingSystem.IsWindows();
-			var workspaceVolumeName = ResolveWorkspaceVolumeName(builder.AppHostDirectory, name);
 			var defaultViewId = string.IsNullOrWhiteSpace(diagramOpts.DefaultViewId) ? null : diagramOpts.DefaultViewId;
 
 			builder
 				.Services.AddOptions<LikeC4ContainerWorkspaceOptions>()
 				.Configure(runtime =>
 				{
-					runtime.VolumeName = workspaceVolumeName;
-					runtime.ContainerImageReference = imageReference;
-					runtime.ContainerRuntimeExecutable = ResolveContainerRuntimeExecutable();
 					runtime.HMRPortMode = hmrPortMode;
 					runtime.UseHMRRelay = useHmrRelay;
 				});
@@ -98,13 +92,6 @@ public static class AspireC4DistributedApplicationBuilderExtensions
 				.WithImage(LikeC4ServerResource.DefaultImage)
 				.WithImageTag(imageTag)
 				.WithImageRegistry(LikeC4ServerResource.DefaultRegistry)
-				.WithArgs(
-					"start",
-					LikeC4ServerResource.WorkspacePath,
-					"--port",
-					$"{LikeC4ServerResource.DefaultContainerServePort}"
-				)
-				.WithVolume(workspaceVolumeName, LikeC4ServerResource.GeneratedPath)
 				.WithHttpEndpoint(
 					port: port,
 					targetPort: LikeC4ServerResource.DefaultContainerServePort,
@@ -120,15 +107,32 @@ public static class AspireC4DistributedApplicationBuilderExtensions
 						opts.Url = defaultViewId != null ? $"/view/{defaultViewId}" : "/";
 					}
 				)
+				// Register container args as a callback so they are evaluated at container-start
+				// time (after BeforeStartEvent has set ContainerServePath). DisableHMR is read
+				// from AspireC4DiagramOptions so it respects configuration overrides at runtime.
+				.WithArgs(async context =>
+				{
+					var wsOpts = context.ExecutionContext.ServiceProvider.GetRequiredService<
+						IOptions<LikeC4ContainerWorkspaceOptions>
+					>();
+					var diagOpts = context.ExecutionContext.ServiceProvider.GetRequiredService<
+						IOptions<AspireC4DiagramOptions>
+					>();
+
+					context.Args.Add("start");
+					context.Args.Add(wsOpts.Value.ContainerServePath);
+					context.Args.Add("--port");
+					context.Args.Add($"{LikeC4ServerResource.DefaultContainerServePort}");
+					if (diagOpts.Value.DisableHMR)
+						context.Args.Add("--no-react-hmr");
+
+					await Task.CompletedTask;
+				})
 				//.WithExternalHttpEndpoints()
 				// Exclude the sidecar from the architecture diagram — it is tooling, not a system element.
 				.WithAnnotation(new ExcludeFromLikeC4Annotation(), ResourceAnnotationMutationBehavior.Replace);
 
-			if (diagramOpts.DisableHMR)
-			{
-				serverBuilder.WithArgs("--no-react-hmr");
-			}
-			else
+			if (!diagramOpts.DisableHMR)
 			{
 				serverBuilder
 					.WithHttpEndpoint(
@@ -171,40 +175,6 @@ public static class AspireC4DistributedApplicationBuilderExtensions
 			return Path.GetFullPath(
 				Path.IsPathRooted(outputDirectory) ? outputDirectory : Path.Combine(appHostDirectory, outputDirectory)
 			);
-		}
-
-		[System.Diagnostics.CodeAnalysis.SuppressMessage("Globalization", "CA1308:Normalize strings to uppercase")]
-		internal static string ResolveWorkspaceVolumeName(string appHostDirectory, string resourceName)
-		{
-			ArgumentException.ThrowIfNullOrWhiteSpace(appHostDirectory);
-			ArgumentException.ThrowIfNullOrWhiteSpace(resourceName);
-
-			var normalizedResourceName = NormalizeContainerNameSegment(resourceName);
-			var normalizedAppHostDirectory = Path.GetFullPath(appHostDirectory)
-				.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
-			var hashBytes = SHA256.HashData(Encoding.UTF8.GetBytes(normalizedAppHostDirectory));
-			var hash = Convert.ToHexString(hashBytes)[..12].ToLowerInvariant();
-
-			return $"aspirec4-{normalizedResourceName}-{hash}";
-		}
-
-		internal static string ResolveContainerRuntimeExecutable() =>
-			Environment.GetEnvironmentVariable("ASPIRE_CONTAINER_RUNTIME") switch
-			{
-				{ Length: > 0 } runtime => runtime,
-				_ => "docker",
-			};
-
-		static string NormalizeContainerNameSegment(string value)
-		{
-			StringBuilder sb = new(value.Length);
-			foreach (var ch in value)
-			{
-				sb.Append(char.IsAsciiLetterOrDigit(ch) ? char.ToLowerInvariant(ch) : '-');
-			}
-
-			var normalized = sb.ToString().Trim('-');
-			return normalized.Length == 0 ? "workspace" : normalized;
 		}
 	}
 }
