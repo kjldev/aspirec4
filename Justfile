@@ -59,7 +59,52 @@ refresh-icons:
 [group('diagrams')]
 diagrams:
     just _run-likec4 .
-# ── Internal helpers ──────────────────────────────────────────────────────────
+# ── Container runtime tests ───────────────────────────────────────────────────
+
+_e2e_docker_image := "aspirec4-e2e-docker"
+_e2e_podman_image := "aspirec4-e2e-podman"
+_e2e_dockerfile_docker := "tests/Docker/Dockerfile.e2e"
+_e2e_dockerfile_podman := "tests/Docker/Dockerfile.e2e-podman"
+
+# Build and run integration tests inside a Docker container (uses host Docker socket)
+[group('container-tests')]
+test-e2e-docker configuration=config_default: (_e2e-build _e2e_docker_image _e2e_dockerfile_docker)
+    docker run --rm \
+        -v /var/run/docker.sock:/var/run/docker.sock \
+        -v "{{ justfile_directory() }}:/workspace" \
+        -w /workspace \
+        -e CONFIGURATION={{ configuration }} \
+        {{ _e2e_docker_image }} \
+        dotnet test \
+            --project src/tests/AspireC4.IntegrationTests \
+            --no-build \
+            --verbosity normal \
+            --configuration {{ configuration }}
+
+# Build and run integration tests inside a Podman container (rootful Podman-in-Docker, requires --privileged)
+[group('container-tests')]
+test-e2e-podman configuration=config_default: (_e2e-build _e2e_podman_image _e2e_dockerfile_podman)
+    docker run --rm --privileged \
+        -v "{{ justfile_directory() }}:/workspace" \
+        -w /workspace \
+        -e CONFIGURATION={{ configuration }} \
+        {{ _e2e_podman_image }} \
+        dotnet test \
+            --project src/tests/AspireC4.IntegrationTests \
+            --no-build \
+            --verbosity normal \
+            --configuration {{ configuration }}
+
+# Build both e2e test images and run integration tests for Docker and Podman
+[group('container-tests')]
+test-e2e configuration=config_default: (test-e2e-docker configuration) (test-e2e-podman configuration)
+
+[private]
+_e2e-build image dockerfile:
+    just build
+    docker build -f {{ dockerfile }} -t {{ image }} .
+
+
 
 [private]
 _run-likec4 path=justfile_dir():
