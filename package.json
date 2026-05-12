@@ -4,8 +4,15 @@
 	"description": "Aspire LikeC4 Visualization - version manifest for CD pipeline",
 	"private": true,
 	"type": "module",
+	"scripts": {
+		"changeset": "changeset"
+	},
 	"devDependencies": {
+		"@changesets/changelog-github": "^0.7.0",
+		"@changesets/cli": "^2.31.0",
 		"@types/node": "^22.19.18",
+		"@types/semver": "^7.7.1",
+		"semver": "^7.8.0",
 		"typescript": "^5.9.3"
 	},
 	"engines": {

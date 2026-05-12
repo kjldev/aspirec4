@@ -47,6 +47,19 @@ lintfix:
 [group('dotnet')]
 pack configuration=config_default: (build configuration)
     dotnet pack {{ _solution }} --no-build --no-restore --configuration {{ configuration }} --output artifacts/nuget "/p:Version=$(node -p "require('./package.json').version")"
+# ── Release ───────────────────────────────────────────────────────────────────
+
+# Add a changeset description for the current changes (interactive)
+[group('release')]
+changeset:
+    npx changeset add
+
+# Compute next version from conventional commits + changesets and open a release PR.
+# Pass `prerelease` to produce a prerelease version (e.g. 13.3.1-prerelease.0).
+[group('release')]
+release prerelease="":
+    node scripts/release.mts {{ if prerelease == "prerelease" { "--prerelease" } else { "" } }}
+
 # ── Icon manifest ─────────────────────────────────────────────────────────────
 
 # Regenerate the LikeC4 icon manifest from the upstream GitHub repository
