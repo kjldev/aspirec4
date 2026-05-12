@@ -150,12 +150,10 @@ public sealed class AspireC4BuilderTests
 		await Assert.That(endpoints[0].TargetPort).IsEqualTo(LikeC4ServerResource.DefaultContainerServePort);
 		await Assert.That(endpoints[1].Name).IsEqualTo(LikeC4ServerResource.HmrEndpointName);
 		await Assert.That(endpoints[1].TargetPort).IsEqualTo(LikeC4ServerResource.DefaultContainerUpdatePort);
-		// On Windows the relay is always used; Docker gets a dynamic host port so the relay
-		// can own the well-known port (24678) without conflicting with Docker's binding.
-		var expectedHmrPort = OperatingSystem.IsWindows()
-			? null
-			: (int?)LikeC4ServerResource.DefaultContainerUpdatePort;
-		await Assert.That(endpoints[1].Port).IsEqualTo(expectedHmrPort);
+		// The default tag is "latest" which cannot be version-parsed, so it falls back to
+		// FixedPort mode and the relay is always used (on all platforms). Docker gets a
+		// dynamic host port; the relay owns the well-known port (24678) on the host side.
+		await Assert.That(endpoints[1].Port).IsEqualTo(null);
 	}
 
 	[Test]
