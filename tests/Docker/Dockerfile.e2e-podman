@@ -1,0 +1,54 @@
+# Test runner environment for Podman-based integration tests.
+#
+# Runs a rootful Podman-in-container with VFS storage, following the same pattern as
+# microsoft/aspire tests/Shared/Docker/Dockerfile.e2e-podman. This makes Podman stable
+# inside a privileged Docker container without requiring kernel overlay filesystem support.
+#
+# Usage (from repo root):
+#   docker build -f tests/Docker/Dockerfile.e2e-podman -t aspirec4-e2e-podman .
+#   docker run --rm --privileged \
+#     -v $(pwd):/workspace \
+#     -w /workspace \
+#     aspirec4-e2e-podman \
+#     dotnet test src/tests/AspireC4.IntegrationTests
+
+FROM mcr.microsoft.com/dotnet/sdk:10.0
+
+RUN apt-get update -qq && \
+    apt-get install -y --no-install-recommends \
+        podman \
+        podman-compose \
+        fuse-overlayfs \
+        slirp4netns \
+        uidmap \
+        containernetworking-plugins \
+        ca-certificates \
+        curl && \
+    curl -fsSL https://deb.nodesource.com/setup_22.x | bash - && \
+    apt-get install -y --no-install-recommends nodejs && \
+    rm -rf /var/lib/apt/lists/*
+
+# Rootful Podman wrapper using VFS storage and cgroupfs manager.
+# VFS avoids kernel overlay requirements inside a privileged Docker container.
+# Based on the same pattern as microsoft/aspire Dockerfile.e2e-podman.
+RUN cat > /usr/local/bin/podman <<'SCRIPT'
+#!/bin/bash
+common=(--root /var/lib/containers/storage-vfs --runroot /run/containers/storage-vfs --storage-driver=vfs --cgroup-manager=cgroupfs)
+if [ "$#" -gt 0 ] && { [ "$1" = "run" ] || [ "$1" = "create" ]; }; then
+  cmd="$1"
+  shift
+  exec /usr/bin/podman "${common[@]}" "$cmd" --cgroups=disabled "$@"
+else
+  exec /usr/bin/podman "${common[@]}" "$@"
+fi
+SCRIPT
+RUN chmod +x /usr/local/bin/podman
+
+RUN mkdir -p /workspace
+WORKDIR /workspace
+
+ENV ASPIRE_CONTAINER_RUNTIME=podman
+ENV DOTNET_CLI_TELEMETRY_OPTOUT=1
+ENV DOTNET_SKIP_FIRST_TIME_EXPERIENCE=1
+ENV DOTNET_GENERATE_ASPNET_CERTIFICATE=false
+ENV TERM=xterm

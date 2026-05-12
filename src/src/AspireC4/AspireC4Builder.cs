@@ -127,46 +127,52 @@ sealed class AspireC4Builder(
 	/// <list type="bullet">
 	///   <item><description>
 	///     <b>Docker Desktop (official)</b> — natively understands Windows paths
-	///     (<c>C:\…</c>); DCP passes them verbatim to the Docker API so the path is
-	///     returned unchanged.
+	///     (<c>C:\…</c>); no conversion needed.
 	///   </description></item>
 	///   <item><description>
 	///     <b>Rancher Desktop</b> — runs a Linux <c>dockerd</c> inside WSL2 that only
-	///     understands Linux paths.  Windows drives are accessible inside WSL2 at
-	///     <c>/mnt/&lt;drive&gt;/…</c> (standard WSL2 mount points), so the path is
-	///     converted to that format.
+	///     understands Linux paths.  Windows drives are accessible at
+	///     <c>/mnt/&lt;drive&gt;/…</c>, so the path is converted to that format.
+	///   </description></item>
+	///   <item><description>
+	///     <b>Podman (Windows)</b> — <c>podman.exe</c> translates Windows paths
+	///     internally via its own <c>ConvertWinMountPath</c> logic; no conversion needed.
 	///   </description></item>
 	/// </list>
 	/// On non-Windows the path is returned unchanged.
 	/// </remarks>
 	internal static string NormalizeBindMountPath(string absolutePath) =>
-		NormalizeBindMountPath(absolutePath, _isRancherDesktop.Value);
+		NormalizeBindMountPath(absolutePath, _containerRuntime.Value);
 
-	/// <summary>Overload with an explicit runtime flag — used by unit tests to avoid
+	/// <summary>Overload with an explicit runtime — used by unit tests to avoid
 	/// spawning a <c>docker</c> process.</summary>
-	internal static string NormalizeBindMountPath(string absolutePath, bool isRancherDesktop)
+	internal static string NormalizeBindMountPath(string absolutePath, ContainerRuntime runtime)
 	{
-		if (!OperatingSystem.IsWindows())
-			return absolutePath;
-
 		var fullPath = Path.GetFullPath(absolutePath);
 
 		// Rancher Desktop exposes Windows drives under /mnt/<letter>/ inside WSL2.
 		// CA1308: intentional — Linux paths require lower-case.
-		if (isRancherDesktop && fullPath.Length >= 2 && char.IsAsciiLetter(fullPath[0]) && fullPath[1] == ':')
+		if (
+			runtime == ContainerRuntime.RancherDesktop
+			&& fullPath.Length >= 2
+			&& char.IsAsciiLetter(fullPath[0])
+			&& fullPath[1] == ':'
+		)
 		{
 #pragma warning disable CA1308
 			return $"/mnt/{char.ToLowerInvariant(fullPath[0])}{fullPath[2..].Replace('\\', '/')}".ToLowerInvariant();
 #pragma warning restore CA1308
 		}
 
-		// Docker Desktop or other runtime: return Windows path as-is; DCP / Docker Desktop
-		// translate it internally.
+		// All other runtimes: return the path as-is.
+		// - Linux/macOS: path is already a Linux path.
+		// - Docker Desktop: Windows-native daemon accepts C:\… paths directly.
+		// - Podman (Windows): podman.exe performs its own Windows→Linux conversion.
 		return fullPath;
 	}
 
-	static readonly Lazy<bool> _isRancherDesktop = new(
-		DetectRancherDesktop,
+	static readonly Lazy<ContainerRuntime> _containerRuntime = new(
+		DetectContainerRuntime,
 		LazyThreadSafetyMode.ExecutionAndPublication
 	);
 
@@ -175,11 +181,17 @@ sealed class AspireC4Builder(
 		"CA1031:Do not catch general exception types",
 		Justification = "Runtime detection must not throw; failure falls back to Docker Desktop behavior."
 	)]
-	static bool DetectRancherDesktop()
+	internal static ContainerRuntime DetectContainerRuntime()
 	{
 		if (!OperatingSystem.IsWindows())
-			return false;
+			return ContainerRuntime.Linux;
 
+		// If Podman is explicitly requested, podman.exe handles path translation itself.
+		var runtimeEnv = Environment.GetEnvironmentVariable("ASPIRE_CONTAINER_RUNTIME");
+		if (runtimeEnv?.Equals("podman", StringComparison.OrdinalIgnoreCase) == true)
+			return ContainerRuntime.Podman;
+
+		// Query the Docker daemon OS string to distinguish Docker Desktop from Rancher Desktop.
 		try
 		{
 			using var process = System.Diagnostics.Process.Start(
@@ -196,12 +208,13 @@ sealed class AspireC4Builder(
 
 			process?.WaitForExit(5_000);
 			var os = process?.StandardOutput.ReadToEnd().Trim() ?? "";
-			return os.Contains("Rancher Desktop", StringComparison.OrdinalIgnoreCase);
+
+			if (os.Contains("Rancher Desktop", StringComparison.OrdinalIgnoreCase))
+				return ContainerRuntime.RancherDesktop;
 		}
-		catch
-		{
-			return false;
-		}
+		catch { }
+
+		return ContainerRuntime.DockerDesktop;
 	}
 
 	static LikeC4LocalCLIRuntime DetectRuntime()

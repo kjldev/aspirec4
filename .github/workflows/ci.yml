@@ -53,9 +53,55 @@ jobs:
       - name: Run unit tests
         run: dotnet test --project src/tests/AspireC4.UnitTests --no-build --verbosity normal --configuration ${{ env.CONFIGURATION }}
 
-  build-and-integration-test:
-    name: Build and Integration Test
+  build-integration-test-image:
+    name: Build Integration Test Image (${{ matrix.runtime }})
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runtime: docker
+            dockerfile: tests/Docker/Dockerfile.e2e
+            image: aspirec4-e2e-docker
+          - runtime: podman
+            dockerfile: tests/Docker/Dockerfile.e2e-podman
+            image: aspirec4-e2e-podman
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Build test runner image
+        run: |
+          docker build \
+            -f ${{ matrix.dockerfile }} \
+            -t ${{ matrix.image }} \
+            .
+
+      - name: Save image
+        run: docker save ${{ matrix.image }} | gzip > /tmp/${{ matrix.image }}.tar.gz
+
+      - name: Upload image artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.image }}
+          path: /tmp/${{ matrix.image }}.tar.gz
+          retention-days: 1
+
+  build-and-integration-test:
+    name: Build and Integration Test (${{ matrix.runtime }})
+    runs-on: ubuntu-latest
+    needs: build-integration-test-image
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runtime: docker
+            image: aspirec4-e2e-docker
+            docker_flags: -v /var/run/docker.sock:/var/run/docker.sock
+          - runtime: podman
+            image: aspirec4-e2e-podman
+            docker_flags: --privileged
 
     env:
       CONFIGURATION: Release
@@ -65,7 +111,16 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v6
 
-      - name: Set up .NET
+      - name: Download test runner image
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ matrix.image }}
+          path: /tmp
+
+      - name: Load test runner image
+        run: docker load < /tmp/${{ matrix.image }}.tar.gz
+
+      - name: Set up .NET (for restore/build on host)
         uses: actions/setup-dotnet@v5
         with:
           global-json-file: ./global.json
@@ -76,8 +131,19 @@ jobs:
       - name: Build
         run: dotnet build ${{ env.SOLUTION }} --no-restore --configuration ${{ env.CONFIGURATION }}
 
-      - name: Run integration tests
-        run: dotnet test --project src/tests/AspireC4.IntegrationTests --no-build --verbosity normal --configuration ${{ env.CONFIGURATION }}
+      - name: Run integration tests inside ${{ matrix.runtime }} container
+        run: |
+          docker run --rm \
+            ${{ matrix.docker_flags }} \
+            -v $(pwd):/workspace \
+            -w /workspace \
+            -e CONFIGURATION=${{ env.CONFIGURATION }} \
+            ${{ matrix.image }} \
+            dotnet test \
+              --project src/tests/AspireC4.IntegrationTests \
+              --no-build \
+              --verbosity normal \
+              --configuration ${{ env.CONFIGURATION }}
 
   ci-gate:
     name: CI Gate
@@ -118,3 +184,4 @@ jobs:
           if [[ "${failures}" -ne 0 ]]; then
             exit 1
           fi
+

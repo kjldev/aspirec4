@@ -484,16 +484,13 @@ public sealed class AspireC4BuilderTests
 	[Arguments(@"D:\", "/mnt/d/")]
 	[Arguments(@"D:\Data\Projects\MyApp", "/mnt/d/data/projects/myapp")]
 	[Arguments(@"Z:\very\deep\nested\path\here", "/mnt/z/very/deep/nested/path/here")]
-	public async Task NormalizeBindMountPath_OnWindows_RancherDesktop_ConvertsToWsl2MntFormat(
-		string windowsPath,
-		string expected
-	)
+	public async Task NormalizeBindMountPath_RancherDesktop_ConvertsToWsl2MntFormat(string windowsPath, string expected)
 	{
 		if (!OperatingSystem.IsWindows())
 			return;
 
 		await Assert
-			.That(AspireC4Builder.NormalizeBindMountPath(windowsPath, isRancherDesktop: true))
+			.That(AspireC4Builder.NormalizeBindMountPath(windowsPath, ContainerRuntime.RancherDesktop))
 			.IsEqualTo(expected);
 	}
 
@@ -501,12 +498,12 @@ public sealed class AspireC4BuilderTests
 	[Arguments(@"C:\Users\foo\bar")]
 	[Arguments(@"P:\GitHub\myrepo\src")]
 	[Arguments(@"D:\Data\Projects")]
-	public async Task NormalizeBindMountPath_OnWindows_RancherDesktop_PathStartsWithMntSlash(string windowsPath)
+	public async Task NormalizeBindMountPath_RancherDesktop_PathStartsWithMntSlash(string windowsPath)
 	{
 		if (!OperatingSystem.IsWindows())
 			return;
 
-		var result = AspireC4Builder.NormalizeBindMountPath(windowsPath, isRancherDesktop: true);
+		var result = AspireC4Builder.NormalizeBindMountPath(windowsPath, ContainerRuntime.RancherDesktop);
 
 		await Assert.That(result).StartsWith("/mnt/");
 		await Assert.That(result).DoesNotContain(":");
@@ -517,29 +514,76 @@ public sealed class AspireC4BuilderTests
 	[Arguments(@"C:\Users\foo\bar")]
 	[Arguments(@"P:\GitHub\myrepo\src")]
 	[Arguments(@"D:\Data\Projects")]
-	public async Task NormalizeBindMountPath_OnWindows_DockerDesktop_ReturnsWindowsPath(string windowsPath)
+	public async Task NormalizeBindMountPath_DockerDesktop_ReturnsWindowsPath(string windowsPath)
 	{
 		if (!OperatingSystem.IsWindows())
 			return;
 
-		var result = AspireC4Builder.NormalizeBindMountPath(windowsPath, isRancherDesktop: false);
+		var result = AspireC4Builder.NormalizeBindMountPath(windowsPath, ContainerRuntime.DockerDesktop);
 
 		await Assert.That(result).StartsWith(windowsPath[0].ToString(), StringComparison.OrdinalIgnoreCase);
 		await Assert.That(result).Contains(@"\");
 	}
 
 	[Test]
+	[Arguments(@"C:\Users\foo\bar")]
+	[Arguments(@"P:\GitHub\myrepo\src")]
+	[Arguments(@"D:\Data\Projects")]
+	public async Task NormalizeBindMountPath_Podman_ReturnsWindowsPathUnchanged(string windowsPath)
+	{
+		// Podman on Windows performs its own path translation internally (ConvertWinMountPath),
+		// so AspireC4 must pass the Windows path as-is.
+		if (!OperatingSystem.IsWindows())
+			return;
+
+		var result = AspireC4Builder.NormalizeBindMountPath(windowsPath, ContainerRuntime.Podman);
+
+		await Assert.That(result).StartsWith(windowsPath[0].ToString(), StringComparison.OrdinalIgnoreCase);
+		await Assert.That(result).Contains(@"\");
+	}
+
+	[Test]
+	[Arguments(@"C:\Users\foo\bar")]
+	[Arguments(@"P:\GitHub\myrepo\src")]
+	[Arguments(@"D:\Data\Projects")]
+	public async Task NormalizeBindMountPath_Podman_ProducesIdenticalResultToDockerDesktop(string windowsPath)
+	{
+		// Both runtimes must return the Windows path unchanged — the caller (podman.exe /
+		// Docker Desktop daemon) handles any further translation.
+		if (!OperatingSystem.IsWindows())
+			return;
+
+		var dockerDesktopResult = AspireC4Builder.NormalizeBindMountPath(windowsPath, ContainerRuntime.DockerDesktop);
+		var podmanResult = AspireC4Builder.NormalizeBindMountPath(windowsPath, ContainerRuntime.Podman);
+
+		await Assert.That(podmanResult).IsEqualTo(dockerDesktopResult);
+	}
+
+	[Test]
 	[Arguments("/home/user/projects/myapp")]
 	[Arguments("/var/data/output")]
 	[Arguments("/tmp/likec4")]
-	public async Task NormalizeBindMountPath_OnNonWindows_ReturnsPathUnchanged(string linuxPath)
+	public async Task NormalizeBindMountPath_Linux_ReturnsPathUnchanged(string linuxPath)
 	{
 		if (OperatingSystem.IsWindows())
 			return;
 
 		await Assert
-			.That(AspireC4Builder.NormalizeBindMountPath(linuxPath, isRancherDesktop: false))
+			.That(AspireC4Builder.NormalizeBindMountPath(linuxPath, ContainerRuntime.Linux))
 			.IsEqualTo(linuxPath);
+	}
+
+	// --- DetectContainerRuntime ---
+
+	[Test]
+	public async Task DetectContainerRuntime_OnLinux_ReturnsLinux()
+	{
+		if (OperatingSystem.IsWindows())
+			return;
+
+		var runtime = AspireC4Builder.DetectContainerRuntime();
+
+		await Assert.That(runtime).IsEqualTo(ContainerRuntime.Linux);
 	}
 
 	// --- ComputeCommonAncestor (additional cases) ---
