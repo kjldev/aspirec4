@@ -4,6 +4,9 @@
 # microsoft/aspire tests/Shared/Docker/Dockerfile.e2e-podman. This makes Podman stable
 # inside a privileged Docker container without requiring kernel overlay filesystem support.
 #
+# An entrypoint script starts `podman system service` (provides the Unix socket that Aspire
+# DCP connects to) before handing off to the test command.
+#
 # Usage (from repo root):
 #   docker build -f tests/Docker/Dockerfile.e2e-podman -t aspirec4-e2e-podman .
 #   docker run --rm --privileged \
@@ -42,13 +45,50 @@ else
   exec /usr/bin/podman "${common[@]}" "$@"
 fi
 SCRIPT
-RUN chmod +x /usr/local/bin/podman
+RUN sed -i 's/\r$//' /usr/local/bin/podman && chmod +x /usr/local/bin/podman
+
+# Entrypoint: start the Podman API service so Aspire DCP can connect to the socket,
+# wait for readiness, then exec the test command.
+RUN cat > /entrypoint.sh <<'EOF'
+#!/bin/bash
+set -e
+
+SOCKET_PATH=/run/podman/podman.sock
+mkdir -p /run/podman
+
+# Start Podman system service with VFS storage so containers can run inside a
+# privileged Docker container without requiring kernel overlay support.
+/usr/bin/podman \
+    --root /var/lib/containers/storage-vfs \
+    --runroot /run/containers/storage-vfs \
+    --storage-driver=vfs \
+    --cgroup-manager=cgroupfs \
+    system service --time=0 "unix://${SOCKET_PATH}" &
+
+echo "Waiting for Podman socket at ${SOCKET_PATH}..."
+for i in $(seq 1 30); do
+    [ -S "${SOCKET_PATH}" ] && { echo "Podman socket ready"; break; }
+    sleep 0.5
+done
+
+if [ ! -S "${SOCKET_PATH}" ]; then
+    echo "ERROR: Podman socket not ready after 15s" >&2
+    exit 1
+fi
+
+exec "$@"
+EOF
+RUN sed -i 's/\r$//' /entrypoint.sh && chmod +x /entrypoint.sh
 
 RUN mkdir -p /workspace
 WORKDIR /workspace
 
 ENV ASPIRE_CONTAINER_RUNTIME=podman
+# Point Aspire DCP and Docker-compatible clients to the Podman socket.
+ENV DOCKER_HOST=unix:///run/podman/podman.sock
 ENV DOTNET_CLI_TELEMETRY_OPTOUT=1
 ENV DOTNET_SKIP_FIRST_TIME_EXPERIENCE=1
 ENV DOTNET_GENERATE_ASPNET_CERTIFICATE=false
 ENV TERM=xterm
+
+ENTRYPOINT ["/entrypoint.sh"]
