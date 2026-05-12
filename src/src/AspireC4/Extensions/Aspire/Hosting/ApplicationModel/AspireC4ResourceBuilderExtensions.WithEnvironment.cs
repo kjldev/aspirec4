@@ -10,6 +10,11 @@ static partial class AspireC4ResourceBuilderEnvExtensions
 		/// <summary>
 		/// Adds a reference (<see cref="ResourceBuilderExtensions.WithReference{T}"/>) to another resource with a connection string, and configures it to be a LikeC4 relationship.
 		/// </summary>
+		[AspireExport(
+			"withLikeC4ReferenceWithEnvironment",
+			MethodName = "withLikeC4Reference",
+			Description = "Customises how a resource appears in the generated LikeC4 diagram."
+		)]
 		public IResourceBuilder<T> WithLikeC4Reference(
 			IResourceBuilder<IResourceWithConnectionString> source,
 			Action<LikeC4RelationshipDetailsAnnotation>? configure,
