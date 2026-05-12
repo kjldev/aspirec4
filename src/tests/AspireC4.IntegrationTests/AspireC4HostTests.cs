@@ -10,21 +10,23 @@ namespace Aspire.Hosting.AspireC4;
 
 /// <summary>
 /// Integration tests that verify the LikeC4 visualization starts successfully in a real Aspire app host.
-/// Tests are isolated by unique output directories and inject configuration directly into the app
-/// builder — no process-wide environment variables are mutated, making tests safe to run in parallel.
-/// HMR is disabled via configuration so no relay port is bound and tests can run concurrently.
+/// A single app instance is shared across all tests in this class (started in <see cref="ClassSetUpAsync"/>
+/// and torn down in <see cref="ClassTearDownAsync"/>) to avoid the resource contention that occurs when
+/// 10+ Aspire apps (each with postgres/redis/docker containers) start in parallel.
+/// HMR is disabled so no relay port is bound during testing.
 /// </summary>
-public sealed partial class AspireC4HostTests : IAsyncDisposable
+public sealed partial class AspireC4HostTests
 {
 	const string AspireC4ResourceName = AspireC4DistributedApplicationBuilderExtensions.AspireC4ResourceName;
 	static readonly TimeSpan LikeC4StartupTimeout = TimeSpan.FromSeconds(120);
 
-	DistributedApplication? _app;
-	string? _outputDir;
-	string? _modelPath;
+	// Shared across all tests in this class — set once in ClassSetUpAsync.
+	static DistributedApplication? _app;
+	static string? _outputDir;
+	static string? _modelPath;
 
-	[Before(Test)]
-	public async Task SetUpAsync(CancellationToken cancellationToken)
+	[Before(Class)]
+	public static async Task ClassSetUpAsync(CancellationToken cancellationToken)
 	{
 		// Use a directory alongside the TestAppHost output so all relevant paths
 		// (extensions, image aliases, output) share the same drive — required by the
@@ -36,14 +38,13 @@ public sealed partial class AspireC4HostTests : IAsyncDisposable
 		var appBuilder = await DistributedApplicationTestingBuilder.CreateAsync<TestAppHostProgram>(cancellationToken);
 
 		// Inject test-specific configuration directly into the builder's configuration system.
-		// This avoids mutating process-wide environment variables (which would break parallel test runs).
 		appBuilder.Configuration.AddInMemoryCollection(
 			new Dictionary<string, string?>
 			{
 				["AspireC4:OutputDirectory"] = _outputDir,
 				["AspireC4:FileName"] = "model.gen",
 				["AspireC4:Title"] = "Integration Test Architecture",
-				// Disable HMR so no relay port is bound — tests can run fully in parallel.
+				// Disable HMR so no relay port is bound during testing.
 				["AspireC4:DisableHMR"] = "true",
 			}
 		);
@@ -62,8 +63,8 @@ public sealed partial class AspireC4HostTests : IAsyncDisposable
 		await _app.StartAsync(cancellationToken);
 	}
 
-	[After(Test)]
-	public async Task TearDownAsync(CancellationToken cancellationToken)
+	[After(Class)]
+	public static async Task ClassTearDownAsync(CancellationToken cancellationToken)
 	{
 		if (_app is not null)
 		{
@@ -331,19 +332,6 @@ public sealed partial class AspireC4HostTests : IAsyncDisposable
 		catch
 		{
 			return false;
-		}
-	}
-
-	public async ValueTask DisposeAsync()
-	{
-		if (_app is not null)
-		{
-			await _app.DisposeAsync();
-		}
-
-		if (_outputDir is not null && Directory.Exists(_outputDir))
-		{
-			Directory.Delete(_outputDir, recursive: true);
 		}
 	}
 }

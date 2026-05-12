@@ -66,32 +66,24 @@ _e2e_podman_image := "aspirec4-e2e-podman"
 _e2e_dockerfile_docker := "tests/Docker/Dockerfile.e2e"
 _e2e_dockerfile_podman := "tests/Docker/Dockerfile.e2e-podman"
 
-# Build and run integration tests inside a Docker container (uses host Docker socket)
+# Run integration tests against the host Docker runtime (Docker Desktop or Rancher Desktop).
+# Runs natively on the host so bind-mount paths are real host paths that Docker can resolve.
 [group('container-tests')]
-test-e2e-docker configuration=config_default: (_e2e-build _e2e_docker_image _e2e_dockerfile_docker)
-    docker run --rm \
-        -v /var/run/docker.sock:/var/run/docker.sock \
-        -v "{{ justfile_directory() }}:/workspace" \
-        -w /workspace \
-        -e CONFIGURATION={{ configuration }} \
-        {{ _e2e_docker_image }} \
-        dotnet test \
-            --project src/tests/AspireC4.IntegrationTests \
-            --no-build \
-            --verbosity normal \
-            --configuration {{ configuration }}
+test-e2e-docker configuration=config_default:
+    dotnet test \
+        --project src/tests/AspireC4.IntegrationTests \
+        --configuration {{ configuration }}
 
 # Build and run integration tests inside a Podman container (rootful Podman-in-Docker, requires --privileged)
 [group('container-tests')]
-test-e2e-podman configuration=config_default: (_e2e-build _e2e_podman_image _e2e_dockerfile_podman)
+test-e2e-podman configuration=config_default: (_e2e-image _e2e_podman_image _e2e_dockerfile_podman)
     docker run --rm --privileged \
         -v "{{ justfile_directory() }}:/workspace" \
+        -v aspirec4-nuget-cache:/root/.nuget/packages \
         -w /workspace \
-        -e CONFIGURATION={{ configuration }} \
         {{ _e2e_podman_image }} \
         dotnet test \
             --project src/tests/AspireC4.IntegrationTests \
-            --no-build \
             --verbosity normal \
             --configuration {{ configuration }}
 
@@ -99,9 +91,9 @@ test-e2e-podman configuration=config_default: (_e2e-build _e2e_podman_image _e2e
 [group('container-tests')]
 test-e2e configuration=config_default: (test-e2e-docker configuration) (test-e2e-podman configuration)
 
+# Build (or rebuild) a named e2e test runner image from its Dockerfile
 [private]
-_e2e-build image dockerfile:
-    just build
+_e2e-image image dockerfile:
     docker build -f {{ dockerfile }} -t {{ image }} .
 
 
