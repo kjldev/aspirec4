@@ -217,32 +217,26 @@ ${lines.join('\n').trim()}
 
 const currentSemver = semver.parse(currentVersion.replace(/-prerelease\.\d+$/, ''))!
 const currentMajorMinor = `${currentSemver.major}.${currentSemver.minor}`
+const currentIsPrerelease = /-prerelease\.\d+$/.test(currentVersion)
 
-let newBase: string
-if (aspireMajorMinor !== currentMajorMinor) {
-  // Aspire bumped — new MAJOR.MINOR, reset patch to 0 (bump applied on top)
-  console.log(`\nAspire MAJOR.MINOR changed (${currentMajorMinor} → ${aspireMajorMinor}), resetting patch`)
-  const aspireBase = `${aspireVersion.split('.').slice(0, 2).join('.')}.0`
-  newBase = semver.inc(aspireBase, effectiveBump === 'major' ? 'patch' : effectiveBump) ?? aspireBase
-} else {
-  // MAJOR.MINOR is Aspire-locked; all conventional-commit bump types only increment PATCH.
-  const base = `${currentSemver.major}.${currentSemver.minor}.${currentSemver.patch}`
-  newBase = semver.inc(base, 'patch') ?? base
-}
-
-// For prerelease: if the current version is already a prerelease on the same base, increment
-// the prerelease counter; otherwise start at .0.
+// For prerelease: if already on a prerelease, just increment the counter — no PATCH bump.
+// PATCH only increments when going from a stable release (or Aspire MAJOR.MINOR change).
 let newVersion: string
-if (isPrerelease) {
-  const prereleaseMatch = currentVersion.match(/^(.+)-prerelease\.(\d+)$/)
-  if (prereleaseMatch && prereleaseMatch[1] === newBase) {
-    // Same base — bump the prerelease counter
-    newVersion = `${newBase}-prerelease.${parseInt(prereleaseMatch[2], 10) + 1}`
-  } else {
-    newVersion = `${newBase}-prerelease.0`
-  }
+if (isPrerelease && currentIsPrerelease && aspireMajorMinor === currentMajorMinor) {
+  const prereleaseMatch = currentVersion.match(/^(.+)-prerelease\.(\d+)$/)!
+  newVersion = `${prereleaseMatch[1]}-prerelease.${parseInt(prereleaseMatch[2], 10) + 1}`
 } else {
-  newVersion = newBase
+  // Compute new base: bump PATCH (all conventional commit types map to PATCH since MAJOR.MINOR is Aspire-locked)
+  let newBase: string
+  if (aspireMajorMinor !== currentMajorMinor) {
+    console.log(`\nAspire MAJOR.MINOR changed (${currentMajorMinor} → ${aspireMajorMinor}), resetting patch`)
+    const aspireBase = `${aspireVersion.split('.').slice(0, 2).join('.')}.0`
+    newBase = semver.inc(aspireBase, 'patch') ?? aspireBase
+  } else {
+    const base = `${currentSemver.major}.${currentSemver.minor}.${currentSemver.patch}`
+    newBase = semver.inc(base, 'patch') ?? base
+  }
+  newVersion = isPrerelease ? `${newBase}-prerelease.0` : newBase
 }
 console.log(`\nNew version: ${currentVersion} → ${newVersion}`)
 
