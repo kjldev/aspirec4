@@ -34,9 +34,12 @@ const isPrerelease = process.argv.includes('--prerelease')
 // Helpers
 // ---------------------------------------------------------------------------
 
-function run(cmd: string, opts: { cwd?: string; stdio?: 'inherit' | 'pipe' } = {}): string {
+function run(
+  cmd: string,
+  opts: { cwd?: string; stdio?: 'inherit' | 'pipe'; allowFailure?: boolean } = {},
+): string {
   const result = spawnSync(cmd, { shell: true, cwd: opts.cwd ?? ROOT, encoding: 'utf8' })
-  if (result.status !== 0) {
+  if (result.status !== 0 && !opts.allowFailure) {
     console.error(`Command failed: ${cmd}`)
     console.error(result.stderr)
     process.exit(1)
@@ -110,13 +113,7 @@ function maxBump(a: BumpType, b: BumpType): BumpType {
   return bumpPriority(a) >= bumpPriority(b) ? a : b
 }
 
-const lastTag = (() => {
-  try {
-    return run('git describe --tags --abbrev=0')
-  } catch {
-    return ''
-  }
-})()
+const lastTag = run('git describe --tags --abbrev=0', { allowFailure: true })
 
 const commitRange = lastTag ? `${lastTag}..HEAD` : 'HEAD'
 const commitMessages = run(`git log ${commitRange} --no-merges --pretty=format:"%s"`)
