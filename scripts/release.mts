@@ -47,8 +47,9 @@ function run(
   return (result.stdout ?? '').trim()
 }
 
-function runPassthrough(cmd: string): void {
-  const result = spawnSync(cmd, { shell: true, cwd: ROOT, stdio: 'inherit' })
+function runPassthrough(cmd: string, extraEnv?: Record<string, string>): void {
+  const env = extraEnv ? { ...process.env, ...extraEnv } : undefined
+  const result = spawnSync(cmd, { shell: true, cwd: ROOT, stdio: 'inherit', env })
   if (result.status !== 0) {
     console.error(`Command failed: ${cmd}`)
     process.exit(1)
@@ -250,7 +251,8 @@ console.log(`\nNew version: ${currentVersion} → ${newVersion}`)
 // ---------------------------------------------------------------------------
 
 console.log('\nRunning changeset version...')
-runPassthrough('npx changeset version')
+const githubToken = run('gh auth token', { allowFailure: true })
+runPassthrough('npx changeset version', githubToken ? { GITHUB_TOKEN: githubToken } : undefined)
 
 // ---------------------------------------------------------------------------
 // 9. Post-process package.json to enforce Aspire-constrained version
