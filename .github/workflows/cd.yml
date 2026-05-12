@@ -160,6 +160,28 @@ jobs:
             "/p:RepositoryCommit=${GITHUB_SHA}" \
             "/p:COPYRIGHT_YEAR=$(date -u +%Y)"
 
+      - id: changelog
+        name: Extract changelog section
+        if: ${{ steps.release-trigger.outputs.should_release == 'true' }}
+        env:
+          RELEASE_TAG: ${{ steps.version.outputs.tag }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [[ ! -f CHANGELOG.md ]]; then
+            echo "body=" >> "${GITHUB_OUTPUT}"
+            exit 0
+          fi
+
+          # Extract everything between the first H2 heading and the next H2 heading
+          body="$(awk '/^## /{found++} found==1{print} found==2{exit}' CHANGELOG.md | tail -n +2)"
+          {
+            echo "body<<EOF_CHANGELOG"
+            echo "${body}"
+            echo "EOF_CHANGELOG"
+          } >> "${GITHUB_OUTPUT}"
+
       - name: Create GitHub release
         if: ${{ steps.release-trigger.outputs.should_release == 'true' }}
         uses: softprops/action-gh-release@v3
@@ -167,7 +189,8 @@ jobs:
           tag_name: ${{ steps.version.outputs.tag }}
           name: ${{ steps.version.outputs.tag }}
           target_commitish: ${{ github.sha }}
-          generate_release_notes: true
+          body: ${{ steps.changelog.outputs.body }}
+          generate_release_notes: ${{ steps.changelog.outputs.body == '' }}
           prerelease: ${{ steps.version.outputs.prerelease }}
           fail_on_unmatched_files: true
           files: |
