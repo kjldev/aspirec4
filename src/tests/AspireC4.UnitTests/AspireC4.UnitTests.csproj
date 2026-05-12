@@ -2,4 +2,10 @@
 	<PropertyGroup>
 		<DisableGenerateAssemblyInfoClass>true</DisableGenerateAssemblyInfoClass>
 	</PropertyGroup>
+
+	<ItemGroup>
+		<!-- AspireC4.Core is bundled inside the AspireC4.Hosting NuGet package (PrivateAssets=all).
+		     With project references, transitive types don't flow, so reference Core directly. -->
+		<ProjectReference Include="../../src/AspireC4.Core/AspireC4.Core.csproj" />
+	</ItemGroup>
 </Project>

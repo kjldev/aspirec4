@@ -1,15 +1,15 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 	<PropertyGroup>
 		<IsPackable>true</IsPackable>
 		<AssemblyTitle>AspireC4 Hosting</AssemblyTitle>
 		<Description>Aspire hosting extensions for the AspireC4 plugin, generating dynamic a LikeC4 model for your Aspire application.</Description>
 		<COPYRIGHT_YEAR>2026</COPYRIGHT_YEAR>
-		<PackageId>AspireC4</PackageId>
-		<Title>AspireC4 - Aspire LikeC4 Visualisation</Title>
+		<PackageId>AspireC4.Hosting</PackageId>
+		<Title>AspireC4.Hosting - Aspire LikeC4 Visualisation</Title>
 		<Authors>Kieron Lanning</Authors>
 		<Company>KJL Solutions Ltd.</Company>
 		<Copyright>KJL Solutions Ltd., $(COPYRIGHT_YEAR) | All rights reserved.</Copyright>
-		<PackageIcon>kjldev-logo.png</PackageIcon>
+		<PackageIcon>likec4-logo.png</PackageIcon>
 		<PackageLicenseFile>LICENSE.md</PackageLicenseFile>
 		<PackageReadmeFile>README.md</PackageReadmeFile>
 		<PackageProjectUrl>https://github.com/kjldev/aspirec4</PackageProjectUrl>
@@ -23,18 +23,27 @@
 	</ItemGroup>
 
 	<ItemGroup>
-		<None Include="kjldev-logo.png" Pack="true" PackagePath="" />
+		<None Include="..\..\..\assets\images\likec4\likec4-logo.png" Pack="true" PackagePath="\" />
 		<None Include="..\..\..\LICENSE.md" Pack="true" PackagePath="\" />
 		<None Include="..\..\..\README.md" Pack="true" PackagePath="\" />
 	</ItemGroup>
 
 	<ItemGroup>
-		<ProjectReference Include="..\AspireC4.Core\AspireC4.Core.csproj" />
+		<ProjectReference Include="..\AspireC4.Core\AspireC4.Core.csproj">
+			<PrivateAssets>all</PrivateAssets>
+		</ProjectReference>
 	</ItemGroup>
 
-	<ItemGroup>
-		<AssemblyAttribute Include="System.Runtime.CompilerServices.InternalsVisibleTo">
-			<_Parameter1>AspireC4.UnitTests</_Parameter1>
-		</AssemblyAttribute>
-	</ItemGroup>
+	<!-- Bundle AspireC4.Core.dll directly into lib/ (not a NuGet dependency) -->
+	<Target Name="_IncludeCoreAssemblyInPackage" BeforeTargets="_GetPackageFiles">
+		<ItemGroup>
+			<None
+				Include="$(MSBuildThisFileDirectory)bin\$(Configuration)\$(TargetFramework)\AspireC4.Core.dll"
+				Condition="Exists('$(MSBuildThisFileDirectory)bin\$(Configuration)\$(TargetFramework)\AspireC4.Core.dll')"
+			>
+				<Pack>true</Pack>
+				<PackagePath>lib/$(TargetFramework)/</PackagePath>
+			</None>
+		</ItemGroup>
+	</Target>
 </Project>
