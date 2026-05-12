@@ -1,6 +1,6 @@
-# AspireC4
+# AspireC4.Hosting
 
-**AspireC4** is an [Aspire](https://learn.microsoft.com/en-us/dotnet/aspire/) extension library that auto-generates live [LikeC4](https://likec4.dev) architecture diagrams from the Aspire resource graph. Diagrams update in real-time as resources start, stop, or produce errors — and each element links back to the corresponding Aspire dashboard page.
+**AspireC4.Hosting** is an [Aspire](https://learn.microsoft.com/en-us/dotnet/aspire/) extension library that auto-generates live [LikeC4](https://likec4.dev) architecture diagrams from the Aspire resource graph. Diagrams update in real-time as resources start, stop, or produce errors — and each element links back to the corresponding Aspire dashboard page.
 
 ---
 

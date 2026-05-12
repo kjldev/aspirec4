@@ -2,7 +2,7 @@
 	<PropertyGroup>
 		<IsPackable>true</IsPackable>
 		<AssemblyTitle>AspireC4 Hosting</AssemblyTitle>
-		<Description>Aspire hosting extensions for the AspireC4 plugin, generating dynamic a LikeC4 model for your Aspire application.</Description>
+		<Description>Aspire hosting extension for the AspireC4 plugin, generating a dynamic LikeC4 architecture diagram for your Aspire application.</Description>
 		<COPYRIGHT_YEAR>2026</COPYRIGHT_YEAR>
 		<PackageId>AspireC4.Hosting</PackageId>
 		<Title>AspireC4.Hosting - Aspire LikeC4 Visualisation</Title>
@@ -19,7 +19,7 @@
 	</PropertyGroup>
 
 	<ItemGroup>
-		<PackageReference Include="Aspire.Hosting.JavaScript" />
+		<PackageReference Remove="Microsoft.Extensions.Telemetry.Abstractions" />
 	</ItemGroup>
 
 	<ItemGroup>
