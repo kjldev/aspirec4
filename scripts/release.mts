@@ -20,7 +20,7 @@
  */
 
 import { execSync, spawnSync } from 'node:child_process'
-import { readFileSync, writeFileSync, readdirSync } from 'node:fs'
+import { readFileSync, writeFileSync, readdirSync, existsSync } from 'node:fs'
 import { join, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import semver from 'semver'
@@ -249,7 +249,7 @@ const githubToken = run('gh auth token', { allowFailure: true })
 runPassthrough('npx changeset version', githubToken ? { GITHUB_TOKEN: githubToken } : undefined)
 
 // ---------------------------------------------------------------------------
-// 9. Post-process package.json to enforce Aspire-constrained version
+// 9. Post-process package.json and CHANGELOG.md to enforce Aspire-constrained version
 // ---------------------------------------------------------------------------
 
 const updatedPackageJson = readJson<{ version: string; [key: string]: unknown }>(packageJsonPath)
@@ -261,11 +261,43 @@ if (updatedPackageJson.version !== newVersion) {
   writeJson(packageJsonPath, updatedPackageJson)
 }
 
+const changelogPath = join(ROOT, 'CHANGELOG.md')
+if (existsSync(changelogPath)) {
+  const changelogContent = readFileSync(changelogPath, 'utf8')
+  // Replace the first ## heading (which changeset writes with its own computed version)
+  // with the correct Aspire-constrained version.
+  const fixedChangelog = changelogContent.replace(/^## .+$/m, `## ${newVersion}`)
+  if (fixedChangelog !== changelogContent) {
+    console.log(`Updating CHANGELOG.md header to ## ${newVersion}`)
+    writeFileSync(changelogPath, fixedChangelog, 'utf8')
+  }
+}
+
 // ---------------------------------------------------------------------------
 // 10. Create branch, commit, push, open PR
 // ---------------------------------------------------------------------------
 
 const branch = `release/v${newVersion}`
+
+// Detect an already-existing release branch and fail fast with a clear message.
+const existingBranch = run(`git branch --list ${branch}`, { allowFailure: true })
+if (existingBranch) {
+  console.error(
+    `Branch ${branch} already exists locally.\n` +
+      `Delete it first with: git branch -D ${branch}\n` +
+      `And remove it from origin if present: git push origin --delete ${branch}`,
+  )
+  process.exit(1)
+}
+const existingRemoteBranch = run(`git ls-remote --heads origin ${branch}`, { allowFailure: true })
+if (existingRemoteBranch) {
+  console.error(
+    `Branch ${branch} already exists on origin.\n` +
+      `Remove it with: git push origin --delete ${branch}`,
+  )
+  process.exit(1)
+}
+
 console.log(`\nCreating branch ${branch}...`)
 run(`git checkout -b ${branch}`)
 run('git add -A')
