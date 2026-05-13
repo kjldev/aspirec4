@@ -61,7 +61,7 @@ changeset:
 # Pass `prerelease` to produce a prerelease version (e.g. 13.3.1-prerelease.0).
 [group('release')]
 release prerelease="":
-    node scripts/release.mts {{ if prerelease == "prerelease" { "--prerelease" } else { "" } }}
+    node scripts/release.mts {{ prerelease }}
 # Show context-aware release advice: current branch state, next version preview, and next steps.
 [group('release')]
 release-help:
