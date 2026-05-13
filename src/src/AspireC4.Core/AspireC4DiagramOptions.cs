@@ -201,12 +201,28 @@ public sealed class AspireC4DiagramOptions
 	/// <summary>
 	/// When <see langword="true"/>, adds links from each LikeC4 element back to the Aspire dashboard
 	/// console logs and structured logs pages for that resource. The links are constructed at runtime
-	/// once the Aspire dashboard URL is discovered and are encoded as login-redirect URLs when a browser
-	/// token is present, so clicking them authenticates the browser before navigating to the resource page.
+	/// once the Aspire dashboard URL is discovered.
+	///
+	/// WARNING: The Aspire browser token is included in the generated links when <see cref="IncludeAspireTokenInDashboardLinks"/> is <see langword="true"/>, which may pose a security risk if the generated diagram file is shared or stored in an insecure location/ source control. See the remarks on <see cref="IncludeAspireTokenInDashboardLinks"/> for details.
 	/// Requires <see cref="AutoIncludeAspireMetadata"/> to include <see cref="AspireMetadataInclusion.Links"/>.
 	/// Defaults to <see langword="true"/>.
 	/// </summary>
 	public bool IncludeAspireDashboardLinks { get; set; } = true;
+
+	/// <summary>
+	/// When <see langword="true"/>, includes the Aspire browser token in the dashboard links when
+	/// <see cref="IncludeAspireDashboardLinks"/> is <see langword="true"/>. Defaults to <see langword="false"/>.
+	/// </summary>
+	/// <remarks>
+	///	/// **THIS IS A POTENTIAL SECURITY RISK**
+	///
+	/// Only enable this if you understand the implications of exposing the browser token in the generated diagram file, which is typically served on a local development machine but may be accessible to other users or processes depending on your environment and file permissions. The token grants access to the Aspire dashboard with the same permissions as the browser session, so treat it with the same level of confidentiality as any other authentication credential.
+	///
+	/// If this is enabled, consider EXCLUDING the generated diagram file from source control and sharing it only over secure channels. If you are using the dashboard links for quick access during development, it's generally safer to keep this disabled and navigate to the dashboard manually to access the resource links, rather than embedding the token in the diagram.
+	///
+	/// This is only effective when <see cref="IncludeAspireDashboardLinks"/> is <see langword="true"/>.
+	/// </remarks>
+	public bool IncludeAspireTokenInDashboardLinks { get; set; }
 
 	/// <summary>
 	/// Maps each <see cref="LikeC4ResourceState"/> to the tag applied to the corresponding
