@@ -219,7 +219,7 @@ jobs:
           body: ${{ steps.changelog.outputs.body }}
           generate_release_notes: ${{ steps.changelog.outputs.body == '' }}
           prerelease: ${{ steps.version.outputs.prerelease }}
-          make_latest: ${{ steps.version.outputs.prerelease == 'false' }}
+          make_latest: ${{ steps.version.outputs.prerelease == 'false' && 'true' || 'legacy' }}
           fail_on_unmatched_files: true
           files: |
             ./artifacts/nuget/*.nupkg
