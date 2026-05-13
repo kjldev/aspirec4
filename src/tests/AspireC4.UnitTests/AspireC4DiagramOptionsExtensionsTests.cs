@@ -2,284 +2,442 @@ namespace Aspire.Hosting.AspireC4;
 
 public sealed class AspireC4DiagramOptionsExtensionsTests
 {
-	AspireC4DiagramOptions _options = null!;
-
-	[Before(Test)]
-	public void SetUp() => _options = new AspireC4DiagramOptions();
-
 	// ── Scalar setters ────────────────────────────────────────────────────────
 
 	[Test]
 	public async Task WithGeneratedViewId_SetsProperty_AndReturnsThis()
 	{
-		var result = _options.WithGeneratedViewId("custom");
+		// Arrange
+		var sut = CreateSut();
 
-		await Assert.That(_options.GeneratedViewId).IsEqualTo("custom");
-		await Assert.That(result).IsSameReferenceAs(_options);
+		// Act
+		var result = sut.WithGeneratedViewId("custom");
+
+		// Assert
+		await Assert.That(sut.GeneratedViewId).IsEqualTo("custom");
+		await Assert.That(result).IsSameReferenceAs(sut);
 	}
 
 	[Test]
 	public async Task WithGeneratedViewId_AcceptsNull()
 	{
-		_options.GeneratedViewId = "something";
-		_options.WithGeneratedViewId(null);
+		// Arrange
+		var sut = CreateSut();
+		sut.GeneratedViewId = "something";
 
-		await Assert.That(_options.GeneratedViewId).IsNull();
+		// Act
+		sut.WithGeneratedViewId(null);
+
+		// Assert
+		await Assert.That(sut.GeneratedViewId).IsNull();
 	}
 
 	[Test]
 	public async Task WithDefaultViewId_SetsProperty_AndReturnsThis()
 	{
-		var result = _options.WithDefaultViewId("home");
+		// Arrange
+		var sut = CreateSut();
 
-		await Assert.That(_options.DefaultViewId).IsEqualTo("home");
-		await Assert.That(result).IsSameReferenceAs(_options);
+		// Act
+		var result = sut.WithDefaultViewId("home");
+
+		// Assert
+		await Assert.That(sut.DefaultViewId).IsEqualTo("home");
+		await Assert.That(result).IsSameReferenceAs(sut);
 	}
 
 	[Test]
 	public async Task WithDefaultViewId_AcceptsNull()
 	{
-		_options.WithDefaultViewId(null);
+		// Arrange
+		var sut = CreateSut();
 
-		await Assert.That(_options.DefaultViewId).IsNull();
+		// Act
+		sut.WithDefaultViewId(null);
+
+		// Assert
+		await Assert.That(sut.DefaultViewId).IsNull();
 	}
 
 	[Test]
 	public async Task WithTitle_SetsProperty_AndReturnsThis()
 	{
-		var result = _options.WithTitle("My Architecture");
+		// Arrange
+		var sut = CreateSut();
 
-		await Assert.That(_options.Title).IsEqualTo("My Architecture");
-		await Assert.That(result).IsSameReferenceAs(_options);
+		// Act
+		var result = sut.WithTitle("My Architecture");
+
+		// Assert
+		await Assert.That(sut.Title).IsEqualTo("My Architecture");
+		await Assert.That(result).IsSameReferenceAs(sut);
 	}
 
 	[Test]
-	public async Task WithTitle_ThrowsOnWhitespace() =>
-		await Assert.That(() => _options.WithTitle("   ")).Throws<ArgumentException>();
+	public async Task WithTitle_ThrowsOnWhitespace()
+	{
+		// Arrange
+		var sut = CreateSut();
+
+		// Act / Assert
+		await Assert.That(() => sut.WithTitle("   ")).Throws<ArgumentException>();
+	}
 
 	[Test]
 	public async Task WithOutputDirectory_SetsProperty_AndReturnsThis()
 	{
-		var result = _options.WithOutputDirectory("./out");
+		// Arrange
+		var sut = CreateSut();
 
-		await Assert.That(_options.OutputDirectory).IsEqualTo("./out");
-		await Assert.That(result).IsSameReferenceAs(_options);
+		// Act
+		var result = sut.WithOutputDirectory("./out");
+
+		// Assert
+		await Assert.That(sut.OutputDirectory).IsEqualTo("./out");
+		await Assert.That(result).IsSameReferenceAs(sut);
 	}
 
 	[Test]
-	public async Task WithOutputDirectory_ThrowsOnEmpty() =>
-		await Assert.That(() => _options.WithOutputDirectory("")).Throws<ArgumentException>();
+	public async Task WithOutputDirectory_ThrowsOnEmpty()
+	{
+		// Arrange
+		var sut = CreateSut();
+
+		// Act / Assert
+		await Assert.That(() => sut.WithOutputDirectory("")).Throws<ArgumentException>();
+	}
 
 	[Test]
 	public async Task WithFileName_SetsProperty_AndReturnsThis()
 	{
-		var result = _options.WithFileName("custom.gen");
+		// Arrange
+		var sut = CreateSut();
 
-		await Assert.That(_options.FileName).IsEqualTo("custom.gen");
-		await Assert.That(result).IsSameReferenceAs(_options);
+		// Act
+		var result = sut.WithFileName("custom.gen");
+
+		// Assert
+		await Assert.That(sut.FileName).IsEqualTo("custom.gen");
+		await Assert.That(result).IsSameReferenceAs(sut);
 	}
 
 	[Test]
 	public async Task WithHMRDisabled_SetsTrueByDefault()
 	{
-		var result = _options.WithHMRDisabled();
+		// Arrange
+		var sut = CreateSut();
 
-		await Assert.That(_options.DisableHMR).IsTrue();
-		await Assert.That(result).IsSameReferenceAs(_options);
+		// Act
+		var result = sut.WithHMRDisabled();
+
+		// Assert
+		await Assert.That(sut.DisableHMR).IsTrue();
+		await Assert.That(result).IsSameReferenceAs(sut);
 	}
 
 	[Test]
 	public async Task WithHMRDisabled_FalseReEnablesHMR()
 	{
-		_options.DisableHMR = true;
-		_options.WithHMRDisabled(false);
+		// Arrange
+		var sut = CreateSut();
+		sut.DisableHMR = true;
 
-		await Assert.That(_options.DisableHMR).IsFalse();
+		// Act
+		sut.WithHMRDisabled(false);
+
+		// Assert
+		await Assert.That(sut.DisableHMR).IsFalse();
 	}
 
 	[Test]
 	public async Task WithContainerImageTag_SetsProperty_AndReturnsThis()
 	{
-		var result = _options.WithContainerImageTag("1.56");
+		// Arrange
+		var sut = CreateSut();
 
-		await Assert.That(_options.ContainerImageTag).IsEqualTo("1.56");
-		await Assert.That(result).IsSameReferenceAs(_options);
+		// Act
+		var result = sut.WithContainerImageTag("1.56");
+
+		// Assert
+		await Assert.That(sut.ContainerImageTag).IsEqualTo("1.56");
+		await Assert.That(result).IsSameReferenceAs(sut);
 	}
 
 	[Test]
 	public async Task WithContainerImageTag_AcceptsNull()
 	{
-		_options.ContainerImageTag = "1.0";
-		_options.WithContainerImageTag(null);
+		// Arrange
+		var sut = CreateSut();
+		sut.ContainerImageTag = "1.0";
 
-		await Assert.That(_options.ContainerImageTag).IsNull();
+		// Act
+		sut.WithContainerImageTag(null);
+
+		// Assert
+		await Assert.That(sut.ContainerImageTag).IsNull();
 	}
 
 	[Test]
 	public async Task WithAutoIcons_EnablesTrueByDefault()
 	{
-		_options.AutoIconsEnabled = false;
-		var result = _options.WithAutoIcons();
+		// Arrange
+		var sut = CreateSut();
+		sut.AutoIconsEnabled = false;
 
-		await Assert.That(_options.AutoIconsEnabled).IsTrue();
-		await Assert.That(result).IsSameReferenceAs(_options);
+		// Act
+		var result = sut.WithAutoIcons();
+
+		// Assert
+		await Assert.That(sut.AutoIconsEnabled).IsTrue();
+		await Assert.That(result).IsSameReferenceAs(sut);
 	}
 
 	[Test]
 	public async Task WithAutoIcons_FalseDisablesAutoIcons()
 	{
-		_options.WithAutoIcons(false);
+		// Arrange
+		var sut = CreateSut();
 
-		await Assert.That(_options.AutoIconsEnabled).IsFalse();
+		// Act
+		sut.WithAutoIcons(false);
+
+		// Assert
+		await Assert.That(sut.AutoIconsEnabled).IsFalse();
 	}
 
 	[Test]
 	public async Task WithHideFromDashboard_SetsHideAndDisplayName()
 	{
-		var result = _options.WithHideFromDashboard("My Diagram");
+		// Arrange
+		var sut = CreateSut();
 
-		await Assert.That(_options.HideFromDashboard).IsTrue();
-		await Assert.That(_options.DashboardLinkDisplayName).IsEqualTo("My Diagram");
-		await Assert.That(result).IsSameReferenceAs(_options);
+		// Act
+		var result = sut.WithHideFromDashboard("My Diagram");
+
+		// Assert
+		await Assert.That(sut.HideFromDashboard).IsTrue();
+		await Assert.That(sut.DashboardLinkDisplayName).IsEqualTo("My Diagram");
+		await Assert.That(result).IsSameReferenceAs(sut);
 	}
 
 	[Test]
 	public async Task WithHideFromDashboard_UsesDefaultDisplayName()
 	{
-		_options.WithHideFromDashboard();
+		// Arrange
+		var sut = CreateSut();
 
-		await Assert.That(_options.HideFromDashboard).IsTrue();
-		await Assert.That(_options.DashboardLinkDisplayName).IsEqualTo("Architecture Diagram");
+		// Act
+		sut.WithHideFromDashboard();
+
+		// Assert
+		await Assert.That(sut.HideFromDashboard).IsTrue();
+		await Assert.That(sut.DashboardLinkDisplayName).IsEqualTo("Architecture Diagram");
 	}
 
 	[Test]
-	public async Task WithHideFromDashboard_ThrowsOnWhitespaceDisplayName() =>
-		await Assert.That(() => _options.WithHideFromDashboard("  ")).Throws<ArgumentException>();
+	public async Task WithHideFromDashboard_ThrowsOnWhitespaceDisplayName()
+	{
+		// Arrange
+		var sut = CreateSut();
+
+		// Act / Assert
+		await Assert.That(() => sut.WithHideFromDashboard("  ")).Throws<ArgumentException>();
+	}
 
 	[Test]
 	public async Task WithRelationshipKindSyntax_SetsProperty_AndReturnsThis()
 	{
-		var result = _options.WithRelationshipKindSyntax(LikeC4RelationshipKindSyntax.Bracket);
+		// Arrange
+		var sut = CreateSut();
 
-		await Assert.That(_options.RelationshipKindSyntax).IsEqualTo(LikeC4RelationshipKindSyntax.Bracket);
-		await Assert.That(result).IsSameReferenceAs(_options);
+		// Act
+		var result = sut.WithRelationshipKindSyntax(LikeC4RelationshipKindSyntax.Bracket);
+
+		// Assert
+		await Assert.That(sut.RelationshipKindSyntax).IsEqualTo(LikeC4RelationshipKindSyntax.Bracket);
+		await Assert.That(result).IsSameReferenceAs(sut);
 	}
 
 	[Test]
 	public async Task WithFormatGeneratedFile_SetsTrueByDefault()
 	{
-		_options.FormatGeneratedFile = false;
-		var result = _options.WithFormatGeneratedFile();
+		// Arrange
+		var sut = CreateSut();
+		sut.FormatGeneratedFile = false;
 
-		await Assert.That(_options.FormatGeneratedFile).IsTrue();
-		await Assert.That(result).IsSameReferenceAs(_options);
+		// Act
+		var result = sut.WithFormatGeneratedFile();
+
+		// Assert
+		await Assert.That(sut.FormatGeneratedFile).IsTrue();
+		await Assert.That(result).IsSameReferenceAs(sut);
 	}
 
 	[Test]
 	public async Task WithFormatGeneratedFile_FalseDisablesFormatting()
 	{
-		_options.WithFormatGeneratedFile(false);
+		// Arrange
+		var sut = CreateSut();
 
-		await Assert.That(_options.FormatGeneratedFile).IsFalse();
+		// Act
+		sut.WithFormatGeneratedFile(false);
+
+		// Assert
+		await Assert.That(sut.FormatGeneratedFile).IsFalse();
 	}
 
 	[Test]
 	public async Task WithValidateBeforeStart_SetsTrueByDefault()
 	{
-		var result = _options.WithValidateBeforeStart();
+		// Arrange
+		var sut = CreateSut();
 
-		await Assert.That(_options.ValidateBeforeStart).IsTrue();
-		await Assert.That(result).IsSameReferenceAs(_options);
+		// Act
+		var result = sut.WithValidateBeforeStart();
+
+		// Assert
+		await Assert.That(sut.ValidateBeforeStart).IsTrue();
+		await Assert.That(result).IsSameReferenceAs(sut);
 	}
 
 	[Test]
 	public async Task WithValidateBeforeStart_FalseDisablesValidation()
 	{
-		_options.ValidateBeforeStart = true;
-		_options.WithValidateBeforeStart(false);
+		// Arrange
+		var sut = CreateSut();
+		sut.ValidateBeforeStart = true;
 
-		await Assert.That(_options.ValidateBeforeStart).IsFalse();
+		// Act
+		sut.WithValidateBeforeStart(false);
+
+		// Assert
+		await Assert.That(sut.ValidateBeforeStart).IsFalse();
 	}
 
 	[Test]
 	public async Task WithAutoIncludeAspireMetadata_SetsProperty_AndReturnsThis()
 	{
-		var result = _options.WithAutoIncludeAspireMetadata(AspireMetadataInclusion.None);
+		// Arrange
+		var sut = CreateSut();
 
-		await Assert.That(_options.AutoIncludeAspireMetadata).IsEqualTo(AspireMetadataInclusion.None);
-		await Assert.That(result).IsSameReferenceAs(_options);
+		// Act
+		var result = sut.WithAutoIncludeAspireMetadata(AspireMetadataInclusion.None);
+
+		// Assert
+		await Assert.That(sut.AutoIncludeAspireMetadata).IsEqualTo(AspireMetadataInclusion.None);
+		await Assert.That(result).IsSameReferenceAs(sut);
 	}
 
 	[Test]
 	public async Task WithNormaliseMetadataBehaviour_SetsProperty_AndReturnsThis()
 	{
-		var result = _options.WithNormaliseMetadataBehaviour(NormaliseMetadataBehaviour.Throw);
+		// Arrange
+		var sut = CreateSut();
 
-		await Assert.That(_options.NormaliseMetadataBehaviour).IsEqualTo(NormaliseMetadataBehaviour.Throw);
-		await Assert.That(result).IsSameReferenceAs(_options);
+		// Act
+		var result = sut.WithNormaliseMetadataBehaviour(NormaliseMetadataBehaviour.Throw);
+
+		// Assert
+		await Assert.That(sut.NormaliseMetadataBehaviour).IsEqualTo(NormaliseMetadataBehaviour.Throw);
+		await Assert.That(result).IsSameReferenceAs(sut);
 	}
 
 	[Test]
 	public async Task WithoutConfigFileGeneration_SetsGenerateConfigFileFalse()
 	{
-		var result = _options.WithoutConfigFileGeneration();
+		// Arrange
+		var sut = CreateSut();
 
-		await Assert.That(_options.GenerateConfigFile).IsFalse();
-		await Assert.That(result).IsSameReferenceAs(_options);
+		// Act
+		var result = sut.WithoutConfigFileGeneration();
+
+		// Assert
+		await Assert.That(sut.GenerateConfigFile).IsFalse();
+		await Assert.That(result).IsSameReferenceAs(sut);
 	}
 
 	[Test]
 	public async Task WithAspireDashboardLinks_SetsTrueByDefault()
 	{
-		_options.IncludeAspireDashboardLinks = false;
-		var result = _options.WithAspireDashboardLinks();
+		// Arrange
+		var sut = CreateSut();
+		sut.IncludeAspireDashboardLinks = false;
 
-		await Assert.That(_options.IncludeAspireDashboardLinks).IsTrue();
-		await Assert.That(result).IsSameReferenceAs(_options);
+		// Act
+		var result = sut.WithAspireDashboardLinks();
+
+		// Assert
+		await Assert.That(sut.IncludeAspireDashboardLinks).IsTrue();
+		await Assert.That(result).IsSameReferenceAs(sut);
 	}
 
 	[Test]
 	public async Task WithAspireDashboardLinks_FalseDisablesLinks()
 	{
-		_options.WithAspireDashboardLinks(false);
+		// Arrange
+		var sut = CreateSut();
 
-		await Assert.That(_options.IncludeAspireDashboardLinks).IsFalse();
+		// Act
+		sut.WithAspireDashboardLinks(false);
+
+		// Assert
+		await Assert.That(sut.IncludeAspireDashboardLinks).IsFalse();
 	}
 
 	[Test]
 	public async Task WithAspireTokenInDashboardLinks_SetsTrueByDefault()
 	{
-		var result = _options.WithAspireTokenInDashboardLinks();
+		// Arrange
+		var sut = CreateSut();
 
-		await Assert.That(_options.IncludeAspireTokenInDashboardLinks).IsTrue();
-		await Assert.That(result).IsSameReferenceAs(_options);
+		// Act
+		var result = sut.WithAspireTokenInDashboardLinks();
+
+		// Assert
+		await Assert.That(sut.IncludeAspireTokenInDashboardLinks).IsTrue();
+		await Assert.That(result).IsSameReferenceAs(sut);
 	}
 
 	[Test]
 	public async Task WithAspireTokenInDashboardLinks_FalseDisablesToken()
 	{
-		_options.IncludeAspireTokenInDashboardLinks = true;
-		_options.WithAspireTokenInDashboardLinks(false);
+		// Arrange
+		var sut = CreateSut();
+		sut.IncludeAspireTokenInDashboardLinks = true;
 
-		await Assert.That(_options.IncludeAspireTokenInDashboardLinks).IsFalse();
+		// Act
+		sut.WithAspireTokenInDashboardLinks(false);
+
+		// Assert
+		await Assert.That(sut.IncludeAspireTokenInDashboardLinks).IsFalse();
 	}
 
 	[Test]
 	public async Task WithDefaultStateStyles_SetsTrueByDefault()
 	{
-		_options.IncludeDefaultStateStyles = false;
-		var result = _options.WithDefaultStateStyles();
+		// Arrange
+		var sut = CreateSut();
+		sut.IncludeDefaultStateStyles = false;
 
-		await Assert.That(_options.IncludeDefaultStateStyles).IsTrue();
-		await Assert.That(result).IsSameReferenceAs(_options);
+		// Act
+		var result = sut.WithDefaultStateStyles();
+
+		// Assert
+		await Assert.That(sut.IncludeDefaultStateStyles).IsTrue();
+		await Assert.That(result).IsSameReferenceAs(sut);
 	}
 
 	[Test]
 	public async Task WithDefaultStateStyles_FalseDisablesStyles()
 	{
-		_options.WithDefaultStateStyles(false);
+		// Arrange
+		var sut = CreateSut();
 
-		await Assert.That(_options.IncludeDefaultStateStyles).IsFalse();
+		// Act
+		sut.WithDefaultStateStyles(false);
+
+		// Assert
+		await Assert.That(sut.IncludeDefaultStateStyles).IsFalse();
 	}
 
 	// ── Collection mutators ───────────────────────────────────────────────────
@@ -287,74 +445,118 @@ public sealed class AspireC4DiagramOptionsExtensionsTests
 	[Test]
 	public async Task WithElementKindSpec_AddsToCollection_AndReturnsThis()
 	{
+		// Arrange
+		var sut = CreateSut();
 		var spec = new LikeC4ElementKindSpec("queue");
-		var result = _options.WithElementKindSpec(spec);
 
-		await Assert.That(_options.ElementKindSpecs).Contains(spec);
-		await Assert.That(result).IsSameReferenceAs(_options);
+		// Act
+		var result = sut.WithElementKindSpec(spec);
+
+		// Assert
+		await Assert.That(sut.ElementKindSpecs).Contains(spec);
+		await Assert.That(result).IsSameReferenceAs(sut);
 	}
 
 	[Test]
-	public async Task WithElementKindSpec_Null_Throws() =>
-		await Assert.That(() => _options.WithElementKindSpec(null!)).Throws<ArgumentNullException>();
+	public async Task WithElementKindSpec_Null_Throws()
+	{
+		// Arrange
+		var sut = CreateSut();
+
+		// Act / Assert
+		await Assert.That(() => sut.WithElementKindSpec(null!)).Throws<ArgumentNullException>();
+	}
 
 	[Test]
 	public async Task WithElementKindSpec_MultipleCallsAccumulateSpecs()
 	{
+		// Arrange
+		var sut = CreateSut();
 		var s1 = new LikeC4ElementKindSpec("queue");
 		var s2 = new LikeC4ElementKindSpec("topic");
 
-		_options.WithElementKindSpec(s1).WithElementKindSpec(s2);
+		// Act
+		sut.WithElementKindSpec(s1).WithElementKindSpec(s2);
 
-		await Assert.That(_options.ElementKindSpecs.Count).IsEqualTo(2);
+		// Assert
+		await Assert.That(sut.ElementKindSpecs.Count).IsEqualTo(2);
 	}
 
 	[Test]
 	public async Task WithStateTag_UpdatesMapEntry_AndReturnsThis()
 	{
-		var result = _options.WithStateTag(LikeC4ResourceState.Running, "my-running");
+		// Arrange
+		var sut = CreateSut();
 
-		await Assert.That(_options.StateTagMap[LikeC4ResourceState.Running]).IsEqualTo("my-running");
-		await Assert.That(result).IsSameReferenceAs(_options);
+		// Act
+		var result = sut.WithStateTag(LikeC4ResourceState.Running, "my-running");
+
+		// Assert
+		await Assert.That(sut.StateTagMap[LikeC4ResourceState.Running]).IsEqualTo("my-running");
+		await Assert.That(result).IsSameReferenceAs(sut);
 	}
 
 	[Test]
 	public async Task WithStateTag_NullTagSuppressesTagForState()
 	{
-		_options.WithStateTag(LikeC4ResourceState.Running, null);
+		// Arrange
+		var sut = CreateSut();
 
-		await Assert.That(_options.StateTagMap[LikeC4ResourceState.Running]).IsNull();
+		// Act
+		sut.WithStateTag(LikeC4ResourceState.Running, null);
+
+		// Assert
+		await Assert.That(sut.StateTagMap[LikeC4ResourceState.Running]).IsNull();
 	}
 
 	[Test]
 	public async Task WithIconResolver_AddsToCollection_AndReturnsThis()
 	{
+		// Arrange
+		var sut = CreateSut();
 		static string? Resolver(LikeC4IconResolverContext _) => "tech:dotnet";
-		var result = _options.WithIconResolver(Resolver);
 
-		await Assert.That(_options.IconResolvers).Contains(Resolver);
-		await Assert.That(result).IsSameReferenceAs(_options);
+		// Act
+		var result = sut.WithIconResolver(Resolver);
+
+		// Assert
+		await Assert.That(sut.IconResolvers).Contains(Resolver);
+		await Assert.That(result).IsSameReferenceAs(sut);
 	}
 
 	[Test]
-	public async Task WithIconResolver_Null_Throws() =>
-		await Assert.That(() => _options.WithIconResolver(null!)).Throws<ArgumentNullException>();
+	public async Task WithIconResolver_Null_Throws()
+	{
+		// Arrange
+		var sut = CreateSut();
+
+		// Act / Assert
+		await Assert.That(() => sut.WithIconResolver(null!)).Throws<ArgumentNullException>();
+	}
 
 	[Test]
 	public async Task WithIconResolver_MultipleCallsAccumulateResolvers()
 	{
-		_options.WithIconResolver(_ => "tech:dotnet").WithIconResolver(_ => null);
+		// Arrange
+		var sut = CreateSut();
 
-		await Assert.That(_options.IconResolvers.Count).IsEqualTo(2);
+		// Act
+		sut.WithIconResolver(_ => "tech:dotnet").WithIconResolver(_ => null);
+
+		// Assert
+		await Assert.That(sut.IconResolvers.Count).IsEqualTo(2);
 	}
 
 	// ── Chaining ──────────────────────────────────────────────────────────────
 
 	[Test]
-	public async Task FluentChain_AllMethodsReturnSameInstance()
+	public async Task FluentChain_WhenAllMethodsCalled_ReturnsSameInstance()
 	{
-		var result = _options
-			.WithTitle("Test App")
+		// Arrange
+		var sut = CreateSut();
+
+		// Act
+		var result = sut.WithTitle("Test App")
 			.WithOutputDirectory("./c4out")
 			.WithFileName("arch")
 			.WithGeneratedViewId("main")
@@ -375,26 +577,29 @@ public sealed class AspireC4DiagramOptionsExtensionsTests
 			.WithIconResolver(_ => "tech:dotnet")
 			.WithElementKindSpec(new LikeC4ElementKindSpec("cache"));
 
-		await Assert.That(result).IsSameReferenceAs(_options);
-		await Assert.That(_options.Title).IsEqualTo("Test App");
-		await Assert.That(_options.OutputDirectory).IsEqualTo("./c4out");
-		await Assert.That(_options.FileName).IsEqualTo("arch");
-		await Assert.That(_options.GeneratedViewId).IsEqualTo("main");
-		await Assert.That(_options.DefaultViewId).IsEqualTo("main");
-		await Assert.That(_options.DisableHMR).IsTrue();
-		await Assert.That(_options.ContainerImageTag).IsEqualTo("1.56");
-		await Assert.That(_options.AutoIconsEnabled).IsFalse();
-		await Assert.That(_options.RelationshipKindSyntax).IsEqualTo(LikeC4RelationshipKindSyntax.Bracket);
-		await Assert.That(_options.FormatGeneratedFile).IsFalse();
-		await Assert.That(_options.ValidateBeforeStart).IsTrue();
-		await Assert.That(_options.AutoIncludeAspireMetadata).IsEqualTo(AspireMetadataInclusion.None);
-		await Assert.That(_options.NormaliseMetadataBehaviour).IsEqualTo(NormaliseMetadataBehaviour.Throw);
-		await Assert.That(_options.GenerateConfigFile).IsFalse();
-		await Assert.That(_options.IncludeAspireDashboardLinks).IsFalse();
-		await Assert.That(_options.IncludeAspireTokenInDashboardLinks).IsFalse();
-		await Assert.That(_options.IncludeDefaultStateStyles).IsFalse();
-		await Assert.That(_options.StateTagMap[LikeC4ResourceState.Running]).IsEqualTo("live");
-		await Assert.That(_options.IconResolvers.Count).IsEqualTo(1);
-		await Assert.That(_options.ElementKindSpecs.Count).IsEqualTo(1);
+		// Assert
+		await Assert.That(result).IsSameReferenceAs(sut);
+		await Assert.That(sut.Title).IsEqualTo("Test App");
+		await Assert.That(sut.OutputDirectory).IsEqualTo("./c4out");
+		await Assert.That(sut.FileName).IsEqualTo("arch");
+		await Assert.That(sut.GeneratedViewId).IsEqualTo("main");
+		await Assert.That(sut.DefaultViewId).IsEqualTo("main");
+		await Assert.That(sut.DisableHMR).IsTrue();
+		await Assert.That(sut.ContainerImageTag).IsEqualTo("1.56");
+		await Assert.That(sut.AutoIconsEnabled).IsFalse();
+		await Assert.That(sut.RelationshipKindSyntax).IsEqualTo(LikeC4RelationshipKindSyntax.Bracket);
+		await Assert.That(sut.FormatGeneratedFile).IsFalse();
+		await Assert.That(sut.ValidateBeforeStart).IsTrue();
+		await Assert.That(sut.AutoIncludeAspireMetadata).IsEqualTo(AspireMetadataInclusion.None);
+		await Assert.That(sut.NormaliseMetadataBehaviour).IsEqualTo(NormaliseMetadataBehaviour.Throw);
+		await Assert.That(sut.GenerateConfigFile).IsFalse();
+		await Assert.That(sut.IncludeAspireDashboardLinks).IsFalse();
+		await Assert.That(sut.IncludeAspireTokenInDashboardLinks).IsFalse();
+		await Assert.That(sut.IncludeDefaultStateStyles).IsFalse();
+		await Assert.That(sut.StateTagMap[LikeC4ResourceState.Running]).IsEqualTo("live");
+		await Assert.That(sut.IconResolvers.Count).IsEqualTo(1);
+		await Assert.That(sut.ElementKindSpecs.Count).IsEqualTo(1);
 	}
+
+	private static AspireC4DiagramOptions CreateSut() => new();
 }

@@ -5,8 +5,12 @@ public sealed class LikeC4NodeDetailsAnnotationTests
 	[Test]
 	public async Task Constructor_WithLabel_SetsLabel()
 	{
-		var annotation = new LikeC4NodeDetailsAnnotation("My Service");
+		// Arrange
 
+		// Act
+		var annotation = CreateAnnotation("My Service");
+
+		// Assert
 		await Assert.That(annotation.Label).IsEqualTo("My Service");
 		await Assert.That(annotation.Technology).IsNull();
 		await Assert.That(annotation.Description).IsNull();
@@ -14,58 +18,134 @@ public sealed class LikeC4NodeDetailsAnnotationTests
 	}
 
 	[Test]
-	public async Task FluentMethods_SetConfiguredValues()
+	public async Task WithTechnology_WhenCalled_SetsTechnology()
 	{
-		var annotation = new LikeC4NodeDetailsAnnotation("My Service")
-			.WithTechnology("ASP.NET Core")
-			.WithDescription("A web service")
-			.WithSummary("A summary")
-			.WithIcon("tech:dotnet")
-			.WithAutoIcon(false)
-			.WithKind("service");
+		// Arrange
+		var annotation = CreateAnnotation();
 
-		await Assert.That(annotation.Label).IsEqualTo("My Service");
+		// Act
+		annotation.WithTechnology("ASP.NET Core");
+
+		// Assert
 		await Assert.That(annotation.Technology).IsEqualTo("ASP.NET Core");
+	}
+
+	[Test]
+	public async Task WithDescription_WhenCalled_SetsDescription()
+	{
+		// Arrange
+		var annotation = CreateAnnotation();
+
+		// Act
+		annotation.WithDescription("A web service");
+
+		// Assert
 		await Assert.That(annotation.Description).IsEqualTo("A web service");
+	}
+
+	[Test]
+	public async Task WithSummary_WhenCalled_SetsSummary()
+	{
+		// Arrange
+		var annotation = CreateAnnotation();
+
+		// Act
+		annotation.WithSummary("A summary");
+
+		// Assert
 		await Assert.That(annotation.Summary).IsEqualTo("A summary");
+	}
+
+	[Test]
+	public async Task WithIcon_WhenCalled_SetsIcon()
+	{
+		// Arrange
+		var annotation = CreateAnnotation();
+
+		// Act
+		annotation.WithIcon("tech:dotnet");
+
+		// Assert
 		await Assert.That(annotation.Icon).IsEqualTo("tech:dotnet");
+	}
+
+	[Test]
+	public async Task WithAutoIcon_WhenCalledWithFalse_SetsAutoIconEnabledFalse()
+	{
+		// Arrange
+		var annotation = CreateAnnotation();
+
+		// Act
+		annotation.WithAutoIcon(false);
+
+		// Assert
 		await Assert.That(annotation.AutoIconEnabled).IsFalse();
+	}
+
+	[Test]
+	public async Task WithKind_WhenCalled_SetsKind()
+	{
+		// Arrange
+		var annotation = CreateAnnotation();
+
+		// Act
+		annotation.WithKind("service");
+
+		// Assert
 		await Assert.That(annotation.Kind).IsEqualTo("service");
 	}
 
 	[Test]
 	public async Task WithLabel_UpdatesLabel()
 	{
-		var annotation = new LikeC4NodeDetailsAnnotation("original").WithLabel("updated");
+		// Arrange
+		var annotation = CreateAnnotation("original");
 
+		// Act
+		annotation.WithLabel("updated");
+
+		// Assert
 		await Assert.That(annotation.Label).IsEqualTo("updated");
 	}
 
 	[Test]
 	public async Task Constructor_WithEmptyLabel_Throws()
 	{
+		// Arrange
+
+		// Act / Assert
 		await Assert.That(() => new LikeC4NodeDetailsAnnotation("")).Throws<ArgumentException>();
 	}
 
 	[Test]
 	public async Task Constructor_WithWhiteSpaceLabel_Throws()
 	{
+		// Arrange
+
+		// Act / Assert
 		await Assert.That(() => new LikeC4NodeDetailsAnnotation("   ")).Throws<ArgumentException>();
 	}
 
 	[Test]
 	public async Task WithIcon_WithWhiteSpace_Throws()
 	{
-		await Assert
-			.That(() => new LikeC4NodeDetailsAnnotation("My Service").WithIcon("   "))
-			.Throws<ArgumentException>();
+		// Arrange
+		var annotation = CreateAnnotation();
+
+		// Act / Assert
+		await Assert.That(() => annotation.WithIcon("   ")).Throws<ArgumentException>();
 	}
 
 	[Test]
 	public async Task WithTag_WithHashPrefix_NormalizesTag()
 	{
-		var annotation = new LikeC4NodeDetailsAnnotation("My Service").WithTag("#external");
+		// Arrange
+		var annotation = CreateAnnotation();
 
+		// Act
+		annotation.WithTag("#external");
+
+		// Assert
 		await Assert.That(annotation.Tags).Contains("external");
 		await Assert.That(annotation.Tags).DoesNotContain("#external");
 	}
@@ -73,41 +153,25 @@ public sealed class LikeC4NodeDetailsAnnotationTests
 	[Test]
 	public async Task WithTag_WithHashAndNonHashVersionsOfSameTag_BothNormalized()
 	{
-		var annotation = new LikeC4NodeDetailsAnnotation("My Service").WithTag("#external").WithTag("external");
+		// Arrange
+		var annotation = CreateAnnotation();
 
-		// Both normalise to "external" — neither entry should carry the '#' prefix.
+		// Act
+		annotation.WithTag("#external").WithTag("external");
+
+		// Assert
 		await Assert.That(annotation.Tags.All(t => !t.StartsWith('#'))).IsTrue();
 	}
 
 	[Test]
 	public async Task WithTag_WithHashOnly_Throws()
 	{
-		await Assert.That(() => new LikeC4NodeDetailsAnnotation("My Service").WithTag("#")).Throws<ArgumentException>();
+		// Arrange
+		var annotation = CreateAnnotation();
+
+		// Act / Assert
+		await Assert.That(() => annotation.WithTag("#")).Throws<ArgumentException>();
 	}
 
-	[Test]
-	public async Task DiagramOptions_DefaultsToAutoIconsEnabled()
-	{
-		var options = new AspireC4DiagramOptions();
-
-		await Assert.That(options.AutoIconsEnabled).IsTrue();
-	}
-
-	[Test]
-	public async Task WithLikeC4Details_ActionOverload_ConfiguresAnnotation()
-	{
-		var appBuilder = DistributedApplication.CreateBuilder([]);
-		var resourceBuilder = appBuilder.AddExecutable("worker", "dotnet", ".");
-
-		resourceBuilder.WithLikeC4Details(a =>
-			a.WithTechnology(".NET").WithDescription("Background job").WithAutoIcon(false)
-		);
-
-		var annotation = resourceBuilder.Resource.Annotations.OfType<LikeC4NodeDetailsAnnotation>().Last();
-
-		await Assert.That(annotation.Label).IsEqualTo("worker");
-		await Assert.That(annotation.Technology).IsEqualTo(".NET");
-		await Assert.That(annotation.Description).IsEqualTo("Background job");
-		await Assert.That(annotation.AutoIconEnabled).IsFalse();
-	}
+	private static LikeC4NodeDetailsAnnotation CreateAnnotation(string label = "My Service") => new(label);
 }

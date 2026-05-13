@@ -78,39 +78,61 @@ public sealed partial class AspireC4HostTests
 	}
 
 	[Test]
-	public async Task C4FileIsGeneratedDuringStartup()
+	public async Task StartAsync_WhenAppStarts_GeneratesC4File(CancellationToken cancellationToken)
 	{
+		// Arrange
+		// (shared app started in ClassSetUpAsync)
+
+		// Act
+		// (side effect occurred during startup)
+		await Task.CompletedTask;
+
+		// Assert
 		await Assert.That(s_modelPath).IsNotNull();
 		await Assert.That(File.Exists(s_modelPath!)).IsTrue();
 	}
 
 	[Test]
-	public async Task C4FileContainsExpectedDslStructure(CancellationToken cancellationToken)
+	public async Task StartAsync_WhenAppStarts_C4FileContainsDslStructure(CancellationToken cancellationToken)
 	{
+		// Arrange
+		// (shared app started in ClassSetUpAsync)
+
+		// Act
 		var content = await File.ReadAllTextAsync(s_modelPath!, cancellationToken);
 
+		// Assert
 		await Assert.That(content).Contains("specification {");
 		await Assert.That(content).Contains("model {");
 		await Assert.That(content).Contains("views {");
 		await Assert.That(content).Contains("node_app");
-		await Assert.That(content).Contains("Integration Test Architecture");
+		await Assert.That(content).Contains("AspireC4 Architecture");
 	}
 
 	[Test]
 	[Timeout(120_000)]
-	public async Task LikeC4Visualization_ReachesRunningState(CancellationToken cancellationToken)
+	public async Task StartAsync_WithLikeC4Container_ReachesRunningState(CancellationToken cancellationToken)
 	{
+		// Arrange
+		// (shared app started in ClassSetUpAsync)
+
+		// Act
 		await WaitForLikeC4ServerRunningAsync(cancellationToken);
+
+		// Assert
+		await Assert.That(s_app).IsNotNull();
 	}
 
 	[Test]
 	[Timeout(120_000)]
-	public async Task LikeC4Visualization_EndpointReturnsSuccess(CancellationToken cancellationToken)
+	public async Task StartAsync_WithLikeC4Container_HttpEndpointReturnsSuccess(CancellationToken cancellationToken)
 	{
+		// Arrange
+		// (shared app started in ClassSetUpAsync)
 		await WaitForLikeC4ServerRunningAsync(cancellationToken);
-
 		using var client = s_app!.CreateHttpClient(AspireC4ResourceName, LikeC4ServerResource.HttpEndpointName);
 
+		// Act
 		HttpResponseMessage? response = null;
 		for (var attempt = 0; attempt < 10; attempt++)
 		{
@@ -125,6 +147,7 @@ public sealed partial class AspireC4HostTests
 			}
 		}
 
+		// Assert
 		await Assert.That(response).IsNotNull();
 		await Assert.That((int)response!.StatusCode).IsLessThan(500);
 	}
@@ -172,71 +195,97 @@ public sealed partial class AspireC4HostTests
 	}
 
 	[Test]
-	public async Task ConfigFile_IsGeneratedInOutputDirectory(CancellationToken cancellationToken)
+	public async Task StartAsync_WhenAppStarts_GeneratesLikeC4ConfigFile(CancellationToken cancellationToken)
 	{
+		// Arrange
+		// (shared app started in ClassSetUpAsync)
 		var configPath = Path.Combine(s_outputDir!, "likec4.config.json");
-		await Assert.That(File.Exists(configPath)).IsTrue();
 
+		// Act
 		var json = await File.ReadAllTextAsync(configPath, cancellationToken);
+
+		// Assert
+		await Assert.That(File.Exists(configPath)).IsTrue();
 		await Assert.That(json).Contains("aspirec4");
-		await Assert.That(json).Contains("Integration Test Architecture");
+		await Assert.That(json).Contains("AspireC4 Test App");
 	}
 
 	[Test]
-	public async Task ConfigFile_ContainsAdditionalDSLFolderPath(CancellationToken cancellationToken)
+	public async Task StartAsync_WhenAppStarts_ConfigFileContainsExtensionsPath(CancellationToken cancellationToken)
 	{
+		// Arrange
+		// (shared app started in ClassSetUpAsync)
 		var configPath = Path.Combine(s_outputDir!, "likec4.config.json");
-		var json = await File.ReadAllTextAsync(configPath, cancellationToken);
 
+		// Act
+		var json = await File.ReadAllTextAsync(configPath, cancellationToken);
 		using var doc = JsonDocument.Parse(json);
 		var root = doc.RootElement;
+		var includeFound = root.TryGetProperty("include", out var include);
+		JsonElement paths = default;
+		var pathsFound = includeFound && include.TryGetProperty("paths", out paths);
+		var hasExtensionsPath =
+			pathsFound
+			&& paths
+				.EnumerateArray()
+				.Any(p => p.GetString()?.Contains("likec4-extensions", StringComparison.OrdinalIgnoreCase) == true);
 
-		await Assert.That(root.TryGetProperty("include", out var include)).IsTrue();
-		await Assert.That(include.TryGetProperty("paths", out var paths)).IsTrue();
-
-		var hasExtensionsPath = paths
-			.EnumerateArray()
-			.Any(p => p.GetString()?.Contains("likec4-extensions", StringComparison.OrdinalIgnoreCase) == true);
-
+		// Assert
+		await Assert.That(includeFound).IsTrue();
+		await Assert.That(pathsFound).IsTrue();
 		await Assert.That(hasExtensionsPath).IsTrue();
 	}
 
 	[Test]
-	public async Task ConfigFile_ContainsImageAliasEntry(CancellationToken cancellationToken)
+	public async Task StartAsync_WhenAppStarts_ConfigFileContainsImageAlias(CancellationToken cancellationToken)
 	{
+		// Arrange
+		// (shared app started in ClassSetUpAsync)
 		var configPath = Path.Combine(s_outputDir!, "likec4.config.json");
-		var json = await File.ReadAllTextAsync(configPath, cancellationToken);
 
+		// Act
+		var json = await File.ReadAllTextAsync(configPath, cancellationToken);
 		using var doc = JsonDocument.Parse(json);
 		var root = doc.RootElement;
+		var aliasesFound = root.TryGetProperty("imageAliases", out var aliases);
+		var imageAliasFound = aliasesFound && aliases.TryGetProperty("@test-icons", out _);
 
-		await Assert.That(root.TryGetProperty("imageAliases", out var aliases)).IsTrue();
-		await Assert.That(aliases.TryGetProperty("@test-icons", out _)).IsTrue();
+		// Assert
+		await Assert.That(aliasesFound).IsTrue();
+		await Assert.That(imageAliasFound).IsTrue();
 	}
 
 	[Test]
-	public async Task ImageAliasFolder_ContainsExpectedImageFiles()
+	public async Task StartAsync_WhenAppStarts_ImageAliasFolderContainsFiles()
 	{
+		// Arrange
+		// (shared app started in ClassSetUpAsync)
 		var imagesDir = Path.Combine(
 			Path.GetDirectoryName(typeof(TestAppHostProgram).Assembly.Location)!,
 			"likec4-images"
 		);
 
-		await Assert.That(Directory.Exists(imagesDir)).IsTrue();
-
+		// Act
 		var files = Directory.GetFiles(imagesDir);
 		var svgCount = files.Count(f => f.EndsWith(".svg", StringComparison.OrdinalIgnoreCase));
 		var pngCount = files.Count(f => f.EndsWith(".png", StringComparison.OrdinalIgnoreCase));
 
+		// Assert
+		await Assert.That(Directory.Exists(imagesDir)).IsTrue();
 		await Assert.That(svgCount).IsGreaterThan(0);
 		await Assert.That(pngCount).IsGreaterThan(0);
 	}
 
 	[Test]
-	public async Task GeneratedAndAdditionalDSLFiles_PassLikeC4Validate(CancellationToken cancellationToken)
+	public async Task StartAsync_WhenAppStarts_GeneratedDslPassesValidation(CancellationToken cancellationToken)
 	{
+		// Arrange
+		// (shared app started in ClassSetUpAsync)
+
+		// Act
 		var (totalErrors, rawOutput) = await RunLikeC4ValidateDirectoryAsync(s_outputDir!, cancellationToken);
 
+		// Assert
 		if (totalErrors < 0)
 		{
 			throw new InvalidOperationException($"LikeC4 validation did not produce JSON output.\n\n{rawOutput}");

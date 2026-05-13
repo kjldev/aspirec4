@@ -700,9 +700,10 @@ sealed class AspireC4LifecycleHook(
 			if (process.ExitCode == 0)
 				telemetry.LikeC4FormatApplied();
 		}
-		catch
+		catch (Exception ex)
 		{
 			// Formatting is best-effort; never block startup or regeneration.
+			telemetry.FailedToRunFormatter(ex);
 		}
 	}
 

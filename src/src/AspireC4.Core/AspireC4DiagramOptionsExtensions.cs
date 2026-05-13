@@ -54,6 +54,8 @@ public static class AspireC4DiagramOptionsExtensions
 	public static AspireC4DiagramOptions WithTitle(this AspireC4DiagramOptions options, string? title)
 	{
 		ArgumentNullException.ThrowIfNull(options);
+		if (title is not null)
+			ArgumentException.ThrowIfNullOrWhiteSpace(title);
 		options.Title = title;
 		return options;
 	}

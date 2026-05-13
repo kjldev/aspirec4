@@ -11,12 +11,15 @@ public sealed class LikeC4RelationshipDetailsAnnotationTests
 	[Test]
 	public async Task WithLikeC4Reference_IResourceWithEnvironment_AddsLikeC4AnnotationWithTargetName()
 	{
-		var appBuilder = DistributedApplication.CreateBuilder([]);
+		// Arrange
+		var appBuilder = CreateAppBuilder();
 		var api = appBuilder.AddExecutable("api", "dotnet", ".");
 		var db = appBuilder.AddResource(new TestConnectionStringResource("db"));
 
+		// Act
 		api.WithLikeC4Reference(db, configure: null, optional: false);
 
+		// Assert
 		var annotation = api.Resource.Annotations.OfType<LikeC4RelationshipDetailsAnnotation>().SingleOrDefault();
 		await Assert.That(annotation).IsNotNull();
 		await Assert.That(annotation!.TargetName).IsEqualTo("db");
@@ -25,13 +28,16 @@ public sealed class LikeC4RelationshipDetailsAnnotationTests
 	[Test]
 	public async Task WithLikeC4Reference_IResourceWithEnvironment_AlsoAddsAspireWithReference()
 	{
+		// Arrange
 		// Passing optional: false forces the IResourceWithEnvironment overload which calls WithReference.
-		var appBuilder = DistributedApplication.CreateBuilder([]);
+		var appBuilder = CreateAppBuilder();
 		var api = appBuilder.AddExecutable("api", "dotnet", ".");
 		var db = appBuilder.AddResource(new TestConnectionStringResource("db"));
 
+		// Act
 		api.WithLikeC4Reference(db, configure: null, optional: false);
 
+		// Assert
 		var hasEnvCallback = api.Resource.Annotations.OfType<EnvironmentCallbackAnnotation>().Any();
 		await Assert.That(hasEnvCallback).IsTrue();
 	}
@@ -39,12 +45,15 @@ public sealed class LikeC4RelationshipDetailsAnnotationTests
 	[Test]
 	public async Task WithLikeC4Reference_IResourceWithEnvironment_WithConfigure_PropagatesLabelAndKind()
 	{
-		var appBuilder = DistributedApplication.CreateBuilder([]);
+		// Arrange
+		var appBuilder = CreateAppBuilder();
 		var api = appBuilder.AddExecutable("api", "dotnet", ".");
 		var db = appBuilder.AddResource(new TestConnectionStringResource("db"));
 
+		// Act
 		api.WithLikeC4Reference(db, a => a.WithLabel("uses").WithKind("async"), optional: false);
 
+		// Assert
 		var annotation = api.Resource.Annotations.OfType<LikeC4RelationshipDetailsAnnotation>().Last();
 		await Assert.That(annotation.Label).IsEqualTo("uses");
 		await Assert.That(annotation.Kind).IsEqualTo("async");
@@ -53,24 +62,30 @@ public sealed class LikeC4RelationshipDetailsAnnotationTests
 	[Test]
 	public async Task WithLikeC4Reference_IResourceWithEnvironment_ReturnsOriginalBuilder()
 	{
-		var appBuilder = DistributedApplication.CreateBuilder([]);
+		// Arrange
+		var appBuilder = CreateAppBuilder();
 		var api = appBuilder.AddExecutable("api", "dotnet", ".");
 		var db = appBuilder.AddResource(new TestConnectionStringResource("db"));
 
+		// Act
 		var result = api.WithLikeC4Reference(db, configure: null, optional: false);
 
+		// Assert
 		await Assert.That(result).IsEqualTo(api);
 	}
 
 	[Test]
 	public async Task WithLikeC4Reference_IResourceWithEnvironment_WithNullConfigure_AnnotationHasNoExtraProperties()
 	{
-		var appBuilder = DistributedApplication.CreateBuilder([]);
+		// Arrange
+		var appBuilder = CreateAppBuilder();
 		var api = appBuilder.AddExecutable("api", "dotnet", ".");
 		var db = appBuilder.AddResource(new TestConnectionStringResource("db"));
 
+		// Act
 		api.WithLikeC4Reference(db, configure: null, optional: false);
 
+		// Assert
 		var annotation = api.Resource.Annotations.OfType<LikeC4RelationshipDetailsAnnotation>().Last();
 		await Assert.That(annotation.Label).IsNull();
 		await Assert.That(annotation.Kind).IsNull();
@@ -80,16 +95,18 @@ public sealed class LikeC4RelationshipDetailsAnnotationTests
 	[Test]
 	public async Task WithLikeC4Reference_IResourceWithEnvironment_BothAnnotationsAdded()
 	{
+		// Arrange
 		// Verifies the overload adds both the LikeC4 diagram annotation AND the Aspire runtime reference.
-		var appBuilder = DistributedApplication.CreateBuilder([]);
+		var appBuilder = CreateAppBuilder();
 		var api = appBuilder.AddExecutable("api", "dotnet", ".");
 		var db = appBuilder.AddResource(new TestConnectionStringResource("db"));
 
+		// Act
 		api.WithLikeC4Reference(db, a => a.WithLabel("stores data").WithTechnology("SQL"), optional: false);
 
+		// Assert
 		var likeC4Annotation = api.Resource.Annotations.OfType<LikeC4RelationshipDetailsAnnotation>().LastOrDefault();
 		var hasEnvCallback = api.Resource.Annotations.OfType<EnvironmentCallbackAnnotation>().Any();
-
 		await Assert.That(likeC4Annotation).IsNotNull();
 		await Assert.That(likeC4Annotation!.Label).IsEqualTo("stores data");
 		await Assert.That(likeC4Annotation.Technology).IsEqualTo("SQL");
@@ -102,37 +119,82 @@ public sealed class LikeC4RelationshipDetailsAnnotationTests
 	}
 
 	[Test]
-	public async Task FluentMethods_SetConfiguredValues()
+	public async Task WithLabel_WhenCalled_SetsLabel()
 	{
-		var annotation = new LikeC4RelationshipDetailsAnnotation("queue")
-			.WithLabel("calls")
-			.WithTechnology("gRPC")
-			.WithDescription("bidirectional streaming")
-			.WithKind("async");
+		// Arrange
+		var annotation = CreateAnnotation("queue");
 
+		// Act
+		annotation.WithLabel("calls");
+
+		// Assert
 		await Assert.That(annotation.Label).IsEqualTo("calls");
+	}
+
+	[Test]
+	public async Task WithTechnology_WhenCalled_SetsTechnology()
+	{
+		// Arrange
+		var annotation = CreateAnnotation("queue");
+
+		// Act
+		annotation.WithTechnology("gRPC");
+
+		// Assert
 		await Assert.That(annotation.Technology).IsEqualTo("gRPC");
+	}
+
+	[Test]
+	public async Task WithDescription_WhenCalled_SetsDescription()
+	{
+		// Arrange
+		var annotation = CreateAnnotation("queue");
+
+		// Act
+		annotation.WithDescription("bidirectional streaming");
+
+		// Assert
 		await Assert.That(annotation.Description).IsEqualTo("bidirectional streaming");
+	}
+
+	[Test]
+	public async Task WithKind_WhenCalled_SetsKind()
+	{
+		// Arrange
+		var annotation = CreateAnnotation("queue");
+
+		// Act
+		annotation.WithKind("async");
+
+		// Assert
 		await Assert.That(annotation.Kind).IsEqualTo("async");
 	}
 
 	[Test]
 	public async Task WithKind_SetToNull_KindIsNull()
 	{
-		var annotation = new LikeC4RelationshipDetailsAnnotation("target").WithKind(null);
+		// Arrange
+		var annotation = CreateAnnotation("target");
 
+		// Act
+		annotation.WithKind(null);
+
+		// Assert
 		await Assert.That(annotation.Kind).IsNull();
 	}
 
 	[Test]
 	public async Task WithLikeC4Reference_WithKind_PropagatesKindToAnnotation()
 	{
-		var appBuilder = DistributedApplication.CreateBuilder([]);
+		// Arrange
+		var appBuilder = CreateAppBuilder();
 		var api = appBuilder.AddExecutable("api", "dotnet", ".");
 		var queue = appBuilder.AddExecutable("queue", "node", ".");
 
+		// Act
 		api.WithLikeC4Reference(queue, a => a.WithKind("async"));
 
+		// Assert
 		var annotation = api.Resource.Annotations.OfType<LikeC4RelationshipDetailsAnnotation>().Last();
 		await Assert.That(annotation.Kind).IsEqualTo("async");
 	}
@@ -140,8 +202,13 @@ public sealed class LikeC4RelationshipDetailsAnnotationTests
 	[Test]
 	public async Task WithTag_WithHashPrefix_NormalizesTag()
 	{
-		var annotation = new LikeC4RelationshipDetailsAnnotation("target").WithTag("#internal");
+		// Arrange
+		var annotation = CreateAnnotation("target");
 
+		// Act
+		annotation.WithTag("#internal");
+
+		// Assert
 		await Assert.That(annotation.Tags).Contains("internal");
 		await Assert.That(annotation.Tags).DoesNotContain("#internal");
 	}
@@ -149,16 +216,27 @@ public sealed class LikeC4RelationshipDetailsAnnotationTests
 	[Test]
 	public async Task WithTag_WithOnlyHash_Throws()
 	{
-		await Assert
-			.That(() => new LikeC4RelationshipDetailsAnnotation("target").WithTag("#"))
-			.Throws<ArgumentException>();
+		// Arrange
+		var annotation = CreateAnnotation("target");
+
+		// Act / Assert
+		await Assert.That(() => annotation.WithTag("#")).Throws<ArgumentException>();
 	}
 
 	[Test]
 	public async Task WithNavigateTo_SetsNavigateTo()
 	{
-		var annotation = new LikeC4RelationshipDetailsAnnotation("target").WithNavigateTo("my-view");
+		// Arrange
+		var annotation = CreateAnnotation("target");
 
+		// Act
+		annotation.WithNavigateTo("my-view");
+
+		// Assert
 		await Assert.That(annotation.NavigateTo).IsEqualTo("my-view");
 	}
+
+	private static IDistributedApplicationBuilder CreateAppBuilder() => DistributedApplication.CreateBuilder([]);
+
+	private static LikeC4RelationshipDetailsAnnotation CreateAnnotation(string targetName) => new(targetName);
 }

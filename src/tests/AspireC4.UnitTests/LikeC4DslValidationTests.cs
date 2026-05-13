@@ -175,17 +175,23 @@ public sealed class LikeC4DSLValidationTests
 	// -------------------------------------------------------------------------
 
 	[Test]
-	public async Task ValidatedDsl_EmptyModel_ProducesNoErrors(CancellationToken cancellationToken)
+	public async Task Generate_EmptyModel_ProducesNoValidationErrors(CancellationToken cancellationToken)
 	{
+		// Arrange
+
+		// Act
 		var dsl = LikeC4DSLGenerator.Generate(LikeC4Model.Empty, DefaultOptions);
+
+		// Assert
 		var result = await RunValidateAsync(dsl, cancellationToken);
 		AssertNoValidationErrors(result, dsl);
 		await Assert.That(result.FilteredErrors).IsEqualTo(0);
 	}
 
 	[Test]
-	public async Task ValidatedDsl_SingleElement_ProducesNoErrors(CancellationToken cancellationToken)
+	public async Task Generate_SingleElement_ProducesNoValidationErrors(CancellationToken cancellationToken)
 	{
+		// Arrange
 		var model = new LikeC4Model
 		{
 			Elements =
@@ -200,7 +206,10 @@ public sealed class LikeC4DSLValidationTests
 			Relationships = [],
 		};
 
+		// Act
 		var dsl = LikeC4DSLGenerator.Generate(model, DefaultOptions);
+
+		// Assert
 		var result = await RunValidateAsync(dsl, cancellationToken);
 		AssertNoValidationErrors(result, dsl);
 		await Assert.That(result.FilteredErrors).IsEqualTo(0);
@@ -208,11 +217,12 @@ public sealed class LikeC4DSLValidationTests
 
 	[Test]
 	[MethodDataSource(nameof(AllResourceStates))]
-	public async Task ValidatedDsl_EachResourceState_ProducesNoErrors(
+	public async Task Generate_EachResourceState_ProducesNoValidationErrors(
 		LikeC4ResourceState state,
 		CancellationToken cancellationToken
 	)
 	{
+		// Arrange
 		var model = new LikeC4Model
 		{
 			Elements =
@@ -228,7 +238,10 @@ public sealed class LikeC4DSLValidationTests
 			Relationships = [],
 		};
 
+		// Act
 		var dsl = LikeC4DSLGenerator.Generate(model, DefaultOptions);
+
+		// Assert
 		var result = await RunValidateAsync(dsl, cancellationToken);
 		AssertNoValidationErrors(result, dsl);
 		await Assert.That(result.FilteredErrors).IsEqualTo(0);
@@ -237,8 +250,11 @@ public sealed class LikeC4DSLValidationTests
 	public static IEnumerable<LikeC4ResourceState> AllResourceStates() => Enum.GetValues<LikeC4ResourceState>();
 
 	[Test]
-	public async Task ValidatedDsl_ElementWithMetadataTagsLinks_ProducesNoErrors(CancellationToken cancellationToken)
+	public async Task Generate_ElementWithMetadataTagsLinks_ProducesNoValidationErrors(
+		CancellationToken cancellationToken
+	)
 	{
+		// Arrange
 		var model = new LikeC4Model
 		{
 			Elements =
@@ -258,15 +274,21 @@ public sealed class LikeC4DSLValidationTests
 			Relationships = [],
 		};
 
+		// Act
 		var dsl = LikeC4DSLGenerator.Generate(model, DefaultOptions);
+
+		// Assert
 		var result = await RunValidateAsync(dsl, cancellationToken);
 		AssertNoValidationErrors(result, dsl);
 		await Assert.That(result.FilteredErrors).IsEqualTo(0);
 	}
 
 	[Test]
-	public async Task ValidatedDsl_RelationshipWithKindAndLabel_ProducesNoErrors(CancellationToken cancellationToken)
+	public async Task Generate_RelationshipWithKindAndLabel_ProducesNoValidationErrors(
+		CancellationToken cancellationToken
+	)
 	{
+		// Arrange
 		var model = new LikeC4Model
 		{
 			Elements =
@@ -296,15 +318,19 @@ public sealed class LikeC4DSLValidationTests
 			],
 		};
 
+		// Act
 		var dsl = LikeC4DSLGenerator.Generate(model, DefaultOptions);
+
+		// Assert
 		var result = await RunValidateAsync(dsl, cancellationToken);
 		AssertNoValidationErrors(result, dsl);
 		await Assert.That(result.FilteredErrors).IsEqualTo(0);
 	}
 
 	[Test]
-	public async Task ValidatedDsl_NestedElements_ProducesNoErrors(CancellationToken cancellationToken)
+	public async Task Generate_NestedElements_ProducesNoValidationErrors(CancellationToken cancellationToken)
 	{
+		// Arrange
 		var model = new LikeC4Model
 		{
 			Elements =
@@ -341,17 +367,21 @@ public sealed class LikeC4DSLValidationTests
 			],
 		};
 
+		// Act
 		var dsl = LikeC4DSLGenerator.Generate(model, DefaultOptions);
+
+		// Assert
 		var result = await RunValidateAsync(dsl, cancellationToken);
 		AssertNoValidationErrors(result, dsl);
 		await Assert.That(result.FilteredErrors).IsEqualTo(0);
 	}
 
 	[Test]
-	public async Task ValidatedDsl_ElementKindSpecWithStyleAndNotation_ProducesNoErrors(
+	public async Task Generate_ElementKindSpecWithStyleAndNotation_ProducesNoValidationErrors(
 		CancellationToken cancellationToken
 	)
 	{
+		// Arrange
 		var options = new AspireC4DiagramOptions
 		{
 			Title = "Styled Architecture",
@@ -367,7 +397,6 @@ public sealed class LikeC4DSLValidationTests
 				},
 			],
 		};
-
 		var model = new LikeC4Model
 		{
 			Elements =
@@ -382,17 +411,21 @@ public sealed class LikeC4DSLValidationTests
 			Relationships = [],
 		};
 
+		// Act
 		var dsl = LikeC4DSLGenerator.Generate(model, options);
+
+		// Assert
 		var result = await RunValidateAsync(dsl, cancellationToken);
 		AssertNoValidationErrors(result, dsl);
 		await Assert.That(result.FilteredErrors).IsEqualTo(0);
 	}
 
 	[Test]
-	public async Task ValidatedDsl_MultipleElementsAllStatesSimultaneously_ProducesNoErrors(
+	public async Task Generate_MultipleElementsAllStatesSimultaneously_ProducesNoValidationErrors(
 		CancellationToken cancellationToken
 	)
 	{
+		// Arrange
 		// Stress-test: all state variants co-existing in one diagram.
 		var elements = Enum.GetValues<LikeC4ResourceState>()
 			.Select(
@@ -406,18 +439,23 @@ public sealed class LikeC4DSLValidationTests
 					}
 			)
 			.ToList();
-
 		var model = new LikeC4Model { Elements = elements, Relationships = [] };
+
+		// Act
 		var dsl = LikeC4DSLGenerator.Generate(model, DefaultOptions);
+
+		// Assert
 		var result = await RunValidateAsync(dsl, cancellationToken);
 		AssertNoValidationErrors(result, dsl);
 		await Assert.That(result.FilteredErrors).IsEqualTo(0);
 	}
 
 	[Test]
-	public async Task ValidatedDsl_WithAdditionalExtensionFile_ProducesNoErrors(CancellationToken cancellationToken)
+	public async Task Generate_WithAdditionalExtensionFile_ProducesNoValidationErrors(
+		CancellationToken cancellationToken
+	)
 	{
-		// Arrange: a model with two elements and a relationship.
+		// Arrange
 		var model = new LikeC4Model
 		{
 			Elements =
@@ -446,9 +484,10 @@ public sealed class LikeC4DSLValidationTests
 			],
 		};
 
+		// Act
 		var dsl = LikeC4DSLGenerator.Generate(model, DefaultOptions);
 
-		// Act: validate the generated DSL alongside a hand-authored extension file that
+		// Validate the generated DSL alongside a hand-authored extension file that
 		// extends the model with extra metadata and adds custom views.
 		const string extensionDsl = """
 			model {
@@ -467,8 +506,8 @@ public sealed class LikeC4DSLValidationTests
 			}
 			""";
 
+		// Assert
 		var result = await RunValidateAsync(dsl, cancellationToken, [("extensions.c4", extensionDsl)]);
-
 		AssertNoValidationErrors(result, $"main:\n{dsl}\nextension:\n{extensionDsl}");
 		await Assert.That(result.TotalErrors).IsEqualTo(0);
 	}

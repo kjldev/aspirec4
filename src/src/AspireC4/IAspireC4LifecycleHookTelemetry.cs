@@ -43,4 +43,7 @@ interface IAspireC4LifecycleHookTelemetry
 
 	[Debug]
 	void AdditionalDSLFileSynced(string fileName);
+
+	[Warning]
+	void FailedToRunFormatter(Exception ex);
 }

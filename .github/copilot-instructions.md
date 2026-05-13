@@ -83,6 +83,91 @@ public async Task SetUpAsync() { ... }
 ```
 Mocking uses **NSubstitute**. Both are globally imported in all test projects via `Directory.Build.props`.
 
+## Test authoring requirements
+
+The following test authoring rules are strict and non-negotiable. All generated tests must comply exactly.
+
+### Required test structure
+- Every test must use the AAA pattern.
+- Every test must include explicit section comments:
+  - `// Arrange`
+  - `// Act`
+  - `// Assert`
+
+### Required test method signature and naming
+- Every test method must use the exact naming pattern:
+  - `public async Task {SubjectUnderTest}_{Scenario}_{Expectation}()`
+- `{SubjectUnderTest}` must normally be the name of the method being exercised.
+- Do not use alternative naming conventions.
+
+### Required class and namespace conventions
+- Every class under test must have its own dedicated test class.
+- Every test class must be named exactly `{Class}Tests`.
+- Every test class must be placed in the same namespace as the class under test.
+
+### Required dependency creation pattern
+- Never instantiate dependencies directly inside a test method.
+- Dependencies, services, and SUTs must be created through helper methods using the `CreateXXX` pattern.
+- SUT factory methods must allow optional dependencies so individual tests can override only the collaborators they need.
+- This pattern must be used consistently to support extension and maintenance.
+
+### Required fixture reuse
+- Reuse common setup through shared fixtures whenever appropriate.
+- Do not duplicate setup that can be centralized safely.
+
+### Required CancellationToken usage
+- If any downstream or invoked method accepts a `CancellationToken`, the test must include and pass a `CancellationToken`.
+- This requirement is mandatory and exists to preserve correct cancellation flow and improve task-cancellation coverage.
+
+### Required libraries and mocking conventions
+- All assertion usage for the assertion library must follow TUnit best practices.
+- All record/validate style tests must use NSubstitute.
+- Where collaborator verification is required, use NSubstitute consistently.
+
+### Behavioral expectations
+- Tests must be focused, deterministic, and readable.
+- Each test should validate a single behavior or outcome.
+- Avoid hidden setup and avoid ad hoc dependency construction.
+
+### Required example shape
+Use this pattern unless a stronger existing local convention already matches all requirements above:
+
+```csharp
+public class {Class}Tests
+{
+    [Test]
+    public async Task {SubjectUnderTest}_{Scenario}_{Expectation}()
+    {
+        // Arrange
+        var dependency = CreateDependency();
+        var cancellationToken = new CancellationTokenSource().Token;
+        var sut = CreateSut(dependency: dependency);
+
+        // Act
+        var result = await sut.{SubjectUnderTest}(..., cancellationToken);
+
+        // Assert
+        await Assert.That(result).IsNotNull();
+    }
+
+    private static IDependency CreateDependency()
+    {
+        return Substitute.For<IDependency>();
+    }
+
+    private static {Class} CreateSut(
+        IDependency? dependency = null)
+    {
+        return new {Class}(
+            dependency ?? CreateDependency());
+    }
+}
+```
+
+### Enforcement
+If a generated test conflicts with any rule above, the rule above wins.
+These requirements are mandatory and must not be relaxed, omitted, or replaced.
+
 ### Central package management
 All NuGet versions are in `src/Directory.Packages.props`. Never specify a `Version` attribute directly in a `.csproj` — add to `Directory.Packages.props` first.
 
