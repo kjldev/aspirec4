@@ -23,6 +23,10 @@ restore:
 [group('dotnet')]
 build configuration=config_default:
     dotnet build {{ _solution }} --no-restore --configuration {{ configuration }}
+# Cleans the solution
+[group('dotnet')]
+clean configuration=config_default:
+    dotnet clean {{ _solution }} --configuration {{ configuration }}
 # Run all tests (unit + integration)
 [group('dotnet')]
 test configuration=config_default:
@@ -53,13 +57,11 @@ pack configuration=config_default: (build configuration)
 [group('release')]
 changeset:
     npx changeset add
-
 # Compute next version from conventional commits + changesets and open a release PR.
 # Pass `prerelease` to produce a prerelease version (e.g. 13.3.1-prerelease.0).
 [group('release')]
 release prerelease="":
     node scripts/release.mts {{ if prerelease == "prerelease" { "--prerelease" } else { "" } }}
-
 # ── Icon manifest ─────────────────────────────────────────────────────────────
 
 # Regenerate the LikeC4 icon manifest from the upstream GitHub repository
@@ -74,9 +76,13 @@ diagrams:
     just _run-likec4 .
 # ── Container runtime tests ───────────────────────────────────────────────────
 
+[private]
 _e2e_docker_image := "aspirec4-e2e-docker"
+[private]
 _e2e_podman_image := "aspirec4-e2e-podman"
+[private]
 _e2e_dockerfile_docker := "tests/Docker/Dockerfile.e2e"
+[private]
 _e2e_dockerfile_podman := "tests/Docker/Dockerfile.e2e-podman"
 
 # Run integration tests against the host Docker runtime (Docker Desktop or Rancher Desktop).
@@ -86,7 +92,6 @@ test-e2e-docker configuration=config_default:
     dotnet test \
         --project src/tests/AspireC4.IntegrationTests \
         --configuration {{ configuration }}
-
 # Build and run integration tests inside a Podman container (rootful Podman-in-Docker, requires --privileged)
 [group('container-tests')]
 test-e2e-podman configuration=config_default: (_e2e-image _e2e_podman_image _e2e_dockerfile_podman)
@@ -99,7 +104,6 @@ test-e2e-podman configuration=config_default: (_e2e-image _e2e_podman_image _e2e
             --project src/tests/AspireC4.IntegrationTests \
             --verbosity normal \
             --configuration {{ configuration }}
-
 # Build both e2e test images and run integration tests for Docker and Podman
 [group('container-tests')]
 test-e2e configuration=config_default: (test-e2e-docker configuration) (test-e2e-podman configuration)
@@ -108,9 +112,6 @@ test-e2e configuration=config_default: (test-e2e-docker configuration) (test-e2e
 [private]
 _e2e-image image dockerfile:
     docker build -f {{ dockerfile }} -t {{ image }} .
-
-
-
 [private]
 _run-likec4 path=justfile_dir():
     just _try-docker {{ path }} || just _try-node {{ path }}

@@ -46,10 +46,16 @@ sealed class AspireC4LifecycleHook(
 
 	// Debounce: cancels any pending delayed write when a new state change arrives.
 	CancellationTokenSource? _debounceCts;
-	readonly Lock _debounceLock = new();
 	CancellationTokenSource? _hmrRelayCts;
 	TcpListener? _hmrRelayListener;
+
+#if NET9_0_OR_GREATER
+	readonly Lock _debounceLock = new();
 	readonly Lock _hmrRelayLock = new();
+#else
+	readonly object _debounceLock = new();
+	readonly object _hmrRelayLock = new();
+#endif
 
 	// Lazily checks once whether Graphviz `dot` is on PATH so we can pass --use-dot to likec4 validate.
 	static readonly Lazy<bool> DotAvailable = new(

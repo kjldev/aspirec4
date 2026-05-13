@@ -18,14 +18,14 @@
 		<SymbolPackageFormat>snupkg</SymbolPackageFormat>
 	</PropertyGroup>
 
-	<ItemGroup>
+	<!-- <ItemGroup>
 		<PackageReference Remove="Microsoft.Extensions.Telemetry.Abstractions" />
-	</ItemGroup>
+	</ItemGroup> -->
 
 	<ItemGroup>
-		<None Include="..\..\..\assets\images\likec4\likec4-logo.png" Pack="true" PackagePath="\" />
-		<None Include="..\..\..\LICENSE.md" Pack="true" PackagePath="\" />
-		<None Include="..\..\..\README.md" Pack="true" PackagePath="\" />
+		<None Include="../../assets/images/likec4/likec4-logo.png" Pack="true" PackagePath="/" />
+		<None Include="../../LICENSE.md" Pack="true" PackagePath="/" />
+		<None Include="../../README.md" Pack="true" PackagePath="/" />
 	</ItemGroup>
 
 	<ItemGroup>
