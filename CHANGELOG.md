@@ -1,5 +1,19 @@
 # aspirec4
 
+## 13.3.1
+
+### Minor Changes
+
+- ### Features
+
+  - add guards and context-aware release guide
+
+  ### Bug Fixes
+
+  - moved the Aspire browser token inclusion behind a AppHost options property
+
+  ### Changes
+
 ## 13.3.0-prerelease.2
 
 ### Patch Changes
