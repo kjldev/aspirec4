@@ -30,8 +30,33 @@ import semver from 'semver'
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const ROOT = join(__dirname, '..')
 
-const isPrerelease = process.argv.includes('--prerelease')
-const isHelp = process.argv.includes('--help')
+// Filter empty strings — just's {{ "" }} interpolation can produce a bare ""
+// as an argv entry on some shells.
+const args = process.argv.slice(2).filter(a => a !== '')
+
+const isPrerelease = args.includes('--prerelease') || args.includes('prerelease')
+const isHelp = args.includes('--help') || args.includes('help')
+
+const knownArgs = new Set(['--prerelease', 'prerelease', '--help', 'help'])
+const unknownArgs = args.filter(a => !knownArgs.has(a))
+
+if (unknownArgs.length > 0) {
+  console.error(
+    '\n' +
+      `  ✗  Unknown argument(s): ${unknownArgs.map(a => JSON.stringify(a)).join(', ')}\n` +
+      '\n' +
+      '  Usage:\n' +
+      '    just release              — stable release\n' +
+      '    just release prerelease   — prerelease\n' +
+      '    just release-help         — context-aware release guide\n' +
+      '\n' +
+      '  Or directly:\n' +
+      '    node scripts/release.mts\n' +
+      '    node scripts/release.mts --prerelease\n' +
+      '    node scripts/release.mts --help\n',
+  )
+  process.exit(1)
+}
 
 // ---------------------------------------------------------------------------
 // Helpers
