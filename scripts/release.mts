@@ -94,6 +94,29 @@ function writeJson(filePath: string, data: unknown): void {
 }
 
 // ---------------------------------------------------------------------------
+// Colour helpers (respects NO_COLOR env var and non-TTY pipes)
+// ---------------------------------------------------------------------------
+
+const useColour = process.stdout.isTTY && !process.env['NO_COLOR']
+const esc =
+  (code: string) =>
+  (s: string): string =>
+    useColour ? `\x1b[${code}m${s}\x1b[0m` : s
+
+const c = {
+  bold: esc('1'),
+  dim: esc('2'),
+  red: esc('31'),
+  green: esc('32'),
+  yellow: esc('33'),
+  cyan: esc('36'),
+  boldRed: esc('1;31'),
+  boldGreen: esc('1;32'),
+  boldYellow: esc('1;33'),
+  boldCyan: esc('1;36'),
+}
+
+// ---------------------------------------------------------------------------
 // Help / release guide
 // ---------------------------------------------------------------------------
 
@@ -146,7 +169,7 @@ function readStateForHelp(): {
   return { currentBranch, dirty, currentVersion, aspireVersion, changesetCount, behindMainCount }
 }
 
-function showHelp(): void {
+function showHelp(): { hasIssues: boolean; currentBranch: string } {
   const { currentBranch, dirty, currentVersion, aspireVersion, changesetCount, behindMainCount } =
     readStateForHelp()
 
@@ -156,22 +179,48 @@ function showHelp(): void {
   const isDirty = dirty.length > 0
   const isBehindMain = behindMainCount > 0
 
-  const sep = '─'.repeat(52)
+  const sep = c.dim('─'.repeat(52))
+
+  // Colour a fix line: git/just/node commands get cyan, inline comments get dim.
+  const colourFix = (line: string): string => {
+    if (line === '') return ''
+    const trimmed = line.trimStart()
+    const isCmd =
+      trimmed.startsWith('git ') ||
+      trimmed.startsWith('just ') ||
+      trimmed.startsWith('node ')
+    if (!isCmd) return line
+    const indent = line.slice(0, line.length - trimmed.length)
+    const inlineComment = trimmed.match(/^(.+?)(\s{2,}#.+)$/)
+    return inlineComment
+      ? indent + c.cyan(inlineComment[1]) + c.dim(inlineComment[2])
+      : indent + c.cyan(trimmed)
+  }
+
+  const branchDisplay = isDetached
+    ? c.boldRed('(detached HEAD)')
+    : isOnMain
+      ? c.yellow('main')
+      : isOnReleaseBranch
+        ? c.yellow(currentBranch)
+        : c.cyan(currentBranch)
 
   const out: string[] = []
   out.push('')
-  out.push(`  AspireC4 — Release Guide`)
+  out.push(c.boldCyan('  AspireC4 — Release Guide'))
   out.push(`  ${sep}`)
   out.push('')
-  out.push('  Current state:')
-  out.push(`    Branch       : ${isDetached ? '(detached HEAD)' : currentBranch}`)
-  out.push(`    Working tree : ${isDirty ? 'DIRTY  ✗  — uncommitted changes present' : 'clean  ✓'}`)
+  out.push(c.bold('  Current state:'))
+  out.push(`    ${c.dim('Branch       :')} ${branchDisplay}`)
   out.push(
-    `    Behind main  : ${isBehindMain ? `${behindMainCount} commit(s)  ✗` : 'up to date  ✓'}`,
+    `    ${c.dim('Working tree :')} ${isDirty ? c.red('DIRTY  ✗  — uncommitted changes present') : c.green('clean  ✓')}`,
   )
-  out.push(`    Version      : ${currentVersion}`)
-  out.push(`    Aspire       : ${aspireVersion}`)
-  out.push(`    Changesets   : ${changesetCount} pending`)
+  out.push(
+    `    ${c.dim('Behind main  :')} ${isBehindMain ? c.red(`${behindMainCount} commit(s)  ✗`) : c.green('up to date  ✓')}`,
+  )
+  out.push(`    ${c.dim('Version      :')} ${c.yellow(currentVersion)}`)
+  out.push(`    ${c.dim('Aspire       :')} ${c.yellow(aspireVersion)}`)
+  out.push(`    ${c.dim('Changesets   :')} ${changesetCount} pending`)
   out.push('')
 
   const issues: string[] = []
@@ -198,11 +247,11 @@ function showHelp(): void {
     fixes.push('')
     fixes.push("  If the PR is still open → merge it on GitHub to trigger the CD pipeline.")
     fixes.push('')
-    fixes.push("  If you need to redo this release:")
-    fixes.push(`    git checkout chore/my-feature                   # back to dev branch`)
+    fixes.push('  If you need to redo this release:')
+    fixes.push('    git checkout chore/my-feature')
     fixes.push(`    git branch -D ${currentBranch}`)
-    fixes.push(`    git push origin --delete ${currentBranch}       # if already pushed`)
-    fixes.push(`    just release [prerelease]`)
+    fixes.push(`    git push origin --delete ${currentBranch}   # if already pushed`)
+    fixes.push('    just release [prerelease]')
   }
 
   if (isDirty) {
@@ -222,21 +271,20 @@ function showHelp(): void {
   }
 
   if (issues.length > 0) {
-    out.push('  ✗  Issues to resolve before releasing:')
+    out.push(c.boldRed('  ✗  Issues to resolve before releasing:'))
     out.push('')
-    issues.forEach((i, idx) => out.push(`     ${idx + 1}. ${i}`))
+    issues.forEach((issue, idx) => out.push(`     ${c.yellow(`${idx + 1}.`)} ${issue}`))
     out.push('')
     if (fixes.length > 0) {
-      out.push('  How to fix:')
+      out.push(c.bold('  How to fix:'))
       out.push('')
-      fixes.forEach(f => out.push(f))
+      fixes.forEach(f => out.push(colourFix(f)))
       out.push('')
     }
   } else {
-    out.push('  ✓  Ready to release!')
+    out.push(c.boldGreen('  ✓  Ready to release!'))
     out.push('')
 
-    // Compute next versions for the preview
     let previewPrerelease = '(computing…)'
     let previewStable = '(computing…)'
     try {
@@ -268,32 +316,40 @@ function showHelp(): void {
       }
     } catch {}
 
-    out.push('  Commands:')
+    out.push(c.bold('  Commands:'))
     out.push('')
-    out.push(`    just release prerelease    — publish ${previewPrerelease}  (early access)`)
-    out.push(`    just release               — publish ${previewStable}  (stable)`)
+    out.push(
+      `    ${c.cyan('just release prerelease')}    — publish ${c.boldYellow(previewPrerelease)}  ${c.dim('(early access)')}`,
+    )
+    out.push(
+      `    ${c.cyan('just release')}               — publish ${c.boldYellow(previewStable)}  ${c.dim('(stable)')}`,
+    )
     out.push('')
     if (changesetCount === 0) {
-      out.push('  ℹ  No pending changesets found.')
-      out.push("     The script will auto-generate one from your conventional commits.")
-      out.push("     To write a manual changeset: just changeset")
+      out.push(`  ${c.cyan('ℹ')}  No pending changesets found.`)
+      out.push(c.dim('     The script will auto-generate one from your conventional commits.'))
+      out.push(`  ${c.dim('  To write a manual changeset:')}  ${c.cyan('just changeset')}`)
       out.push('')
     } else {
-      out.push(`  ℹ  ${changesetCount} pending changeset(s) will be consumed.`)
+      out.push(`  ${c.cyan('ℹ')}  ${c.yellow(String(changesetCount))} pending changeset(s) will be consumed.`)
       out.push('')
     }
   }
 
   out.push(`  ${sep}`)
-  out.push('  Rules:')
+  out.push(c.bold('  Rules:'))
   out.push('')
-  out.push(`    • MAJOR.MINOR is always locked to Aspire.Hosting (currently ${aspireVersion}).`)
-  out.push('    • Release from a development branch  (chore/*, feat/*, fix/*, …), never main.')
-  out.push('    • Working tree must be clean.')
-  out.push('    • Release branches (release/v*) are created automatically — never branch from one.')
-  out.push('    • Add a changeset: just changeset')
+  out.push(
+    c.dim(
+      `    • MAJOR.MINOR is always locked to Aspire.Hosting (currently ${aspireVersion}).`,
+    ),
+  )
+  out.push(c.dim('    • Release from a development branch  (chore/*, feat/*, fix/*, …), never main.'))
+  out.push(c.dim('    • Working tree must be clean.'))
+  out.push(c.dim('    • Release branches (release/v*) are created automatically — never branch from one.'))
+  out.push(`    ${c.dim('• Add a changeset:')}  ${c.cyan('just changeset')}`)
   out.push('')
-  out.push('  See CONTRIBUTING.md §Release guide for full details.')
+  out.push(`  ${c.dim('See CONTRIBUTING.md §Release guide for full details.')}`)
   out.push('')
 
   console.log(out.join('\n'))
