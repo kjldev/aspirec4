@@ -1,4 +1,5 @@
 using Aspire.Hosting.ApplicationModel;
+using Microsoft.Extensions.Configuration;
 
 namespace Aspire.Hosting.AspireC4;
 
@@ -125,5 +126,61 @@ public sealed class AspireC4LifecycleHookTests
 		var result = AspireC4LifecycleHook.SelectDashboardBaseUrl(urls);
 
 		await Assert.That(result).IsEqualTo("https://localhost:17134");
+	}
+
+	// ── ResolveAspireBrowserToken ─────────────────────────────────────────────
+
+	[Test]
+	public async Task ResolveAspireBrowserToken_TokenDisabled_WithConfiguredToken_ReturnsNull()
+	{
+		// Default behaviour: IncludeAspireTokenInDashboardLinks = false → never expose the token.
+		var config = Substitute.For<IConfiguration>();
+		config["AppHost:BrowserToken"].Returns("super-secret");
+
+		var options = new AspireC4DiagramOptions { IncludeAspireTokenInDashboardLinks = false };
+		var result = AspireC4LifecycleHook.ResolveAspireBrowserToken(config, options);
+
+		await Assert.That(result).IsNull();
+	}
+
+	[Test]
+	public async Task ResolveAspireBrowserToken_TokenEnabled_WithConfiguredToken_ReturnsToken()
+	{
+		// When opt-in is set and a token exists in configuration, the token is returned
+		// so that dashboard links are built as /login?t=<token>&returnUrl=<path>.
+		var config = Substitute.For<IConfiguration>();
+		config["AppHost:BrowserToken"].Returns("super-secret");
+
+		var options = new AspireC4DiagramOptions { IncludeAspireTokenInDashboardLinks = true };
+		var result = AspireC4LifecycleHook.ResolveAspireBrowserToken(config, options);
+
+		await Assert.That(result).IsEqualTo("super-secret");
+	}
+
+	[Test]
+	public async Task ResolveAspireBrowserToken_TokenEnabled_WithNoConfiguredToken_ReturnsNull()
+	{
+		// Opt-in is set but no BrowserToken key exists in configuration (e.g. auth disabled).
+		var config = Substitute.For<IConfiguration>();
+		config["AppHost:BrowserToken"].Returns((string?)null);
+
+		var options = new AspireC4DiagramOptions { IncludeAspireTokenInDashboardLinks = true };
+		var result = AspireC4LifecycleHook.ResolveAspireBrowserToken(config, options);
+
+		await Assert.That(result).IsNull();
+	}
+
+	[Test]
+	public async Task ResolveAspireBrowserToken_DefaultOptions_TokenIsDisabledByDefault()
+	{
+		// Safety default: IncludeAspireTokenInDashboardLinks must be false out of the box
+		// so that tokens are never accidentally embedded in generated diagrams.
+		var config = Substitute.For<IConfiguration>();
+		config["AppHost:BrowserToken"].Returns("should-not-appear");
+
+		var options = new AspireC4DiagramOptions();
+		var result = AspireC4LifecycleHook.ResolveAspireBrowserToken(config, options);
+
+		await Assert.That(result).IsNull();
 	}
 }
