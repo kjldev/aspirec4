@@ -1,5 +1,22 @@
 # aspirec4
 
+## 13.3.0-prerelease.3
+
+### Minor Changes
+
+- ### Features
+
+  - add guards and context-aware release guide
+
+  ### Bug Fixes
+
+  - always show release guide; exit on blockers before proceeding
+  - block release when branch is behind origin/main
+  - validate unknown args and simplify justfile recipe
+  - moved the Aspire browser token inclusion behind a AppHost options property
+
+  ### Changes
+
 ## 13.3.0-prerelease.2
 
 ### Patch Changes
