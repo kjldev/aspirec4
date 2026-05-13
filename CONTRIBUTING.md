@@ -59,6 +59,7 @@ Two distinct brands exist in this repository. Use them consistently:
 | **LikeC4** | The third-party visualisation tool this library integrates | `ghcr.io/likec4/likec4` container, `LikeC4Model`, `LikeC4DslGenerator`, `.c4` file format |
 
 **Rules:**
+
 - Public extension methods and user-facing types use the `AspireC4` prefix.
 - Types that directly represent LikeC4 DSL concepts keep the `LikeC4` prefix.
 - Never use `LikeC4` to refer to this library, and never use `AspireC4` to refer to the third-party tool.
@@ -188,6 +189,7 @@ Commit messages must follow [Conventional Commits](https://www.conventionalcommi
 | `revert` | Reverting a previous commit |
 
 **Rules:**
+
 - Subject must be lower-case, no trailing period, max 100 characters.
 - Body lines max 100 characters.
 - Breaking changes: append `!` after the type/scope, or add `BREAKING CHANGE:` in the footer.
@@ -299,6 +301,7 @@ The package name is always `"aspirec4"` (lower-case, matching `package.json`). B
 ### What happens at release time
 
 The `just release` script:
+
 1. Reads all pending changesets in `.changeset/`
 2. Auto-generates a changeset from conventional commits if none exist
 3. Runs `npx changeset version` to write `CHANGELOG.md` and consume the changeset files
@@ -340,6 +343,7 @@ just release prerelease
 ```
 
 What happens:
+
 - Computes the next `-prerelease.N` version (increments N if already on a prerelease; starts at `X.Y.Z-prerelease.0` otherwise).
 - Creates branch `release/vX.Y.Z-prerelease.N`.
 - Commits `package.json` + `CHANGELOG.md` (changeset files consumed).
@@ -358,6 +362,7 @@ just release
 ```
 
 What happens:
+
 - Computes the next `X.Y.PATCH` version.
 - Creates branch `release/vX.Y.PATCH`.
 - Commits `package.json` + `CHANGELOG.md`.
