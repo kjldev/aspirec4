@@ -146,6 +146,7 @@ jobs:
           docker run --rm \
             ${{ matrix.docker_flags }} \
             -v $(pwd):/workspace \
+            -v /home/runner/.nuget/packages:/home/runner/.nuget/packages:ro \
             -w /workspace \
             -e CONFIGURATION=${{ env.CONFIGURATION }} \
             ${{ matrix.image }} \
