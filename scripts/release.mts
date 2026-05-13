@@ -3,7 +3,8 @@
  * Release orchestration script.
  *
  * Steps:
- *   1. Verify clean working tree
+ *   0. Parse flags; show context-aware release guide if --help
+ *   1. Guards: not detached, not main, not release/*, clean tree
  *   2. Read Aspire version from Directory.Packages.props
  *   3. Read current version from package.json
  *   4. Determine bump type from conventional commits since last tag
@@ -17,6 +18,7 @@
  * Run with:
  *   node scripts/release.mts
  *   node scripts/release.mts --prerelease
+ *   node scripts/release.mts --help
  */
 
 import { execSync, spawnSync } from 'node:child_process'
@@ -29,6 +31,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url))
 const ROOT = join(__dirname, '..')
 
 const isPrerelease = process.argv.includes('--prerelease')
+const isHelp = process.argv.includes('--help')
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -65,14 +68,273 @@ function writeJson(filePath: string, data: unknown): void {
 }
 
 // ---------------------------------------------------------------------------
-// 1. Verify clean working tree
+// Help / release guide
 // ---------------------------------------------------------------------------
 
-const dirty = run('git status --porcelain')
-if (dirty) {
-  console.error('Working tree is not clean. Commit or stash changes before releasing.')
+function readStateForHelp(): {
+  currentBranch: string
+  dirty: string
+  currentVersion: string
+  aspireVersion: string
+  changesetCount: number
+} {
+  const currentBranch = run('git rev-parse --abbrev-ref HEAD', { allowFailure: true })
+  const dirty = run('git status --porcelain', { allowFailure: true })
+
+  let currentVersion = '(unknown)'
+  let aspireVersion = '(unknown)'
+  let changesetCount = 0
+
+  try {
+    currentVersion = readJson<{ version: string }>(
+      join(ROOT, 'package.json'),
+    ).version
+  } catch {}
+
+  try {
+    const props = readFileSync(join(ROOT, 'src', 'Directory.Packages.props'), 'utf8')
+    const m = props.match(/<PackageVersion\s+Include="Aspire\.Hosting"\s+Version="([^"]+)"/)
+    if (m) aspireVersion = m[1]
+  } catch {}
+
+  try {
+    const csDir = join(ROOT, '.changeset')
+    changesetCount = readdirSync(csDir).filter(f => f.endsWith('.md') && f !== 'README.md').length
+  } catch {}
+
+  return { currentBranch, dirty, currentVersion, aspireVersion, changesetCount }
+}
+
+function showHelp(): void {
+  const { currentBranch, dirty, currentVersion, aspireVersion, changesetCount } =
+    readStateForHelp()
+
+  const isDetached = currentBranch === 'HEAD' || currentBranch === ''
+  const isOnMain = currentBranch === 'main'
+  const isOnReleaseBranch = currentBranch.startsWith('release/')
+  const isDirty = dirty.length > 0
+
+  const sep = '─'.repeat(52)
+
+  const out: string[] = []
+  out.push('')
+  out.push(`  AspireC4 — Release Guide`)
+  out.push(`  ${sep}`)
+  out.push('')
+  out.push('  Current state:')
+  out.push(`    Branch       : ${isDetached ? '(detached HEAD)' : currentBranch}`)
+  out.push(`    Working tree : ${isDirty ? 'DIRTY  ✗  — uncommitted changes present' : 'clean  ✓'}`)
+  out.push(`    Version      : ${currentVersion}`)
+  out.push(`    Aspire       : ${aspireVersion}`)
+  out.push(`    Changesets   : ${changesetCount} pending`)
+  out.push('')
+
+  const issues: string[] = []
+  const fixes: string[] = []
+
+  if (isDetached) {
+    issues.push('Detached HEAD — you are not on any named branch.')
+    fixes.push('  git checkout chore/my-feature      # switch to an existing branch')
+    fixes.push('  git checkout -b chore/my-feature   # or create a new one')
+  }
+
+  if (isOnMain) {
+    issues.push("You are on 'main'. Releases must start from a development branch.")
+    fixes.push("  main only receives release PRs created by 'just release'.")
+    fixes.push('  Switch to (or create) a development branch:')
+    fixes.push('')
+    fixes.push('    git checkout -b chore/my-feature    # new branch')
+    fixes.push('    git checkout chore/existing-branch  # existing branch')
+  }
+
+  if (isOnReleaseBranch) {
+    issues.push(`You are on a release branch '${currentBranch}'.`)
+    fixes.push("  Release branches are created and managed by 'just release'.")
+    fixes.push('')
+    fixes.push("  If the PR is still open → merge it on GitHub to trigger the CD pipeline.")
+    fixes.push('')
+    fixes.push("  If you need to redo this release:")
+    fixes.push(`    git checkout chore/my-feature                   # back to dev branch`)
+    fixes.push(`    git branch -D ${currentBranch}`)
+    fixes.push(`    git push origin --delete ${currentBranch}       # if already pushed`)
+    fixes.push(`    just release [prerelease]`)
+  }
+
+  if (isDirty) {
+    issues.push('Working tree is dirty — commit or stash all changes before releasing.')
+    fixes.push('  Commit:   git add -A && git commit -m "chore: …"')
+    fixes.push('  Or stash: git stash')
+  }
+
+  if (issues.length > 0) {
+    out.push('  ✗  Issues to resolve before releasing:')
+    out.push('')
+    issues.forEach((i, idx) => out.push(`     ${idx + 1}. ${i}`))
+    out.push('')
+    if (fixes.length > 0) {
+      out.push('  How to fix:')
+      out.push('')
+      fixes.forEach(f => out.push(f))
+      out.push('')
+    }
+  } else {
+    out.push('  ✓  Ready to release!')
+    out.push('')
+
+    // Compute next versions for the preview
+    let previewPrerelease = '(computing…)'
+    let previewStable = '(computing…)'
+    try {
+      const isCurrentPrerelease = /-prerelease\.\d+$/.test(currentVersion)
+      const parsedBase = semver.parse(currentVersion.replace(/-prerelease\.\d+$/, ''))
+      if (parsedBase && aspireVersion !== '(unknown)') {
+        const aspireMajMin = `${semver.major(aspireVersion)}.${semver.minor(aspireVersion)}`
+        const currentMajMin = `${parsedBase.major}.${parsedBase.minor}`
+        let base: string
+        if (aspireMajMin !== currentMajMin) {
+          base = `${aspireVersion.split('.').slice(0, 2).join('.')}.0`
+          base = semver.inc(base, 'patch') ?? base
+        } else {
+          const rawBase = `${parsedBase.major}.${parsedBase.minor}.${parsedBase.patch}`
+          base = isCurrentPrerelease ? rawBase : (semver.inc(rawBase, 'patch') ?? rawBase)
+        }
+        if (isCurrentPrerelease) {
+          const m = currentVersion.match(/^(.+)-prerelease\.(\d+)$/)
+          previewPrerelease = m
+            ? `${m[1]}-prerelease.${parseInt(m[2], 10) + 1}`
+            : `${base}-prerelease.0`
+          previewStable = base
+        } else {
+          const nextPatch = semver.inc(currentVersion, 'patch') ?? currentVersion
+          const stableBase = `${parsedBase.major}.${parsedBase.minor}.${parsedBase.patch + 1}`
+          previewPrerelease = `${stableBase}-prerelease.0`
+          previewStable = nextPatch
+        }
+      }
+    } catch {}
+
+    out.push('  Commands:')
+    out.push('')
+    out.push(`    just release prerelease    — publish ${previewPrerelease}  (early access)`)
+    out.push(`    just release               — publish ${previewStable}  (stable)`)
+    out.push('')
+    if (changesetCount === 0) {
+      out.push('  ℹ  No pending changesets found.')
+      out.push("     The script will auto-generate one from your conventional commits.")
+      out.push("     To write a manual changeset: just changeset")
+      out.push('')
+    } else {
+      out.push(`  ℹ  ${changesetCount} pending changeset(s) will be consumed.`)
+      out.push('')
+    }
+  }
+
+  out.push(`  ${sep}`)
+  out.push('  Rules:')
+  out.push('')
+  out.push(`    • MAJOR.MINOR is always locked to Aspire.Hosting (currently ${aspireVersion}).`)
+  out.push('    • Release from a development branch  (chore/*, feat/*, fix/*, …), never main.')
+  out.push('    • Working tree must be clean.')
+  out.push('    • Release branches (release/v*) are created automatically — never branch from one.')
+  out.push('    • Add a changeset: just changeset')
+  out.push('')
+  out.push('  See CONTRIBUTING.md §Release guide for full details.')
+  out.push('')
+
+  console.log(out.join('\n'))
+}
+
+// ---------------------------------------------------------------------------
+// 0. Handle --help
+// ---------------------------------------------------------------------------
+
+if (isHelp) {
+  showHelp()
+  process.exit(0)
+}
+
+// ---------------------------------------------------------------------------
+// 1. Guards
+// ---------------------------------------------------------------------------
+
+// 1a. Not a detached HEAD
+const currentBranch = run('git rev-parse --abbrev-ref HEAD')
+if (currentBranch === 'HEAD' || currentBranch === '') {
+  console.error(
+    '\n' +
+      '  ✗  Detached HEAD — you are not on any named branch.\n' +
+      '\n' +
+      '  Check out a development branch before releasing:\n' +
+      '\n' +
+      '    git checkout chore/my-feature      # switch to an existing branch\n' +
+      '    git checkout -b chore/my-feature   # or create a new one\n' +
+      '\n' +
+      '  Then run: just release [prerelease]\n',
+  )
   process.exit(1)
 }
+
+// 1b. Not on main
+if (currentBranch === 'main') {
+  console.error(
+    '\n' +
+      "  ✗  You are on 'main'. Releases must start from a development branch.\n" +
+      '\n' +
+      "  'main' only receives release PRs created by the release script itself.\n" +
+      '  Running the release from here would produce an empty diff.\n' +
+      '\n' +
+      '  Switch to (or create) a development branch, then retry:\n' +
+      '\n' +
+      '    git checkout -b chore/my-feature    # new branch\n' +
+      '    git checkout chore/existing-branch  # or switch to existing\n' +
+      '\n' +
+      '  Then run: just release [prerelease]\n',
+  )
+  process.exit(1)
+}
+
+// 1c. Not on an existing release branch
+if (currentBranch.startsWith('release/')) {
+  console.error(
+    '\n' +
+      `  ✗  You are on a release branch '${currentBranch}'.\n` +
+      '\n' +
+      "  Release branches are created and owned by 'just release' — don't release from one.\n" +
+      '\n' +
+      '  If the release PR is still open:\n' +
+      '    → Merge it on GitHub to trigger the CD pipeline.\n' +
+      '\n' +
+      '  If you need to redo this release:\n' +
+      '\n' +
+      '    git checkout <your-dev-branch>\n' +
+      `    git branch -D ${currentBranch}\n` +
+      `    git push origin --delete ${currentBranch}   # if already pushed\n` +
+      '    just release [prerelease]\n' +
+      '\n' +
+      '  Run  just release-help  for a full state assessment.\n',
+  )
+  process.exit(1)
+}
+
+// 1d. Clean working tree
+const dirty = run('git status --porcelain')
+if (dirty) {
+  console.error(
+    '\n' +
+      '  ✗  Working tree has uncommitted changes.\n' +
+      '\n' +
+      '  Commit or stash all changes before releasing:\n' +
+      '\n' +
+      '    git status                              # review what changed\n' +
+      '    git add -A && git commit -m "chore: …"  # commit\n' +
+      '    git stash                               # or stash\n' +
+      '\n' +
+      '  Then run: just release [prerelease]\n',
+  )
+  process.exit(1)
+}
+
+console.log(`Starting release from branch '${currentBranch}'...`)
 
 // ---------------------------------------------------------------------------
 // 2. Read Aspire version from Directory.Packages.props
@@ -283,17 +545,29 @@ const branch = `release/v${newVersion}`
 const existingBranch = run(`git branch --list ${branch}`, { allowFailure: true })
 if (existingBranch) {
   console.error(
-    `Branch ${branch} already exists locally.\n` +
-      `Delete it first with: git branch -D ${branch}\n` +
-      `And remove it from origin if present: git push origin --delete ${branch}`,
+    '\n' +
+      `  ✗  Branch '${branch}' already exists locally.\n` +
+      '\n' +
+      '  This can happen after a previously interrupted release run.\n' +
+      '  Remove the stale branch and retry:\n' +
+      '\n' +
+      `    git branch -D ${branch}\n` +
+      `    git push origin --delete ${branch}   # if already pushed\n` +
+      '    just release [prerelease]\n',
   )
   process.exit(1)
 }
 const existingRemoteBranch = run(`git ls-remote --heads origin ${branch}`, { allowFailure: true })
 if (existingRemoteBranch) {
   console.error(
-    `Branch ${branch} already exists on origin.\n` +
-      `Remove it with: git push origin --delete ${branch}`,
+    '\n' +
+      `  ✗  Branch '${branch}' already exists on origin.\n` +
+      '\n' +
+      '  If the release PR was already opened, check its status on GitHub.\n' +
+      '  To start fresh:\n' +
+      '\n' +
+      `    git push origin --delete ${branch}\n` +
+      '    just release [prerelease]\n',
   )
   process.exit(1)
 }
@@ -312,4 +586,11 @@ runPassthrough(
 )
 
 console.log(`\nDone! PR opened for release v${newVersion}.`)
-console.log('Merge it to trigger the CD pipeline and publish to NuGet.')
+console.log('')
+console.log('  Next steps:')
+console.log('    1. Wait for the CI Gate to pass on the PR.')
+console.log('    2. Merge the PR — this triggers the CD pipeline.')
+console.log('    3. The CD pipeline creates a GitHub Release with .nupkg / .snupkg artifacts.')
+console.log('    4. Download the .nupkg from the GitHub Release and push to NuGet.org.')
+console.log('')
+console.log('  Run  just release-help  at any time to review the release guide.')
