@@ -3,8 +3,9 @@
  * Release orchestration script.
  *
  * Steps:
- *   0. Parse flags; show context-aware release guide if --help
- *   1. Guards: not detached, not main, not release/*, clean tree, up to date with main
+ *   0. Show release guide (always); exit 0 on --help, exit 1 if blockers found
+ *   1. Guards embedded in release guide: not detached, not main, not release/*,
+ *      clean tree, up to date with main
  *   2. Read Aspire version from Directory.Packages.props
  *   3. Read current version from package.json
  *   4. Determine bump type from conventional commits since last tag
@@ -296,127 +297,24 @@ function showHelp(): void {
   out.push('')
 
   console.log(out.join('\n'))
+  return { hasIssues: issues.length > 0, currentBranch }
 }
 
 // ---------------------------------------------------------------------------
-// 0. Handle --help
+// 0. Always show release guide; proceed only when there are no blockers.
 // ---------------------------------------------------------------------------
 
+const { hasIssues, currentBranch } = showHelp()
+
 if (isHelp) {
-  showHelp()
   process.exit(0)
 }
 
-// ---------------------------------------------------------------------------
-// 1. Guards
-// ---------------------------------------------------------------------------
-
-// 1a. Not a detached HEAD
-const currentBranch = run('git rev-parse --abbrev-ref HEAD')
-if (currentBranch === 'HEAD' || currentBranch === '') {
-  console.error(
-    '\n' +
-      '  ✗  Detached HEAD — you are not on any named branch.\n' +
-      '\n' +
-      '  Check out a development branch before releasing:\n' +
-      '\n' +
-      '    git checkout chore/my-feature      # switch to an existing branch\n' +
-      '    git checkout -b chore/my-feature   # or create a new one\n' +
-      '\n' +
-      '  Then run: just release [prerelease]\n',
-  )
+if (hasIssues) {
   process.exit(1)
 }
 
-// 1b. Not on main
-if (currentBranch === 'main') {
-  console.error(
-    '\n' +
-      "  ✗  You are on 'main'. Releases must start from a development branch.\n" +
-      '\n' +
-      "  'main' only receives release PRs created by the release script itself.\n" +
-      '  Running the release from here would produce an empty diff.\n' +
-      '\n' +
-      '  Switch to (or create) a development branch, then retry:\n' +
-      '\n' +
-      '    git checkout -b chore/my-feature    # new branch\n' +
-      '    git checkout chore/existing-branch  # or switch to existing\n' +
-      '\n' +
-      '  Then run: just release [prerelease]\n',
-  )
-  process.exit(1)
-}
-
-// 1c. Not on an existing release branch
-if (currentBranch.startsWith('release/')) {
-  console.error(
-    '\n' +
-      `  ✗  You are on a release branch '${currentBranch}'.\n` +
-      '\n' +
-      "  Release branches are created and owned by 'just release' — don't release from one.\n" +
-      '\n' +
-      '  If the release PR is still open:\n' +
-      '    → Merge it on GitHub to trigger the CD pipeline.\n' +
-      '\n' +
-      '  If you need to redo this release:\n' +
-      '\n' +
-      '    git checkout <your-dev-branch>\n' +
-      `    git branch -D ${currentBranch}\n` +
-      `    git push origin --delete ${currentBranch}   # if already pushed\n` +
-      '    just release [prerelease]\n' +
-      '\n' +
-      '  Run  just release-help  for a full state assessment.\n',
-  )
-  process.exit(1)
-}
-
-// 1d. Clean working tree
-const dirty = run('git status --porcelain')
-if (dirty) {
-  console.error(
-    '\n' +
-      '  ✗  Working tree has uncommitted changes.\n' +
-      '\n' +
-      '  Commit or stash all changes before releasing:\n' +
-      '\n' +
-      '    git status                              # review what changed\n' +
-      '    git add -A && git commit -m "chore: …"  # commit\n' +
-      '    git stash                               # or stash\n' +
-      '\n' +
-      '  Then run: just release [prerelease]\n',
-  )
-  process.exit(1)
-}
-
-console.log(`Starting release from branch '${currentBranch}'...`)
-
-// ---------------------------------------------------------------------------
-// 1e. Branch is up to date with main
-// ---------------------------------------------------------------------------
-
-run('git fetch origin main --quiet')
-const mainSha = run('git rev-parse origin/main')
-const mergeBaseSha = run('git merge-base HEAD origin/main')
-if (mergeBaseSha !== mainSha) {
-  const behindCount = run('git rev-list --count HEAD..origin/main')
-  console.error(
-    '\n' +
-      `  ✗  Branch '${currentBranch}' is ${behindCount} commit(s) behind origin/main.\n` +
-      '\n' +
-      '  Merge the latest changes from main before releasing:\n' +
-      '\n' +
-      '    git merge origin/main\n' +
-      '\n' +
-      '  To review what you are missing:\n' +
-      '\n' +
-      '    git log HEAD..origin/main --oneline\n' +
-      '\n' +
-      '  Then run: just release [prerelease]\n',
-  )
-  process.exit(1)
-}
-
-console.log('Branch is up to date with origin/main.')
+console.log(`Proceeding with ${isPrerelease ? 'prerelease' : 'stable'} release from branch '${currentBranch}'...`)
 
 // ---------------------------------------------------------------------------
 // 2. Read Aspire version from Directory.Packages.props
