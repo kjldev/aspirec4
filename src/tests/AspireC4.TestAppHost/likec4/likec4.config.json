@@ -4,11 +4,11 @@
   "title": "AspireC4 Test App Host",
   "include": {
     "paths": [
-      "../bin/Debug/net10.0/likec4-extensions"
+      "../bin/Debug/net8.0/likec4-extensions"
     ]
   },
   "imageAliases": {
     "@": "../../../../assets/images/",
-    "@test-icons": "../bin/Debug/net10.0/likec4-images"
+    "@test-icons": "../bin/Debug/net8.0/likec4-images"
   }
 }
