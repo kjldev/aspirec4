@@ -5,22 +5,22 @@ namespace Aspire.Hosting.AspireC4;
 [Logger]
 interface IAspireC4LifecycleHookTelemetry
 {
-	[Info]
-	void GeneratingLikeC4Model(int resourceCount);
+	[Debug]
+	void GeneratingLikeC4Model(int resourceCount, string[] resourceNames);
 
-	[Info]
+	[Debug]
 	void LikeC4ModelWritten(string outputPath);
 
-	[Info]
+	[Debug]
 	void PublishMode();
 
-	[Info]
+	[Debug]
 	void ResourceStateChanged(string resourceName, string newState);
 
-	[Info]
+	[Debug]
 	void DashboardUrlDiscovered(string dashboardBaseUrl);
 
-	[Info]
+	[Debug]
 	void RegeneratingDiagramDueToStateChange();
 
 	[Warning]
@@ -29,15 +29,18 @@ interface IAspireC4LifecycleHookTelemetry
 	[Warning]
 	void StateWatcherFailed(string error);
 
-	[Warning]
-	void LikeC4ValidationErrors(int filteredErrors, int totalErrors);
+	[Info]
+	void StartingLikeC4Validation();
+
+	[Error]
+	void LikeC4ValidationFailed(int filteredErrors, int totalErrors);
 
 	[Info]
-	void LikeC4ValidationPassed();
+	void LikeC4ValidatedSuccessfully();
 
-	[Info]
+	[Debug]
 	void LikeC4FormatApplied();
 
-	[Info]
+	[Debug]
 	void AdditionalDSLFileSynced(string fileName);
 }

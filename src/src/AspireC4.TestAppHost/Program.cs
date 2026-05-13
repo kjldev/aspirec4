@@ -1,11 +1,27 @@
+using Aspire.Hosting.AspireC4;
+
 var builder = DistributedApplication.CreateBuilder(args);
 
 // Add LikeC4 visualization to the application. This will allow us to visualize the components and their relationships in a C4 model.
 builder
 	.AddAspireC4(configure: static opts =>
 		// Validate the C4 model before starting the application to catch any issues early.
-		opts.ValidateBeforeStart = true
+		opts.WithValidateBeforeStart()
+			.WithTitle("AspireC4 Test App")
+			.WithViewTitle("AspireC4 Architecture")
+			.WithViewDescription(
+				@"
+This **LikeC4** view was automatically generated from the **Aspire** resource graph, using the **AspireC4** hosting extension.
+
+For more details on all of these tools and components, see:
+
+- [Aspire](https://aspire.dev/)
+- [LikeC4](https://likec4.dev/)
+- [AspireC4](https://kjl.dev/projects/aspirec4/)
+"
+			)
 	)
+	// This is to configure certain parts of the AppHost and AspireC4 purely for this example test app.
 	.ConfigureTestHost();
 
 var azureManagerRedis = builder

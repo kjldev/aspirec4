@@ -122,16 +122,25 @@ public static class AspireC4DistributedApplicationBuilderExtensions
 
 					context.Args.Add("start");
 					context.Args.Add(wsOpts.Value.ContainerServePath);
+
+					if (!string.IsNullOrWhiteSpace(diagramOpts.Title))
+					{
+						context.Args.Add("--title");
+						context.Args.Add($"\"{diagramOpts.Title}\"");
+					}
+
+					var dot = await Helpers.IsDotAvailableAsync(context.CancellationToken);
+					if (dot)
+						context.Args.Add("--use-dot");
+
 					context.Args.Add("--port");
 					context.Args.Add($"{LikeC4ServerResource.DefaultContainerServePort}");
 					if (diagOpts.Value.DisableHMR)
 						context.Args.Add("--no-react-hmr");
-
-					await Task.CompletedTask;
 				})
 				//.WithExternalHttpEndpoints()
 				// Exclude the sidecar from the architecture diagram — it is tooling, not a system element.
-				.WithAnnotation(new ExcludeFromLikeC4Annotation(), ResourceAnnotationMutationBehavior.Replace);
+				.ExcludeFromLikeC4();
 
 			if (!diagramOpts.DisableHMR)
 			{
@@ -168,7 +177,7 @@ public static class AspireC4DistributedApplicationBuilderExtensions
 			return new AspireC4Builder(builder, serverBuilder, outputDir);
 		}
 
-		internal static string ResolveOutputDirectory(string appHostDirectory, string outputDirectory)
+		static string ResolveOutputDirectory(string appHostDirectory, string outputDirectory)
 		{
 			ArgumentException.ThrowIfNullOrWhiteSpace(appHostDirectory);
 			ArgumentException.ThrowIfNullOrWhiteSpace(outputDirectory);

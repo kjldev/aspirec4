@@ -30,12 +30,17 @@ static class AspireC4Extensions
 			builder.WithImageAliasFolder("@test-icons", imagesDir);
 		}
 
+		// We're adding LikeC4 pazzazz to the LikeC4 server resource for this demo...
 		builder.LikeC4ResourceBuilder.WithLikeC4Details(opts =>
 			opts.WithLabel("LikeC4")
 				.WithSummary(
 					"Describe your system architecture with code. Visualize, validate and share — all from a single source of truth."
 				)
-				.WithIcon("@/likec4/likec4-logo.svg")
+				.WithDescription(
+					"A tool for describing your system architecture with code, allowing you to visualize, validate, and share your architecture from a single source of truth."
+				)
+				// This icon supports both light and dark mode in one...
+				.WithIcon("@/likec4/likec4-wordmark.svg")
 				.WithLink("https://likec4.dev/", "Learn more about LikeC4")
 				.WithLink("https://github.com/likec4/likec4/", "LikeC4 on GitHub")
 				.WithLink("https://github.com/sponsors/likec4", "Sponsor LikeC4 🩷")

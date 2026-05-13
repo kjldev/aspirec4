@@ -13,28 +13,25 @@
 	<ItemGroup>
 		<Content
 			Include="..\..\..\assets\images\kjldev-logo.png"
-			Link="likec4-images\test-badge.png"
+			Link="likec4\images\test-badge.png"
 			CopyToOutputDirectory="PreserveNewest"
 		/>
 		<Content
 			Include="..\..\..\assets\images\likec4\likec4-logo.svg"
-			Link="likec4-images\test-logo.svg"
+			Link="likec4\images\test-logo.svg"
 			CopyToOutputDirectory="PreserveNewest"
 		/>
 
-		<Content Include="likec4-extensions\*.c4" CopyToOutputDirectory="PreserveNewest" />
-		<Content Include="likec4-images\*" CopyToOutputDirectory="PreserveNewest" />
+		<Content Include="likec4\extensions\*.c4" CopyToOutputDirectory="PreserveNewest" />
+		<Content Include="likec4\images\*" CopyToOutputDirectory="PreserveNewest" />
 	</ItemGroup>
 
 	<ItemGroup>
-		<ProjectReference
-			Include="..\..\src\AspireC4\AspireC4.csproj"
-			IsAspireProjectResource="false"
-		/>
+		<ProjectReference Include="..\AspireC4\AspireC4.csproj" IsAspireProjectResource="false" />
 		<!-- AspireC4.Core is bundled inside the AspireC4.Hosting NuGet package (PrivateAssets=all).
 		     With project references, transitive types don't flow, so reference Core directly. -->
 		<ProjectReference
-			Include="..\..\src\AspireC4.Core\AspireC4.Core.csproj"
+			Include="..\AspireC4.Core\AspireC4.Core.csproj"
 			IsAspireProjectResource="false"
 		/>
 	</ItemGroup>

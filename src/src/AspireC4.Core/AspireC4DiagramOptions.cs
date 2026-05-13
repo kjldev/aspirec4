@@ -33,14 +33,20 @@ public sealed class AspireC4DiagramOptions
 	/// </remarks>
 	public string? DefaultViewId { get; set; } = "index";
 
+	/// <summary>Title shown in the generated LikeC4 application. Defaults to <see langword="null"/>, leaving LikeC4 to choose the title.</summary>
+	public string? Title { get; set; }
+
 	/// <summary>Title shown in the generated LikeC4 view. Defaults to "Architecture".</summary>
-	public string Title { get; set; } = "Architecture";
+	public string ViewTitle { get; set; } = "Architecture";
+
+	/// <summary>Optional Description shown in the generated LikeC4 view. The description supports Markdown, if the version of LikeC4 you're using supports it. Defaults to <see langword="null"/>.</summary>
+	public string? ViewDescription { get; set; }
 
 	/// <summary>
 	/// Directory where the generated <c>.c4</c> file is written.
 	/// Defaults to <c>./likec4</c> relative to the AppHost working directory.
 	/// </summary>
-	public string OutputDirectory { get; set; } = "./likec4";
+	public string OutputDirectory { get; set; } = "./likec4/gen/";
 
 	/// <summary>
 	/// Name of the generated <c>.c4</c> file (without extension).
@@ -274,4 +280,10 @@ public sealed class AspireC4DiagramOptions
 	/// </example>
 	[System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1002:Do not expose generic lists")]
 	public List<LikeC4IconResolver> IconResolvers { get; } = [];
+
+	/// <summary>
+	/// When <see cref="GenerateConfigFile"/> is <see langword="true"/>, provides additional metadata to include in the generated config file.
+	/// </summary>
+	[System.Diagnostics.CodeAnalysis.SuppressMessage("Usage", "CA2227:Collection properties should be read only")]
+	public Dictionary<string, string> ConfigFileMetadata { get; set; } = [];
 }

@@ -13,7 +13,7 @@ static partial class AspireC4ResourceBuilderEnvExtensions
 		[AspireExport(
 			"withLikeC4ReferenceWithEnvironment",
 			MethodName = "withLikeC4Reference",
-			Description = "Customises how a resource appears in the generated LikeC4 diagram."
+			Description = "Create a new reference, while also allowing customization of how a resource appears in the generated LikeC4 diagram."
 		)]
 		public IResourceBuilder<T> WithLikeC4Reference(
 			IResourceBuilder<IResourceWithConnectionString> source,

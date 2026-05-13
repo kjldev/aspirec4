@@ -57,37 +57,6 @@ sealed class AspireC4LifecycleHook(
 	readonly object _hmrRelayLock = new();
 #endif
 
-	// Lazily checks once whether Graphviz `dot` is on PATH so we can pass --use-dot to likec4 validate.
-	static readonly Lazy<bool> DotAvailable = new(
-		[System.Diagnostics.CodeAnalysis.SuppressMessage(
-			"Design",
-			"CA1031:Do not catch general exception types",
-			Justification = "dot availability check is best-effort; any failure means dot is unavailable"
-		)]
-		static () =>
-		{
-			try
-			{
-				using var proc = Process.Start(
-					new ProcessStartInfo
-					{
-						FileName = "dot",
-						Arguments = "-V",
-						RedirectStandardError = true,
-						UseShellExecute = false,
-						CreateNoWindow = true,
-					}
-				);
-				proc?.WaitForExit();
-				return proc?.ExitCode == 0;
-			}
-			catch
-			{
-				return false;
-			}
-		}
-	);
-
 	public Task SubscribeAsync(
 		IDistributedApplicationEventing eventing,
 		DistributedApplicationExecutionContext executionContext,
@@ -477,7 +446,7 @@ sealed class AspireC4LifecycleHook(
 	{
 		var opts = options.Value;
 
-		telemetry.GeneratingLikeC4Model(appModel.Resources.Count);
+		telemetry.GeneratingLikeC4Model(appModel.Resources.Count, [.. appModel.Resources.Select(m => m.Name)]);
 
 		// Build a snapshot of external endpoint URLs (resource name → [(url, name)]) so that
 		// the model builder uses the correct public-port URLs from resource snapshots.
@@ -561,17 +530,27 @@ sealed class AspireC4LifecycleHook(
 	/// Returns the executable and argument prefix for invoking <c>likec4</c> via the configured
 	/// runtime. In Docker mode (<see cref="LikeC4ContainerWorkspaceOptions.LocalCLIRuntime"/> is
 	/// <see langword="null"/>), falls back to <c>npx</c> since the host still needs a JS runner
-	/// for host-side operations such as format and validate.
+	/// for host-side operations such as format.
 	/// </summary>
 	(string Command, string[] Prefix) BuildCliPrefix() =>
 		workspaceOptions.Value.LocalCLIRuntime is { } runtime
 			? AspireC4Builder.BuildLikeC4CliPrefix(runtime)
 			: ("npx", ["likec4"]);
 
+	/// <summary>
+	/// Returns the container runtime executable name (<c>docker</c> or <c>podman</c>) by
+	/// reading the <c>ASPIRE_CONTAINER_RUNTIME</c> environment variable.
+	/// </summary>
+	static string GetContainerRuntimeExecutable() =>
+		Environment.GetEnvironmentVariable("ASPIRE_CONTAINER_RUNTIME") is { } r
+		&& r.Equals("podman", StringComparison.OrdinalIgnoreCase)
+			? "podman"
+			: "docker";
+
 	[System.Diagnostics.CodeAnalysis.SuppressMessage(
 		"Design",
 		"CA1031:Do not catch general exception types",
-		Justification = "Validation is non-blocking; failures are logged as warnings only"
+		Justification = "Validation is non-blocking; failures are logged only"
 	)]
 	async Task RunValidationAsync(
 		string outputDir,
@@ -580,54 +559,85 @@ sealed class AspireC4LifecycleHook(
 		CancellationToken cancellationToken
 	)
 	{
+		telemetry.StartingLikeC4Validation();
 		try
 		{
-			var (command, prefix) = BuildCliPrefix();
-			var startInfo = new ProcessStartInfo
+			ProcessStartInfo startInfo;
+
+			var bindMountSource = workspaceOptions.Value.ContainerBindMountSource;
+			if (workspaceOptions.Value.LocalCLIRuntime is null && bindMountSource is not null)
 			{
-				FileName = command,
-				RedirectStandardOutput = true,
-				RedirectStandardError = true,
-				UseShellExecute = false,
-				CreateNoWindow = true,
-			};
+				// Docker / Podman mode: run validation inside a throwaway container using the
+				// same image and bind mount as the main LikeC4 server.
+				var imageRef = LikeC4ServerResource.GetImageReference(
+					options.Value.ContainerImageTag ?? LikeC4ServerResource.DefaultTag
+				);
+				var containerPath = workspaceOptions.Value.ContainerServePath;
+				var containerExe = GetContainerRuntimeExecutable();
 
-			foreach (var arg in prefix)
-				startInfo.ArgumentList.Add(arg);
+				startInfo = new ProcessStartInfo
+				{
+					FileName = containerExe,
+					RedirectStandardOutput = true,
+					RedirectStandardError = true,
+					UseShellExecute = false,
+					CreateNoWindow = true,
+				};
 
-			startInfo.ArgumentList.Add("validate");
-			startInfo.ArgumentList.Add("--json");
-			startInfo.ArgumentList.Add("--no-layout");
-
-			if (DotAvailable.Value)
-			{
-				startInfo.ArgumentList.Add("--use-dot");
+				startInfo.ArgumentList.Add("run");
+				startInfo.ArgumentList.Add("--rm");
+				startInfo.ArgumentList.Add("-v");
+				startInfo.ArgumentList.Add($"{bindMountSource}:{LikeC4ServerResource.WorkspacePath}");
+				startInfo.ArgumentList.Add(imageRef);
+				startInfo.ArgumentList.Add("validate");
+				startInfo.ArgumentList.Add("--json");
+				startInfo.ArgumentList.Add("--no-layout");
+				startInfo.ArgumentList.Add(containerPath);
 			}
-
-			startInfo.ArgumentList.Add("--file");
-			startInfo.ArgumentList.Add(outputPath);
-
-			foreach (var additionalPath in additionalFilePaths)
+			else
 			{
+				// Local CLI mode: invoke via the configured JS runtime (npx / pnpm / etc.).
+				var (command, prefix) = BuildCliPrefix();
+				startInfo = new ProcessStartInfo
+				{
+					FileName = command,
+					RedirectStandardOutput = true,
+					RedirectStandardError = true,
+					UseShellExecute = false,
+					CreateNoWindow = true,
+				};
+
+				foreach (var arg in prefix)
+					startInfo.ArgumentList.Add(arg);
+
+				startInfo.ArgumentList.Add("validate");
+				startInfo.ArgumentList.Add("--json");
+				startInfo.ArgumentList.Add("--no-layout");
+
+				if (await Helpers.IsDotAvailableAsync(cancellationToken))
+					startInfo.ArgumentList.Add("--use-dot");
+
 				startInfo.ArgumentList.Add("--file");
-				startInfo.ArgumentList.Add(additionalPath);
-			}
+				startInfo.ArgumentList.Add(outputPath);
 
-			startInfo.ArgumentList.Add(outputDir);
+				foreach (var additionalPath in additionalFilePaths)
+				{
+					startInfo.ArgumentList.Add("--file");
+					startInfo.ArgumentList.Add(additionalPath);
+				}
+
+				startInfo.ArgumentList.Add(outputDir);
+			}
 
 			using var process = Process.Start(startInfo);
 			if (process is null)
-			{
 				return;
-			}
 
 			var stdout = await process.StandardOutput.ReadToEndAsync(cancellationToken);
 			await process.WaitForExitAsync(cancellationToken);
 
 			if (string.IsNullOrWhiteSpace(stdout))
-			{
 				return;
-			}
 
 			using var doc = JsonDocument.Parse(stdout);
 			var root = doc.RootElement;
@@ -643,13 +653,9 @@ sealed class AspireC4LifecycleHook(
 					: 0;
 
 			if (filteredErrors > 0)
-			{
-				telemetry.LikeC4ValidationErrors(filteredErrors, totalErrors);
-			}
+				telemetry.LikeC4ValidationFailed(filteredErrors, totalErrors);
 			else
-			{
-				telemetry.LikeC4ValidationPassed();
-			}
+				telemetry.LikeC4ValidatedSuccessfully();
 		}
 		catch
 		{
@@ -721,7 +727,13 @@ sealed class AspireC4LifecycleHook(
 			StringComparer.OrdinalIgnoreCase
 		);
 
-		var config = LikeC4ConfigGenerator.Generate("aspirec4", opts.Title, includePaths, aliases);
+		var config = LikeC4ConfigGenerator.Generate(
+			"aspirec4",
+			opts.Title,
+			includePaths,
+			aliases,
+			opts.ConfigFileMetadata
+		);
 		var configPath = Path.Combine(outputDir, "likec4.config.json");
 		await File.WriteAllTextAsync(configPath, config, cancellationToken);
 	}
@@ -760,6 +772,8 @@ sealed class AspireC4LifecycleHook(
 		var servePath = $"{LikeC4ServerResource.WorkspacePath}/{relOutputDir}";
 		// ContainerServePath is read by the WithArgs callback registered at configure time in AddAspireC4.
 		workspaceOptions.Value.ContainerServePath = servePath;
+		// ContainerBindMountSource is used by RunValidationAsync when running docker-mode validation.
+		workspaceOptions.Value.ContainerBindMountSource = normalizedSource;
 	}
 
 	/// <summary>

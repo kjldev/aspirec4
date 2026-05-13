@@ -410,7 +410,13 @@ public static class LikeC4DSLGenerator
 		var viewId = string.IsNullOrWhiteSpace(options.GeneratedViewId) ? "index" : options.GeneratedViewId;
 		sb.AppendLine("views {");
 		sb.Append("  view ").Append(viewId).AppendLine(" {");
-		sb.Append("    title '").Append(EscapeQuote(options.Title)).AppendLine("'");
+		sb.Append("    title '").Append(EscapeQuote(options.ViewTitle)).AppendLine("'");
+		if (!string.IsNullOrWhiteSpace(options.ViewDescription))
+		{
+			sb.Append("    description '''").AppendLine();
+			sb.Append(EscapeQuote(options.ViewDescription)).AppendLine();
+			sb.AppendLine("    '''");
+		}
 
 		if (model.Elements.Count == 0)
 		{

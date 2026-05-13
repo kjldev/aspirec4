@@ -49,6 +49,7 @@ public sealed class LikeC4DSLValidationTests
 
 	async Task<ValidationResult> RunValidateAsync(
 		string dsl,
+		CancellationToken cancellationToken,
 		(string FileName, string Content)[]? additionalFiles = null
 	)
 	{
@@ -66,7 +67,7 @@ public sealed class LikeC4DSLValidationTests
 			}
 		}
 
-		var useDotFlag = IsDotAvailable() ? " --use-dot" : "";
+		var useDotFlag = await Helpers.IsDotAvailableAsync(cancellationToken) ? " --use-dot" : "";
 
 		// npx on Windows is a .cmd wrapper, so it must be invoked through the shell.
 		string shellFile,
@@ -174,16 +175,16 @@ public sealed class LikeC4DSLValidationTests
 	// -------------------------------------------------------------------------
 
 	[Test]
-	public async Task ValidatedDsl_EmptyModel_ProducesNoErrors()
+	public async Task ValidatedDsl_EmptyModel_ProducesNoErrors(CancellationToken cancellationToken)
 	{
 		var dsl = LikeC4DSLGenerator.Generate(LikeC4Model.Empty, DefaultOptions);
-		var result = await RunValidateAsync(dsl);
+		var result = await RunValidateAsync(dsl, cancellationToken);
 		AssertNoValidationErrors(result, dsl);
 		await Assert.That(result.FilteredErrors).IsEqualTo(0);
 	}
 
 	[Test]
-	public async Task ValidatedDsl_SingleElement_ProducesNoErrors()
+	public async Task ValidatedDsl_SingleElement_ProducesNoErrors(CancellationToken cancellationToken)
 	{
 		var model = new LikeC4Model
 		{
@@ -200,14 +201,17 @@ public sealed class LikeC4DSLValidationTests
 		};
 
 		var dsl = LikeC4DSLGenerator.Generate(model, DefaultOptions);
-		var result = await RunValidateAsync(dsl);
+		var result = await RunValidateAsync(dsl, cancellationToken);
 		AssertNoValidationErrors(result, dsl);
 		await Assert.That(result.FilteredErrors).IsEqualTo(0);
 	}
 
 	[Test]
 	[MethodDataSource(nameof(AllResourceStates))]
-	public async Task ValidatedDsl_EachResourceState_ProducesNoErrors(LikeC4ResourceState state)
+	public async Task ValidatedDsl_EachResourceState_ProducesNoErrors(
+		LikeC4ResourceState state,
+		CancellationToken cancellationToken
+	)
 	{
 		var model = new LikeC4Model
 		{
@@ -225,7 +229,7 @@ public sealed class LikeC4DSLValidationTests
 		};
 
 		var dsl = LikeC4DSLGenerator.Generate(model, DefaultOptions);
-		var result = await RunValidateAsync(dsl);
+		var result = await RunValidateAsync(dsl, cancellationToken);
 		AssertNoValidationErrors(result, dsl);
 		await Assert.That(result.FilteredErrors).IsEqualTo(0);
 	}
@@ -233,7 +237,7 @@ public sealed class LikeC4DSLValidationTests
 	public static IEnumerable<LikeC4ResourceState> AllResourceStates() => Enum.GetValues<LikeC4ResourceState>();
 
 	[Test]
-	public async Task ValidatedDsl_ElementWithMetadataTagsLinks_ProducesNoErrors()
+	public async Task ValidatedDsl_ElementWithMetadataTagsLinks_ProducesNoErrors(CancellationToken cancellationToken)
 	{
 		var model = new LikeC4Model
 		{
@@ -255,13 +259,13 @@ public sealed class LikeC4DSLValidationTests
 		};
 
 		var dsl = LikeC4DSLGenerator.Generate(model, DefaultOptions);
-		var result = await RunValidateAsync(dsl);
+		var result = await RunValidateAsync(dsl, cancellationToken);
 		AssertNoValidationErrors(result, dsl);
 		await Assert.That(result.FilteredErrors).IsEqualTo(0);
 	}
 
 	[Test]
-	public async Task ValidatedDsl_RelationshipWithKindAndLabel_ProducesNoErrors()
+	public async Task ValidatedDsl_RelationshipWithKindAndLabel_ProducesNoErrors(CancellationToken cancellationToken)
 	{
 		var model = new LikeC4Model
 		{
@@ -293,13 +297,13 @@ public sealed class LikeC4DSLValidationTests
 		};
 
 		var dsl = LikeC4DSLGenerator.Generate(model, DefaultOptions);
-		var result = await RunValidateAsync(dsl);
+		var result = await RunValidateAsync(dsl, cancellationToken);
 		AssertNoValidationErrors(result, dsl);
 		await Assert.That(result.FilteredErrors).IsEqualTo(0);
 	}
 
 	[Test]
-	public async Task ValidatedDsl_NestedElements_ProducesNoErrors()
+	public async Task ValidatedDsl_NestedElements_ProducesNoErrors(CancellationToken cancellationToken)
 	{
 		var model = new LikeC4Model
 		{
@@ -338,13 +342,15 @@ public sealed class LikeC4DSLValidationTests
 		};
 
 		var dsl = LikeC4DSLGenerator.Generate(model, DefaultOptions);
-		var result = await RunValidateAsync(dsl);
+		var result = await RunValidateAsync(dsl, cancellationToken);
 		AssertNoValidationErrors(result, dsl);
 		await Assert.That(result.FilteredErrors).IsEqualTo(0);
 	}
 
 	[Test]
-	public async Task ValidatedDsl_ElementKindSpecWithStyleAndNotation_ProducesNoErrors()
+	public async Task ValidatedDsl_ElementKindSpecWithStyleAndNotation_ProducesNoErrors(
+		CancellationToken cancellationToken
+	)
 	{
 		var options = new AspireC4DiagramOptions
 		{
@@ -377,13 +383,15 @@ public sealed class LikeC4DSLValidationTests
 		};
 
 		var dsl = LikeC4DSLGenerator.Generate(model, options);
-		var result = await RunValidateAsync(dsl);
+		var result = await RunValidateAsync(dsl, cancellationToken);
 		AssertNoValidationErrors(result, dsl);
 		await Assert.That(result.FilteredErrors).IsEqualTo(0);
 	}
 
 	[Test]
-	public async Task ValidatedDsl_MultipleElementsAllStatesSimultaneously_ProducesNoErrors()
+	public async Task ValidatedDsl_MultipleElementsAllStatesSimultaneously_ProducesNoErrors(
+		CancellationToken cancellationToken
+	)
 	{
 		// Stress-test: all state variants co-existing in one diagram.
 		var elements = Enum.GetValues<LikeC4ResourceState>()
@@ -401,13 +409,13 @@ public sealed class LikeC4DSLValidationTests
 
 		var model = new LikeC4Model { Elements = elements, Relationships = [] };
 		var dsl = LikeC4DSLGenerator.Generate(model, DefaultOptions);
-		var result = await RunValidateAsync(dsl);
+		var result = await RunValidateAsync(dsl, cancellationToken);
 		AssertNoValidationErrors(result, dsl);
 		await Assert.That(result.FilteredErrors).IsEqualTo(0);
 	}
 
 	[Test]
-	public async Task ValidatedDsl_WithAdditionalExtensionFile_ProducesNoErrors()
+	public async Task ValidatedDsl_WithAdditionalExtensionFile_ProducesNoErrors(CancellationToken cancellationToken)
 	{
 		// Arrange: a model with two elements and a relationship.
 		var model = new LikeC4Model
@@ -459,7 +467,7 @@ public sealed class LikeC4DSLValidationTests
 			}
 			""";
 
-		var result = await RunValidateAsync(dsl, [("extensions.c4", extensionDsl)]);
+		var result = await RunValidateAsync(dsl, cancellationToken, [("extensions.c4", extensionDsl)]);
 
 		AssertNoValidationErrors(result, $"main:\n{dsl}\nextension:\n{extensionDsl}");
 		await Assert.That(result.TotalErrors).IsEqualTo(0);

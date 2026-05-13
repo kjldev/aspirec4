@@ -22,7 +22,7 @@ public static class LikeC4ConfigGenerator
 	/// The LikeC4 project name (becomes the <c>name</c> field; must be a unique identifier within the workspace).
 	/// </param>
 	/// <param name="title">
-	/// The display title shown in generated diagrams (becomes the <c>title</c> field).
+	/// Optional display title shown in generated diagrams (becomes the <c>title</c> field). Can be <c>null</c>.
 	/// </param>
 	/// <param name="includePaths">
 	/// Paths to include, relative to the location of the config file.
@@ -32,21 +32,24 @@ public static class LikeC4ConfigGenerator
 	/// Key/value pairs where each key is an image alias (must start with <c>@</c>) and the value
 	/// is a path relative to the config file. Forwarded to the <c>imageAliases</c> object. Can be empty.
 	/// </param>
+	/// <param name="configFileMetadata">
+	/// Key/value pairs where each key is a metadata field and the value is the corresponding metadata value.
+	/// Forwarded to the <c>metadata</c> object. Can be empty.
+	/// </param>
 	/// <returns>A formatted JSON string suitable for writing to a <c>likec4.config.json</c> file.</returns>
 	public static string Generate(
 		string name,
-		string title,
+		string? title,
 		IEnumerable<string> includePaths,
-		IReadOnlyDictionary<string, string> imageAliases
+		IReadOnlyDictionary<string, string> imageAliases,
+		IReadOnlyDictionary<string, string> configFileMetadata
 	)
 	{
 		ArgumentNullException.ThrowIfNull(imageAliases);
-		var root = new JsonObject
-		{
-			["$schema"] = "https://likec4.dev/schemas/config.json",
-			["name"] = name,
-			["title"] = title,
-		};
+		var root = new JsonObject { ["$schema"] = "https://likec4.dev/schemas/config.json", ["name"] = name };
+
+		if (!string.IsNullOrWhiteSpace(title))
+			root["title"] = title;
 
 		var paths = includePaths.ToList();
 		if (paths.Count > 0)
@@ -65,6 +68,15 @@ public static class LikeC4ConfigGenerator
 				aliasesObject[key] = relativePath;
 
 			root["imageAliases"] = aliasesObject;
+		}
+
+		if (configFileMetadata?.Count > 0)
+		{
+			JsonObject metadataObject = [];
+			foreach (var (key, value) in configFileMetadata)
+				metadataObject[key] = value;
+
+			root["metadata"] = metadataObject;
 		}
 
 		return root.ToJsonString(WriteOptions);

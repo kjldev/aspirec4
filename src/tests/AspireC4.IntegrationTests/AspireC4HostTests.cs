@@ -257,7 +257,7 @@ public sealed partial class AspireC4HostTests
 		CancellationToken cancellationToken
 	)
 	{
-		var useDotFlag = await IsDotAvailableAsync(cancellationToken) ? " --use-dot" : "";
+		var useDotFlag = await Helpers.IsDotAvailableAsync(cancellationToken) ? " --use-dot" : "";
 
 		string shellFile,
 			shellArgs;
@@ -305,37 +305,5 @@ public sealed partial class AspireC4HostTests
 		var stats = doc.RootElement.GetProperty("stats");
 		var totalErrors = stats.GetProperty("totalErrors").GetInt32();
 		return (totalErrors, rawOutput);
-	}
-
-	[System.Diagnostics.CodeAnalysis.SuppressMessage(
-		"Design",
-		"CA1031:Do not catch general exception types",
-		Justification = "dot availability check is best-effort; any failure means dot is unavailable"
-	)]
-	static async Task<bool> IsDotAvailableAsync(CancellationToken cancellationToken)
-	{
-		try
-		{
-			using var proc = Process.Start(
-				new ProcessStartInfo
-				{
-					FileName = "dot",
-					Arguments = "-V",
-					RedirectStandardError = true,
-					UseShellExecute = false,
-					CreateNoWindow = true,
-				}
-			);
-
-			if (proc is null)
-				return false;
-
-			await proc.WaitForExitAsync(cancellationToken);
-			return proc.ExitCode == 0;
-		}
-		catch
-		{
-			return false;
-		}
 	}
 }
