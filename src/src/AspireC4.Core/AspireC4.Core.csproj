@@ -7,6 +7,6 @@
 
 	<ItemGroup>
 		<PackageReference Include="Aspire.Hosting" />
-		<PackageReference Remove="Microsoft.Extensions.Telemetry.Abstractions" />
+		<!-- <PackageReference Remove="Microsoft.Extensions.Telemetry.Abstractions" /> -->
 	</ItemGroup>
 </Project>

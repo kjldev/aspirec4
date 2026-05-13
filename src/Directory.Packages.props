@@ -13,7 +13,7 @@
 		<PackageVersion Include="Aspire.Hosting.Azure.Redis" Version="13.3.0" />
 		<PackageVersion Include="Microsoft.SourceLink.GitHub" Version="10.0.203" />
 		<PackageVersion Include="Purview.Telemetry.SourceGenerator" Version="4.1.0" />
-		<PackageVersion Include="Microsoft.Extensions.Telemetry.Abstractions" Version="10.5.0" />
+		<!-- <PackageVersion Include="Microsoft.Extensions.Telemetry.Abstractions" Version="10.5.0" /> -->
 		<!-- Testing Packages -->
 		<PackageVersion Include="Bogus" Version="35.6.5" />
 		<PackageVersion Include="Microsoft.Testing.Platform.MSBuild" Version="2.2.2" />

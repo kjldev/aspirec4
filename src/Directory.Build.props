@@ -4,4 +4,10 @@
 		<NoWarn>$(NoWarn);ASPIREATS001</NoWarn>
 	</PropertyGroup>
 	<Import Project="../.dotnet/Directory.Build.props" />
+	<PropertyGroup>
+		<TargetFramework>net8.0</TargetFramework>
+	</PropertyGroup>
+	<ItemGroup>
+		<PackageReference Remove="Microsoft.Extensions.Telemetry.Abstractions" />
+	</ItemGroup>
 </Project>
