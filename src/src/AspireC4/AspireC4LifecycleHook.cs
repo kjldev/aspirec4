@@ -209,6 +209,14 @@ sealed class AspireC4LifecycleHook(
 			: $"{parsed.Scheme}://{parsed.Authority}";
 	}
 
+	/// <summary>
+	/// Returns the Aspire browser token from configuration when
+	/// <see cref="AspireC4DiagramOptions.IncludeAspireTokenInDashboardLinks"/> is <see langword="true"/>;
+	/// otherwise <see langword="null"/> (token is suppressed by default).
+	/// </summary>
+	internal static string? ResolveAspireBrowserToken(IConfiguration configuration, AspireC4DiagramOptions options) =>
+		options.IncludeAspireTokenInDashboardLinks ? configuration["AppHost:BrowserToken"] : null;
+
 	// ── Dashboard integration (hide & surface URL/command on project resources) ──
 
 	void SetupDashboardIntegration(
@@ -483,6 +491,7 @@ sealed class AspireC4LifecycleHook(
 			);
 		}
 
+		var dashboardBrowserToken = ResolveAspireBrowserToken(configuration, options.Value);
 		var model = LikeC4ModelBuilder.Build(
 			[.. appModel.Resources],
 			_resourceStates,
@@ -492,7 +501,7 @@ sealed class AspireC4LifecycleHook(
 			opts.IconResolvers,
 			opts.IncludeAspireDashboardLinks,
 			_dashboardBaseUrl,
-			configuration["AppHost:BrowserToken"],
+			dashboardBrowserToken,
 			opts.StateTagMap,
 			resourceSnapshotUrls
 		);
