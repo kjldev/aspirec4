@@ -30,8 +30,9 @@ RUN cat > /entrypoint.sh <<'EOF'
 #!/bin/bash
 set -e
 
-# Start the Docker daemon in the background.
-dockerd --host=unix:///var/run/docker.sock >/var/log/dockerd.log 2>&1 &
+# Start the Docker daemon in the background using vfs storage to avoid nested
+# overlay2 issues inside a privileged container (same approach as the Podman runner).
+dockerd --host=unix:///var/run/docker.sock --storage-driver=vfs >/var/log/dockerd.log 2>&1 &
 DOCKERD_PID=$!
 
 echo "Waiting for Docker daemon..."
