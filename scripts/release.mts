@@ -4,7 +4,7 @@
  *
  * Steps:
  *   0. Parse flags; show context-aware release guide if --help
- *   1. Guards: not detached, not main, not release/*, clean tree
+ *   1. Guards: not detached, not main, not release/*, clean tree, up to date with main
  *   2. Read Aspire version from Directory.Packages.props
  *   3. Read current version from package.json
  *   4. Determine bump type from conventional commits since last tag
@@ -102,6 +102,7 @@ function readStateForHelp(): {
   currentVersion: string
   aspireVersion: string
   changesetCount: number
+  behindMainCount: number
 } {
   const currentBranch = run('git rev-parse --abbrev-ref HEAD', { allowFailure: true })
   const dirty = run('git status --porcelain', { allowFailure: true })
@@ -109,6 +110,7 @@ function readStateForHelp(): {
   let currentVersion = '(unknown)'
   let aspireVersion = '(unknown)'
   let changesetCount = 0
+  let behindMainCount = 0
 
   try {
     currentVersion = readJson<{ version: string }>(
@@ -127,17 +129,31 @@ function readStateForHelp(): {
     changesetCount = readdirSync(csDir).filter(f => f.endsWith('.md') && f !== 'README.md').length
   } catch {}
 
-  return { currentBranch, dirty, currentVersion, aspireVersion, changesetCount }
+  try {
+    run('git fetch origin main --quiet', { allowFailure: true })
+    const mainSha = run('git rev-parse origin/main', { allowFailure: true })
+    const mergeBaseSha = run('git merge-base HEAD origin/main', { allowFailure: true })
+    if (mainSha && mergeBaseSha && mainSha !== mergeBaseSha) {
+      const n = parseInt(
+        run('git rev-list --count HEAD..origin/main', { allowFailure: true }),
+        10,
+      )
+      behindMainCount = isNaN(n) ? 1 : n
+    }
+  } catch {}
+
+  return { currentBranch, dirty, currentVersion, aspireVersion, changesetCount, behindMainCount }
 }
 
 function showHelp(): void {
-  const { currentBranch, dirty, currentVersion, aspireVersion, changesetCount } =
+  const { currentBranch, dirty, currentVersion, aspireVersion, changesetCount, behindMainCount } =
     readStateForHelp()
 
   const isDetached = currentBranch === 'HEAD' || currentBranch === ''
   const isOnMain = currentBranch === 'main'
   const isOnReleaseBranch = currentBranch.startsWith('release/')
   const isDirty = dirty.length > 0
+  const isBehindMain = behindMainCount > 0
 
   const sep = '─'.repeat(52)
 
@@ -149,6 +165,9 @@ function showHelp(): void {
   out.push('  Current state:')
   out.push(`    Branch       : ${isDetached ? '(detached HEAD)' : currentBranch}`)
   out.push(`    Working tree : ${isDirty ? 'DIRTY  ✗  — uncommitted changes present' : 'clean  ✓'}`)
+  out.push(
+    `    Behind main  : ${isBehindMain ? `${behindMainCount} commit(s)  ✗` : 'up to date  ✓'}`,
+  )
   out.push(`    Version      : ${currentVersion}`)
   out.push(`    Aspire       : ${aspireVersion}`)
   out.push(`    Changesets   : ${changesetCount} pending`)
@@ -189,6 +208,16 @@ function showHelp(): void {
     issues.push('Working tree is dirty — commit or stash all changes before releasing.')
     fixes.push('  Commit:   git add -A && git commit -m "chore: …"')
     fixes.push('  Or stash: git stash')
+  }
+
+  if (isBehindMain) {
+    issues.push(
+      `Branch is ${behindMainCount} commit(s) behind main — merge before releasing to avoid conflicts.`,
+    )
+    fixes.push(`  git merge origin/main   # bring in ${behindMainCount} missing commit(s)`)
+    fixes.push('')
+    fixes.push('  To review what you are missing:')
+    fixes.push('    git log HEAD..origin/main --oneline')
   }
 
   if (issues.length > 0) {
@@ -360,6 +389,34 @@ if (dirty) {
 }
 
 console.log(`Starting release from branch '${currentBranch}'...`)
+
+// ---------------------------------------------------------------------------
+// 1e. Branch is up to date with main
+// ---------------------------------------------------------------------------
+
+run('git fetch origin main --quiet')
+const mainSha = run('git rev-parse origin/main')
+const mergeBaseSha = run('git merge-base HEAD origin/main')
+if (mergeBaseSha !== mainSha) {
+  const behindCount = run('git rev-list --count HEAD..origin/main')
+  console.error(
+    '\n' +
+      `  ✗  Branch '${currentBranch}' is ${behindCount} commit(s) behind origin/main.\n` +
+      '\n' +
+      '  Merge the latest changes from main before releasing:\n' +
+      '\n' +
+      '    git merge origin/main\n' +
+      '\n' +
+      '  To review what you are missing:\n' +
+      '\n' +
+      '    git log HEAD..origin/main --oneline\n' +
+      '\n' +
+      '  Then run: just release [prerelease]\n',
+  )
+  process.exit(1)
+}
+
+console.log('Branch is up to date with origin/main.')
 
 // ---------------------------------------------------------------------------
 // 2. Read Aspire version from Directory.Packages.props
