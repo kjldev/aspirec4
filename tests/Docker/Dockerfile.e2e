@@ -1,12 +1,13 @@
 # Test runner environment for Docker-based integration tests.
 #
-# Provides the .NET SDK and Node.js runtime. The Docker daemon is accessed via the
-# host socket mounted at runtime (-v /var/run/docker.sock:/var/run/docker.sock).
+# Runs Docker-in-Docker (DinD): starts its own dockerd so that bind-mount paths resolve
+# correctly relative to the container filesystem (no DooD host-path mismatch).
+# An entrypoint script starts dockerd, waits for readiness, pre-pulls the LikeC4 image
+# to avoid pulling it during the test timeout window, then execs the test command.
 #
 # Usage (from repo root):
 #   docker build -f tests/Docker/Dockerfile.e2e -t aspirec4-e2e-docker .
-#   docker run --rm \
-#     -v /var/run/docker.sock:/var/run/docker.sock \
+#   docker run --rm --privileged \
 #     -v $(pwd):/workspace \
 #     -w /workspace \
 #     aspirec4-e2e-docker \
@@ -23,6 +24,37 @@ RUN apt-get update -qq && \
     apt-get install -y --no-install-recommends nodejs && \
     rm -rf /var/lib/apt/lists/*
 
+# Entrypoint: start dockerd (DinD), wait for readiness, pre-pull the LikeC4 image
+# so it is cached before Aspire starts it inside the test, then exec the test command.
+RUN cat > /entrypoint.sh <<'EOF'
+#!/bin/bash
+set -e
+
+# Start the Docker daemon in the background.
+dockerd --host=unix:///var/run/docker.sock >/var/log/dockerd.log 2>&1 &
+DOCKERD_PID=$!
+
+echo "Waiting for Docker daemon..."
+for i in $(seq 1 60); do
+    docker info >/dev/null 2>&1 && { echo "Docker daemon ready"; break; }
+    sleep 1
+done
+
+if ! docker info >/dev/null 2>&1; then
+    echo "ERROR: Docker daemon not ready after 60s" >&2
+    cat /var/log/dockerd.log >&2
+    exit 1
+fi
+
+# Pre-pull the LikeC4 image so Aspire does not need to pull it during the test
+# timeout window (ClassSetUpAsync has a 300 s TUnit timeout).
+echo "Pre-pulling ghcr.io/likec4/likec4:latest..."
+docker pull ghcr.io/likec4/likec4:latest
+
+exec "$@"
+EOF
+RUN sed -i 's/\r$//' /entrypoint.sh && chmod +x /entrypoint.sh
+
 RUN mkdir -p /workspace
 WORKDIR /workspace
 
@@ -30,3 +62,5 @@ ENV DOTNET_CLI_TELEMETRY_OPTOUT=1
 ENV DOTNET_SKIP_FIRST_TIME_EXPERIENCE=1
 ENV DOTNET_GENERATE_ASPNET_CERTIFICATE=false
 ENV TERM=xterm
+
+ENTRYPOINT ["/entrypoint.sh"]

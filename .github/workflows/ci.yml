@@ -108,7 +108,7 @@ jobs:
         include:
           - runtime: docker
             image: aspirec4-e2e-docker
-            docker_flags: -v /var/run/docker.sock:/var/run/docker.sock
+            docker_flags: --privileged
           - runtime: podman
             image: aspirec4-e2e-podman
             docker_flags: --privileged
