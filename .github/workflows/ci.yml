@@ -63,55 +63,13 @@ jobs:
       - name: Run unit tests
         run: dotnet test --project src/tests/AspireC4.UnitTests --no-build --verbosity normal --configuration ${{ env.CONFIGURATION }}
 
-  build-integration-test-image:
-    name: Build Integration Test Image (${{ matrix.runtime }})
+  integration-test:
+    name: Integration Test (${{ matrix.runtime }})
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - runtime: docker
-            dockerfile: tests/Docker/Dockerfile.e2e
-            image: aspirec4-e2e-docker
-          - runtime: podman
-            dockerfile: tests/Docker/Dockerfile.e2e-podman
-            image: aspirec4-e2e-podman
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v6
-
-      - name: Build test runner image
-        run: |
-          docker build \
-            -f ${{ matrix.dockerfile }} \
-            -t ${{ matrix.image }} \
-            .
-
-      - name: Save image
-        run: docker save ${{ matrix.image }} | gzip > /tmp/${{ matrix.image }}.tar.gz
-
-      - name: Upload image artifact
-        uses: actions/upload-artifact@v7
-        with:
-          name: ${{ matrix.image }}
-          path: /tmp/${{ matrix.image }}.tar.gz
-          retention-days: 1
-
-  build-and-integration-test:
-    name: Build and Integration Test (${{ matrix.runtime }})
-    runs-on: ubuntu-latest
-    needs: build-integration-test-image
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - runtime: docker
-            image: aspirec4-e2e-docker
-            docker_flags: --privileged
-          - runtime: podman
-            image: aspirec4-e2e-podman
-            docker_flags: --privileged
+        runtime: [docker, podman]
 
     env:
       CONFIGURATION: Release
@@ -121,19 +79,16 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v6
 
-      - name: Download test runner image
-        uses: actions/download-artifact@v8
-        with:
-          name: ${{ matrix.image }}
-          path: /tmp
-
-      - name: Load test runner image
-        run: docker load < /tmp/${{ matrix.image }}.tar.gz
-
-      - name: Set up .NET (for restore/build on host)
+      - name: Set up .NET
         uses: actions/setup-dotnet@v5
         with:
           global-json-file: ./global.json
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version-file: package.json
+          cache: npm
 
       - name: Restore dependencies
         run: dotnet restore ${{ env.SOLUTION }}
@@ -141,20 +96,25 @@ jobs:
       - name: Build
         run: dotnet build ${{ env.SOLUTION }} --no-restore --configuration ${{ env.CONFIGURATION }}
 
-      - name: Run integration tests inside ${{ matrix.runtime }} container
+      - name: Start Podman socket
+        if: matrix.runtime == 'podman'
         run: |
-          docker run --rm \
-            ${{ matrix.docker_flags }} \
-            -v $(pwd):/workspace \
-            -v /home/runner/.nuget/packages:/home/runner/.nuget/packages:ro \
-            -w /workspace \
-            -e CONFIGURATION=${{ env.CONFIGURATION }} \
-            ${{ matrix.image }} \
-            dotnet test \
-              --project src/tests/AspireC4.IntegrationTests \
-              --no-build \
-              --verbosity normal \
-              --configuration ${{ env.CONFIGURATION }}
+          mkdir -p /run/user/$(id -u)/podman
+          podman system service --time=0 unix:///run/user/$(id -u)/podman/podman.sock &
+          for i in $(seq 1 30); do
+            [ -S /run/user/$(id -u)/podman/podman.sock ] && { echo "Podman socket ready"; break; }
+            sleep 0.5
+          done
+          echo "DOCKER_HOST=unix:///run/user/$(id -u)/podman/podman.sock" >> $GITHUB_ENV
+          echo "ASPIRE_CONTAINER_RUNTIME=podman" >> $GITHUB_ENV
+
+      - name: Run integration tests
+        run: |
+          dotnet test \
+            --project src/tests/AspireC4.IntegrationTests \
+            --no-build \
+            --verbosity normal \
+            --configuration ${{ env.CONFIGURATION }}
 
   ci-gate:
     name: CI Gate
@@ -163,14 +123,14 @@ jobs:
     needs:
       - format-check
       - build-and-test
-      - build-and-integration-test
+      - integration-test
 
     steps:
       - name: Verify upstream jobs succeeded
         env:
           FORMAT_CHECK_RESULT: ${{ needs['format-check'].result }}
           BUILD_AND_TEST_RESULT: ${{ needs['build-and-test'].result }}
-          BUILD_AND_INTEGRATION_TEST_RESULT: ${{ needs['build-and-integration-test'].result }}
+          INTEGRATION_TEST_RESULT: ${{ needs['integration-test'].result }}
         shell: bash
         run: |
           set -euo pipefail
@@ -178,7 +138,7 @@ jobs:
           declare -A results=(
             ["Format Check"]="${FORMAT_CHECK_RESULT}"
             ["Build and Test"]="${BUILD_AND_TEST_RESULT}"
-            ["Build and Integration Test"]="${BUILD_AND_INTEGRATION_TEST_RESULT}"
+            ["Integration Test"]="${INTEGRATION_TEST_RESULT}"
           )
 
           failures=0
