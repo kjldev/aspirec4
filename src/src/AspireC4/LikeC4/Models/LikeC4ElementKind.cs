@@ -1,6 +1,7 @@
 namespace Aspire.Hosting.AspireC4.LikeC4.Models;
 
 /// <summary>Defines the element kinds used in the LikeC4 DSL specification block.</summary>
+[KnownLikeC4ElementKindRegistry]
 public static class LikeC4ElementKind
 {
 	/// <summary>A fine-grained component element, typically contained within a <see cref="Container"/>.</summary>

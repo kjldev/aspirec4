@@ -36,6 +36,14 @@
 	</ItemGroup>
 
 	<ItemGroup>
+		<ProjectReference
+			Include="..\AspireC4.SourceGenerators\AspireC4.SourceGenerators.csproj"
+			OutputItemType="Analyzer"
+			ReferenceOutputAssembly="false"
+		/>
+	</ItemGroup>
+
+	<ItemGroup>
 		<Using Include="Aspire.Hosting.ApplicationModel" />
 	</ItemGroup>
 </Project>

@@ -426,14 +426,14 @@ public static class LikeC4DSLGenerator
 		LikeC4ElementStyleOverride
 	>(StringComparer.OrdinalIgnoreCase)
 	{
-		["aspire-run-state-starting"] = new("sky", null),
-		["aspire-run-state-waiting"] = new("sky", null),
-		["aspire-run-state-running"] = new("green", null),
-		["aspire-run-state-stopping"] = new("slate", 60),
-		["aspire-run-state-exited"] = new("muted", 30),
-		["aspire-run-state-finished"] = new("muted", 30),
-		["aspire-run-state-runtimeunhealthy"] = new("amber", null),
-		["aspire-run-state-failedtostart"] = new("red", null),
+		[LikeC4StateTags.Starting] = new("sky", null),
+		[LikeC4StateTags.Waiting] = new("sky", null),
+		[LikeC4StateTags.Running] = new("green", null),
+		[LikeC4StateTags.Stopping] = new("slate", 60),
+		[LikeC4StateTags.Exited] = new("muted", 30),
+		[LikeC4StateTags.Finished] = new("muted", 30),
+		[LikeC4StateTags.RuntimeUnhealthy] = new("amber", null),
+		[LikeC4StateTags.FailedToStart] = new("red", null),
 	};
 
 	static void WriteViews(StringBuilder sb, LikeC4Model model, AspireC4DiagramOptions options)
