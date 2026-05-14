@@ -1,5 +1,3 @@
-using Aspire.Hosting.ApplicationModel;
-
 namespace Aspire.Hosting.AspireC4.LikeC4;
 
 public sealed partial class IconInferenceTests

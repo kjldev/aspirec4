@@ -12,22 +12,38 @@ public sealed class LikeC4NodeDetailsAnnotation : IResourceAnnotation
 	readonly List<LikeC4Link> _links = [];
 	readonly List<LikeC4Metadata> _metadata = [];
 
+	/// <summary>
+	/// Initialises a new <see cref="LikeC4NodeDetailsAnnotation"/> with the given display label.
+	/// </summary>
+	/// <param name="label">The display label for this element. Must not be null or whitespace.</param>
 	public LikeC4NodeDetailsAnnotation(string label)
 	{
 		ArgumentException.ThrowIfNullOrWhiteSpace(label);
 		Label = label;
 	}
 
+	/// <summary>The display label shown on the element node in the diagram.</summary>
 	public string Label { get; private set; }
 
+	/// <summary>Optional technology string (e.g. <c>".NET"</c>, <c>"Redis"</c>) displayed beneath the label.</summary>
 	public string? Technology { get; private set; }
 
+	/// <summary>Optional longer description of this element, rendered in the diagram's detail panel.</summary>
 	public string? Description { get; private set; }
 
+	/// <summary>Optional one-line summary shown in tooltips or the diagram map view.</summary>
 	public string? Summary { get; private set; }
 
+	/// <summary>
+	/// Optional icon identifier (e.g. <c>"tech:dotnet"</c>, <c>"azure:storage"</c>).
+	/// When <see langword="null"/>, the icon is inferred automatically if auto-icons are enabled.
+	/// </summary>
 	public string? Icon { get; private set; }
 
+	/// <summary>
+	/// Per-element override for automatic icon inference.
+	/// <see langword="null"/> inherits the project-level <see cref="AspireC4DiagramOptions.AutoIconsEnabled"/> setting.
+	/// </summary>
 	public bool? AutoIconEnabled { get; private set; }
 
 	/// <summary>Optional element kind override. When set, overrides the inferred element kind in the diagram.</summary>
@@ -42,6 +58,9 @@ public sealed class LikeC4NodeDetailsAnnotation : IResourceAnnotation
 	/// <summary>Metadata key-value pairs for this element.</summary>
 	public IReadOnlyList<LikeC4Metadata> Metadata => _metadata;
 
+	/// <summary>Sets the display label for this element.</summary>
+	/// <param name="label">The new label. Must not be null or whitespace.</param>
+	/// <returns>The same <see cref="LikeC4NodeDetailsAnnotation"/> for further configuration.</returns>
 	public LikeC4NodeDetailsAnnotation WithLabel(string label)
 	{
 		ArgumentException.ThrowIfNullOrWhiteSpace(label);
@@ -49,24 +68,40 @@ public sealed class LikeC4NodeDetailsAnnotation : IResourceAnnotation
 		return this;
 	}
 
+	/// <summary>Sets the technology string displayed beneath the element label.</summary>
+	/// <param name="technology">The technology name, or <see langword="null"/> to clear it.</param>
+	/// <returns>The same <see cref="LikeC4NodeDetailsAnnotation"/> for further configuration.</returns>
 	public LikeC4NodeDetailsAnnotation WithTechnology(string? technology)
 	{
 		Technology = technology;
 		return this;
 	}
 
+	/// <summary>Sets the description rendered in the diagram's detail panel.</summary>
+	/// <param name="description">The description text, or <see langword="null"/> to clear it.</param>
+	/// <returns>The same <see cref="LikeC4NodeDetailsAnnotation"/> for further configuration.</returns>
 	public LikeC4NodeDetailsAnnotation WithDescription(string? description)
 	{
 		Description = description;
 		return this;
 	}
 
+	/// <summary>Sets the one-line summary shown in tooltips or the diagram map view.</summary>
+	/// <param name="summary">The summary text, or <see langword="null"/> to clear it.</param>
+	/// <returns>The same <see cref="LikeC4NodeDetailsAnnotation"/> for further configuration.</returns>
 	public LikeC4NodeDetailsAnnotation WithSummary(string? summary)
 	{
 		Summary = summary;
 		return this;
 	}
 
+	/// <summary>
+	/// Sets the icon for this element.
+	/// Use a namespaced identifier such as <c>"tech:dotnet"</c> or <c>"azure:storage"</c>.
+	/// Pass <see langword="null"/> to revert to automatic inference.
+	/// </summary>
+	/// <param name="icon">The icon identifier, or <see langword="null"/> to clear it.</param>
+	/// <returns>The same <see cref="LikeC4NodeDetailsAnnotation"/> for further configuration.</returns>
 	public LikeC4NodeDetailsAnnotation WithIcon(string? icon)
 	{
 		if (icon is not null)

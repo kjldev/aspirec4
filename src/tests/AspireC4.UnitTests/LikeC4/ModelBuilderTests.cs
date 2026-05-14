@@ -1,4 +1,3 @@
-using Aspire.Hosting.ApplicationModel;
 using Aspire.Hosting.AspireC4.LikeC4;
 using Aspire.Hosting.AspireC4.LikeC4.Annotations;
 using Aspire.Hosting.AspireC4.LikeC4.Models;
@@ -968,7 +967,7 @@ public sealed partial class ModelBuilderTests
 		var model = ModelBuilder.Build([api]);
 
 		// Assert
-		await Assert.That(model.Elements[0].State).IsEqualTo(null);
+		await Assert.That(model.Elements[0].State).IsNull();
 	}
 
 	[Test]
@@ -987,7 +986,7 @@ public sealed partial class ModelBuilderTests
 
 		var dbElement = model.Elements.Single(e => e.Name == "db");
 		// Assert
-		await Assert.That(dbElement.State).IsEqualTo(null);
+		await Assert.That(dbElement.State).IsNull();
 	}
 
 	[Test]

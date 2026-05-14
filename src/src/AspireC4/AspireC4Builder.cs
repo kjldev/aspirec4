@@ -157,9 +157,7 @@ sealed class AspireC4Builder(
 			&& fullPath[1] == ':'
 		)
 		{
-#pragma warning disable CA1308
-			return $"/mnt/{char.ToLowerInvariant(fullPath[0])}{fullPath[2..].Replace('\\', '/')}".ToLowerInvariant();
-#pragma warning restore CA1308
+			return $"/mnt/{char.ToLowerInvariant(fullPath[0])}{fullPath[2..].Replace('\\', '/')}".ToLowerInvariantSafe();
 		}
 
 		// All other runtimes: return the path as-is.

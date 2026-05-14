@@ -219,12 +219,10 @@ static class ModelBuilder
 		IReadOnlyList<string> stateTags = [];
 		if (state is not null)
 		{
-			string? stateTag;
-			if (stateTagMap is not null && stateTagMap.TryGetValue(state, out var tagOverride))
-				stateTag = tagOverride;
-			else
-				stateTag = $"aspire-run-state-{state.ToLowerInvariant()}";
-
+			var stateTag =
+				stateTagMap is not null && stateTagMap.TryGetValue(state, out var tagOverride)
+					? tagOverride
+					: $"aspire-run-state-{state.ToLowerInvariantSafe()}";
 			if (stateTag is not null)
 				stateTags = [Helpers.NormaliseTag(stateTag)];
 		}
@@ -409,9 +407,7 @@ static class ModelBuilder
 		);
 
 		return behaviour == NormaliseMetadataBehaviour.NormaliseLowercase
-#pragma warning disable CA1308 // ToLowerInvariant is intentional: metadata keys are normalised to lowercase for readability
-			? normalised.ToLowerInvariant()
-#pragma warning restore CA1308
+			? normalised.ToLowerInvariantSafe()
 			: normalised;
 	}
 

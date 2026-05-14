@@ -65,7 +65,7 @@ public interface IAspireC4Builder
 	/// </remarks>
 	/// <param name="sourcePath">
 	/// The path to the source file. Relative paths are resolved from the current working
-	/// directory at the time <see cref="WriteC4FileAsync"/> executes. If the file does not
+	/// directory at the time writing executes. If the file does not
 	/// exist at startup the entry is silently skipped.
 	/// </param>
 	/// <returns>The same <see cref="IAspireC4Builder"/> for further configuration.</returns>
