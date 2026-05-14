@@ -1,6 +1,3 @@
-using System.Text.Json;
-using System.Text.Json.Serialization;
-
 namespace Aspire.Hosting.AspireC4.LikeC4;
 
 static partial class IconMatcher

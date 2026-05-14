@@ -1,6 +1,5 @@
 using Aspire.Hosting.AspireC4.LikeC4;
 using Aspire.Hosting.AspireC4.LikeC4.Annotations;
-using Aspire.Hosting.AspireC4.LikeC4.Models;
 
 namespace Aspire.Hosting.AspireC4;
 

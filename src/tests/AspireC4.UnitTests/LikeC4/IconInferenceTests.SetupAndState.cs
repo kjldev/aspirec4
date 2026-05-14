@@ -1,6 +1,6 @@
 namespace Aspire.Hosting.AspireC4.LikeC4;
 
-public sealed partial class IconInferenceTests
+sealed partial class IconInferenceTests
 {
 	/// <summary>
 	/// Encapsulates a single icon inference test case. The display name is derived automatically

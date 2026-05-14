@@ -1,5 +1,3 @@
-using Microsoft.Extensions.Configuration;
-
 namespace Aspire.Hosting.AspireC4.Lifecycle;
 
 /// <summary>

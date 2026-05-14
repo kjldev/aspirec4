@@ -1,7 +1,6 @@
 using Aspire.Hosting.AspireC4.ApplicationModel;
 using Aspire.Hosting.AspireC4.LikeC4.Runtime;
 using Microsoft.Extensions.DependencyInjection;
-using static Aspire.Hosting.TestHelpers;
 
 namespace Aspire.Hosting;
 

@@ -1,6 +1,3 @@
-using Aspire.Hosting.AspireC4.LikeC4;
-using Aspire.Hosting.AspireC4.LikeC4.Annotations;
-
 namespace Aspire.Hosting.AspireC4;
 
 public sealed partial class ModelBuilderTests

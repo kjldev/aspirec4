@@ -2,7 +2,9 @@
 	<PropertyGroup>
 		<ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
 		<CentralPackageTransitivePinningEnabled>true</CentralPackageTransitivePinningEnabled>
-		<TUnitVersion>1.44.0</TUnitVersion>
+	</PropertyGroup>
+	<PropertyGroup Label="Pinned Versions">
+		<TUnitVersion>1.44.39</TUnitVersion>
 	</PropertyGroup>
 	<ItemGroup>
 		<PackageVersion Include="Aspire.Hosting" Version="13.3.0" />
@@ -11,16 +13,14 @@
 		<PackageVersion Include="Aspire.Hosting.JavaScript" Version="13.3.0" />
 		<PackageVersion Include="Aspire.Hosting.Azure.PostgreSQL" Version="13.3.0" />
 		<PackageVersion Include="Aspire.Hosting.Azure.Redis" Version="13.3.0" />
-		<PackageVersion Include="Microsoft.SourceLink.GitHub" Version="10.0.203" />
+		<PackageVersion Include="Microsoft.SourceLink.GitHub" Version="10.0.300" />
 		<PackageVersion Include="Purview.Telemetry.SourceGenerator" Version="4.1.0" />
-		<!-- <PackageVersion Include="Microsoft.Extensions.Telemetry.Abstractions" Version="10.5.0" /> -->
 		<!-- Testing Packages -->
 		<PackageVersion Include="Bogus" Version="35.6.5" />
 		<PackageVersion Include="Microsoft.Testing.Platform.MSBuild" Version="2.2.2" />
 		<PackageVersion Include="NSubstitute" Version="5.3.0" />
 		<PackageVersion Include="NSubstitute.Analyzers.CSharp" Version="1.0.17" />
 		<PackageVersion Include="TUnit" Version="$(TUnitVersion)" />
-		<PackageVersion Include="TUnit.Core" Version="$(TUnitVersion)" />
 		<PackageVersion Include="TUnit.Aspire" Version="$(TUnitVersion)" />
 	</ItemGroup>
 </Project>

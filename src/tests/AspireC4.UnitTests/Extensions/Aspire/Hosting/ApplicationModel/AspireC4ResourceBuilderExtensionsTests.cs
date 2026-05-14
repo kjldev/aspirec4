@@ -1,5 +1,4 @@
 using Aspire.Hosting.AspireC4.LikeC4.Annotations;
-using static Aspire.Hosting.TestHelpers;
 
 namespace Aspire.Hosting;
 
