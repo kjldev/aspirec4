@@ -22,10 +22,13 @@ For more details on all of these tools and components, see:
 	// This is to configure certain parts of the AppHost and AspireC4 purely for this example test app.
 	.ConfigureTestHost();
 
+// Azure managed resources (containers when local).
 var azureManagerRedis = builder
 	.AddAzureManagedRedis("azure-redis")
 	// Run as container when local
-	.RunAsContainer()
+	.RunAsContainer(c =>
+		c.WithRedisCommander(c => c.WithLikeC4Details("Redis Commander", summary: "Local Redis Web Interface"))
+	)
 	// Add LikeC4 details to the component for better visualization in the C4 model.
 	.WithLikeC4Details(opts =>
 		opts.WithLabel("Azure Redis")
@@ -56,7 +59,7 @@ Callers must:
 var azurePostgres = builder
 	.AddAzurePostgresFlexibleServer("azure-postgres")
 	// Run as container when local
-	.RunAsContainer()
+	.RunAsContainer(c => c.WithPgWeb(pC => pC.WithLikeC4Details("PgWeb", summary: "Local Postgres Web Interface")))
 	// Add LikeC4 details to the component for better visualization in the C4 model.
 	.WithLikeC4Details(static c4 =>
 		c4.WithLabel("Azure Postgres")
@@ -75,6 +78,7 @@ var azurePostgres = builder
 			])
 	);
 
+// Local Dev/ Sync versions...
 var redis = builder
 	.AddRedis("redis")
 	.WithLikeC4Details(opts =>
@@ -88,6 +92,7 @@ When using Azure Managed Redis with `.RunAsContainer()`, the application will di
 			.WithTag("local-dev")
 	)
 	.WithLikeC4Group("Local Dev/ Sync Group");
+
 var postgres = builder
 	.AddPostgres("postgres")
 	.WithLikeC4Details(opts =>
