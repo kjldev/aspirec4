@@ -1,6 +1,3 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 
@@ -74,13 +71,13 @@ public sealed class KnownLikeC4RegistryGeneratorTests
 	}
 
 	[Test]
-	public async Task RunGenerator_WithWithTagCallSite_GeneratesTagsNestedClass()
+	public async Task RunGenerator_WithWithTagCallSite_GeneratesTagsNestedClass(CancellationToken cancellationToken)
 	{
 		// Arrange
 		var source = CreateSourceWithCallSites(".WithTag(\"external\")");
 
 		// Act
-		var result = RunGenerator(source);
+		var result = RunGenerator(source, cancellationToken);
 		var output = GetGeneratedSource(result, "KnownLikeC4Registry.g.cs");
 
 		// Assert
@@ -90,13 +87,15 @@ public sealed class KnownLikeC4RegistryGeneratorTests
 	}
 
 	[Test]
-	public async Task RunGenerator_WithWithKindCallSite_GeneratesElementKindsNestedClass()
+	public async Task RunGenerator_WithWithKindCallSite_GeneratesElementKindsNestedClass(
+		CancellationToken cancellationToken
+	)
 	{
 		// Arrange
 		var source = CreateSourceWithCallSites(".WithKind(\"async\")");
 
 		// Act
-		var result = RunGenerator(source);
+		var result = RunGenerator(source, cancellationToken);
 		var output = GetGeneratedSource(result, "KnownLikeC4Registry.g.cs");
 
 		// Assert
@@ -106,7 +105,7 @@ public sealed class KnownLikeC4RegistryGeneratorTests
 	}
 
 	[Test]
-	public async Task RunGenerator_WithConstReference_FollowsConstToExtractValue()
+	public async Task RunGenerator_WithConstReference_FollowsConstToExtractValue(CancellationToken cancellationToken)
 	{
 		// Arrange
 		var source = """
@@ -123,7 +122,7 @@ public sealed class KnownLikeC4RegistryGeneratorTests
 			""";
 
 		// Act
-		var result = RunGenerator(source);
+		var result = RunGenerator(source, cancellationToken);
 		var output = GetGeneratedSource(result, "KnownLikeC4Registry.g.cs");
 
 		// Assert
@@ -134,13 +133,13 @@ public sealed class KnownLikeC4RegistryGeneratorTests
 	}
 
 	[Test]
-	public async Task RunGenerator_WithDuplicateCallSites_DeduplicatesValues()
+	public async Task RunGenerator_WithDuplicateCallSites_DeduplicatesValues(CancellationToken cancellationToken)
 	{
 		// Arrange
 		var source = CreateSourceWithCallSites(".WithTag(\"external\")", ".WithTag(\"external\")");
 
 		// Act
-		var result = RunGenerator(source);
+		var result = RunGenerator(source, cancellationToken);
 		var output = GetGeneratedSource(result, "KnownLikeC4Registry.g.cs");
 
 		// Assert
@@ -150,13 +149,13 @@ public sealed class KnownLikeC4RegistryGeneratorTests
 	}
 
 	[Test]
-	public async Task RunGenerator_WithNoCallSites_ProducesNoOutput()
+	public async Task RunGenerator_WithNoCallSites_ProducesNoOutput(CancellationToken cancellationToken)
 	{
 		// Arrange
 		const string source = "namespace TestApp;";
 
 		// Act
-		var result = RunGenerator(source);
+		var result = RunGenerator(source, cancellationToken);
 		var output = GetGeneratedSource(result, "KnownLikeC4Registry.g.cs");
 
 		// Assert
@@ -164,13 +163,15 @@ public sealed class KnownLikeC4RegistryGeneratorTests
 	}
 
 	[Test]
-	public async Task RunGenerator_WithBothTagAndKindCallSites_GeneratesBothNestedClasses()
+	public async Task RunGenerator_WithBothTagAndKindCallSites_GeneratesBothNestedClasses(
+		CancellationToken cancellationToken
+	)
 	{
 		// Arrange
 		var source = CreateSourceWithCallSites(".WithTag(\"external\")", ".WithKind(\"async\")");
 
 		// Act
-		var result = RunGenerator(source);
+		var result = RunGenerator(source, cancellationToken);
 		var output = GetGeneratedSource(result, "KnownLikeC4Registry.g.cs");
 
 		// Assert
@@ -179,23 +180,20 @@ public sealed class KnownLikeC4RegistryGeneratorTests
 		await Assert.That(output).Contains("public static class ElementKinds");
 	}
 
-	static KnownLikeC4RegistryGenerator CreateSut()
-	{
-		return new KnownLikeC4RegistryGenerator();
-	}
+	static KnownLikeC4RegistryGenerator CreateSut() => new();
 
-	static GeneratorDriverRunResult RunGenerator(string source)
+	static GeneratorDriverRunResult RunGenerator(string source, CancellationToken cancellationToken)
 	{
 		var compilation = CSharpCompilation.Create(
 			"TestAssembly",
-			[CSharpSyntaxTree.ParseText(source)],
+			[CSharpSyntaxTree.ParseText(source, cancellationToken: cancellationToken)],
 			GetMetadataReferences(),
 			new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary)
 		);
 
 		var generator = CreateSut();
 		GeneratorDriver driver = CSharpGeneratorDriver.Create(generator);
-		driver = driver.RunGeneratorsAndUpdateCompilation(compilation, out _, out _);
+		driver = driver.RunGeneratorsAndUpdateCompilation(compilation, out _, out _, cancellationToken);
 
 		return driver.GetRunResult();
 	}

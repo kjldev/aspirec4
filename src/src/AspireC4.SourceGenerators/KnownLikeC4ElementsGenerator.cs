@@ -16,7 +16,7 @@ namespace Aspire.Hosting.AspireC4.SourceGenerators;
 [Generator]
 public sealed class KnownLikeC4RegistryGenerator : IIncrementalGenerator
 {
-	static readonly char[] _nameSeparators = ['_', '-'];
+	static readonly char[] NameSeparators = ['_', '-'];
 
 	const string WithTagMethodName = "WithTag";
 	const string WithKindMethodName = "WithKind";
@@ -39,7 +39,7 @@ public sealed class KnownLikeC4RegistryGenerator : IIncrementalGenerator
 		if (string.IsNullOrEmpty(name))
 			return string.Empty;
 
-		var segments = name.Split(_nameSeparators, StringSplitOptions.RemoveEmptyEntries);
+		var segments = name.Split(NameSeparators, StringSplitOptions.RemoveEmptyEntries);
 		if (segments.Length == 0)
 			return string.Empty;
 
@@ -160,19 +160,14 @@ public sealed class KnownLikeC4RegistryGenerator : IIncrementalGenerator
 	{
 		var tail = segment.Substring(1);
 		return segment.All(static c => !char.IsLetter(c) || char.IsUpper(c))
-			? new string(tail.Select(static c => char.ToLowerInvariant(c)).ToArray())
+			? new string([.. tail.Select(static c => char.ToLowerInvariant(c))])
 			: tail;
 	}
 
-	readonly struct KnownField
+	readonly struct KnownField(string name, string value)
 	{
-		public KnownField(string name, string value)
-		{
-			Name = name;
-			Value = value;
-		}
+		public string Name { get; } = name;
 
-		public string Name { get; }
-		public string Value { get; }
+		public string Value { get; } = value;
 	}
 }
