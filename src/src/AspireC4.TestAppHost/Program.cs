@@ -79,8 +79,8 @@ var azurePostgres = builder
 	);
 
 // Local Dev/ Sync versions...
-var redis = builder
-	.AddRedis("redis")
+var localRedis = builder
+	.AddRedis("local-redis")
 	.WithLikeC4Details(opts =>
 		opts.WithDescription(
 				@"For testing **locally**, uses Redis as a container.
@@ -93,8 +93,8 @@ When using Azure Managed Redis with `.RunAsContainer()`, the application will di
 	)
 	.WithLikeC4Group("Local Dev/ Sync Group");
 
-var postgres = builder
-	.AddPostgres("postgres")
+var localPostgres = builder
+	.AddPostgres("local-postgres")
 	.WithLikeC4Details(opts =>
 		opts.WithDescription("For testing Azure Postgres vs. local Postgres")
 			.WithSummary("Local Postgres for development")
@@ -103,6 +103,7 @@ var postgres = builder
 	)
 	.WithLikeC4Group("Local Dev/ Sync Group");
 
+// Our app...
 var nodeApp = builder
 	.AddNodeApp("node-app", "../../../samples/node-app", "index.ts")
 	// Add LikeC4 details to the component for better visualization in the C4 model.
@@ -114,6 +115,7 @@ var nodeApp = builder
 	)
 	.WithNpm(install: true)
 	.WithHttpEndpoint(env: "PORT")
+	.WithUrlForEndpoint("http", url => url.Url = "/health")
 	// These references will be used to generate the connections in the C4 model and also ensure that the application waits for these dependencies to be ready before starting.
 	.WithLikeC4Reference(
 		azureManagerRedis,
@@ -121,26 +123,26 @@ var nodeApp = builder
 	)
 	.WaitFor(azureManagerRedis)
 	.WithLikeC4Reference(
-		redis,
+		localRedis,
 		opts => opts.WithLabel("Caches  sessions (local)").WithTechnology("Redis Protocol").WithKind("RESP")
 	)
-	.WaitFor(redis)
+	.WaitFor(localRedis)
 	.WithLikeC4Reference(
 		azurePostgres,
 		opts => opts.WithLabel("Persists data").WithTechnology("PostgreSQL / JDBC").WithKind("tcp-ip")
 	)
 	.WaitFor(azurePostgres)
 	.WithLikeC4Reference(
-		postgres,
+		localPostgres,
 		opts => opts.WithLabel("Persists data (local)").WithTechnology("PostgreSQL / JDBC").WithKind("tcp-ip")
 	)
-	.WaitFor(postgres);
+	.WaitFor(localPostgres);
 
-postgres.WithLikeC4Reference(
+localPostgres.WithLikeC4Reference(
 	azurePostgres,
 	opts => opts.WithLabel("syncs with").WithTechnology("PostgreSQL / JDBC").WithKind("tcp-ip")
 );
-redis.WithLikeC4Reference(
+localRedis.WithLikeC4Reference(
 	azureManagerRedis,
 	opts => opts.WithLabel("syncs with").WithTechnology("Redis Protocol").WithKind("RESP")
 );
