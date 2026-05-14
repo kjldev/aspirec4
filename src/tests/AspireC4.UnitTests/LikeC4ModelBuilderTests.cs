@@ -2,7 +2,7 @@ using Aspire.Hosting.ApplicationModel;
 
 namespace Aspire.Hosting.AspireC4;
 
-public sealed class LikeC4ModelBuilderTests
+public sealed partial class LikeC4ModelBuilderTests
 {
 	[Test]
 	public async Task Build_WithNoResources_ReturnsEmptyModel()

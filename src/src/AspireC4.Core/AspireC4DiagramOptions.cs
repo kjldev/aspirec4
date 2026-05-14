@@ -286,4 +286,18 @@ public sealed class AspireC4DiagramOptions
 	/// </summary>
 	[System.Diagnostics.CodeAnalysis.SuppressMessage("Usage", "CA2227:Collection properties should be read only")]
 	public Dictionary<string, string> ConfigFileMetadata { get; set; } = [];
+
+	/// <summary>
+	/// Configures strict-mode validation for the diagram model.
+	/// When <see cref="AspireC4StrictOptions.Mode"/> is set to anything other than
+	/// <see cref="AspireC4StrictMode.None"/>, any tag, relationship kind, group, or metadata key
+	/// used in the model that is not declared in the corresponding allowed list causes an
+	/// <see cref="System.InvalidOperationException"/> to be thrown during model building.
+	/// <para>
+	/// Configure via the <c>WithAllowed*</c> extension methods or bind from the
+	/// <c>AspireC4:Strict</c> configuration section.
+	/// </para>
+	/// </summary>
+	[System.Diagnostics.CodeAnalysis.SuppressMessage("Usage", "CA2227:Collection properties should be read only")]
+	public AspireC4StrictOptions Strict { get; set; } = new();
 }

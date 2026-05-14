@@ -26,7 +26,7 @@
 		<AnalysisLevel>Latest</AnalysisLevel>
 		<NoWarn>AD0001;$(NoWarn)</NoWarn>
 		<NoWarn>IDE2001;$(NoWarn)</NoWarn>
-		<NoWarn>CS1591;$(NoWarn)</NoWarn>
+		<!-- <NoWarn>CS1591;$(NoWarn)</NoWarn> -->
 		<NoWarn>CA1014;CA1848;CA2007;CA2201;CA2234;CA2225;CA2254;$(NoWarn)</NoWarn>
 		<NoWarn>RCS1090;RCS1108;$(NoWarn)</NoWarn>
 		<CurrentYear>$([System.DateTime]::Now.Year)</CurrentYear>
@@ -103,9 +103,16 @@
 	<PropertyGroup Label="Web Project" Condition="$(IsWebSdkProject) AND !$(IsWebProject)">
 		<InterceptorsNamespaces>$(InterceptorsNamespaces);Microsoft.AspNetCore.OpenApi.Generated</InterceptorsNamespaces>
 	</PropertyGroup>
+	<PropertyGroup
+		Label="Library Project Properties"
+		Condition="$(IsCSharpProject) AND !$(IsTestProject) AND !$(IsSharedTestingProject)"
+	>
+		<GenerateDocumentationFile>true</GenerateDocumentationFile>
+		<!-- Include XML documentation files alongside the DLL in the nupkg. -->
+		<AllowedOutputExtensionsInPackageBuildOutputFolder>$(AllowedOutputExtensionsInPackageBuildOutputFolder);.xml</AllowedOutputExtensionsInPackageBuildOutputFolder>
+	</PropertyGroup>
 	<!-- Package Projects -->
 	<PropertyGroup Label="NuGet Package Project Properties" Condition="$(IsPackable)">
-		<GenerateDocumentationFile>true</GenerateDocumentationFile>
 		<!-- Include symbol files (*.pdb) in the built .nupkg -->
 		<AllowedOutputExtensionsInPackageBuildOutputFolder>$(AllowedOutputExtensionsInPackageBuildOutputFolder);.pdb</AllowedOutputExtensionsInPackageBuildOutputFolder>
 		<PackageTags>$(PackageTags);</PackageTags>

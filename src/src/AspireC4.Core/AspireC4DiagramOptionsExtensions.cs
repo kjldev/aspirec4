@@ -271,4 +271,68 @@ public static class AspireC4DiagramOptionsExtensions
 		options.IconResolvers.Add(resolver);
 		return options;
 	}
+
+	/// <summary>
+	/// Sets the strict validation mode. The provided <paramref name="mode"/> replaces the current mode.
+	/// Use the bitwise OR operator to combine multiple flags:
+	/// <c>AspireC4StrictMode.Tags | AspireC4StrictMode.Groups</c>.
+	/// </summary>
+	/// <seealso cref="AspireC4DiagramOptions.Strict"/>
+	/// <seealso cref="AspireC4StrictMode"/>
+	public static AspireC4DiagramOptions WithStrictMode(this AspireC4DiagramOptions options, AspireC4StrictMode mode)
+	{
+		ArgumentNullException.ThrowIfNull(options);
+		options.Strict.Mode = mode;
+		return options;
+	}
+
+	/// <summary>
+	/// Adds a tag to the list of tags permitted under <see cref="AspireC4StrictMode.Tags"/>.
+	/// A leading <c>#</c> is accepted and stripped automatically.
+	/// </summary>
+	/// <seealso cref="AspireC4StrictOptions.Tags"/>
+	public static AspireC4DiagramOptions WithAllowedTag(this AspireC4DiagramOptions options, string tag)
+	{
+		ArgumentNullException.ThrowIfNull(options);
+		ArgumentException.ThrowIfNullOrWhiteSpace(tag);
+		options.Strict.Tags.Add(LikeC4TagHelper.Normalize(tag));
+		return options;
+	}
+
+	/// <summary>
+	/// Adds a relationship kind identifier to the list of kinds permitted under
+	/// <see cref="AspireC4StrictMode.RelationshipKinds"/>.
+	/// </summary>
+	/// <seealso cref="AspireC4StrictOptions.RelationshipKinds"/>
+	public static AspireC4DiagramOptions WithAllowedRelationshipKind(this AspireC4DiagramOptions options, string kind)
+	{
+		ArgumentNullException.ThrowIfNull(options);
+		ArgumentException.ThrowIfNullOrWhiteSpace(kind);
+		options.Strict.RelationshipKinds.Add(kind);
+		return options;
+	}
+
+	/// <summary>
+	/// Adds a group name to the list of groups permitted under <see cref="AspireC4StrictMode.Groups"/>.
+	/// </summary>
+	/// <seealso cref="AspireC4StrictOptions.Groups"/>
+	public static AspireC4DiagramOptions WithAllowedGroup(this AspireC4DiagramOptions options, string groupName)
+	{
+		ArgumentNullException.ThrowIfNull(options);
+		ArgumentException.ThrowIfNullOrWhiteSpace(groupName);
+		options.Strict.Groups.Add(groupName);
+		return options;
+	}
+
+	/// <summary>
+	/// Adds a metadata key to the list of keys permitted under <see cref="AspireC4StrictMode.MetadataKeys"/>.
+	/// </summary>
+	/// <seealso cref="AspireC4StrictOptions.MetadataKeys"/>
+	public static AspireC4DiagramOptions WithAllowedMetadataKey(this AspireC4DiagramOptions options, string key)
+	{
+		ArgumentNullException.ThrowIfNull(options);
+		ArgumentException.ThrowIfNullOrWhiteSpace(key);
+		options.Strict.MetadataKeys.Add(key);
+		return options;
+	}
 }

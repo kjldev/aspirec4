@@ -472,7 +472,8 @@ sealed class AspireC4LifecycleHook(
 			_dashboardBaseUrl,
 			dashboardBrowserToken,
 			opts.StateTagMap,
-			resourceSnapshotUrls
+			resourceSnapshotUrls,
+			opts.Strict
 		);
 		var dsl = LikeC4DSLGenerator.Generate(model, opts);
 

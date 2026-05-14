@@ -61,7 +61,8 @@ public static class LikeC4ModelBuilder
 		string? dashboardBaseUrl = null,
 		string? dashboardBrowserToken = null,
 		IReadOnlyDictionary<LikeC4ResourceState, string?>? stateTagMap = null,
-		IReadOnlyDictionary<string, IReadOnlyList<(string Url, string Name)>>? resourceSnapshotUrls = null
+		IReadOnlyDictionary<string, IReadOnlyList<(string Url, string Name)>>? resourceSnapshotUrls = null,
+		AspireC4StrictOptions? strict = null
 	)
 	{
 		ArgumentNullException.ThrowIfNull(resources);
@@ -113,7 +114,8 @@ public static class LikeC4ModelBuilder
 					dashboardBaseUrl,
 					dashboardBrowserToken,
 					stateTagMap,
-					resourceSnapshotUrls?.GetValueOrDefault(resource.Name)
+					resourceSnapshotUrls?.GetValueOrDefault(resource.Name),
+					strict
 				)
 			);
 			CollectRelationships(
@@ -122,7 +124,8 @@ public static class LikeC4ModelBuilder
 				visibleByName,
 				relationships,
 				visitedRelationships,
-				normaliseMetadataBehaviour
+				normaliseMetadataBehaviour,
+				strict
 			);
 		}
 
@@ -185,7 +188,8 @@ public static class LikeC4ModelBuilder
 		string? dashboardBaseUrl = null,
 		string? dashboardBrowserToken = null,
 		IReadOnlyDictionary<LikeC4ResourceState, string?>? stateTagMap = null,
-		IReadOnlyList<(string Url, string Name)>? snapshotEndpointUrls = null
+		IReadOnlyList<(string Url, string Name)>? snapshotEndpointUrls = null,
+		AspireC4StrictOptions? strict = null
 	)
 	{
 		var details = resource.Annotations.OfType<LikeC4NodeDetailsAnnotation>().LastOrDefault();
@@ -218,6 +222,15 @@ public static class LikeC4ModelBuilder
 
 		var description = details?.Description;
 		var summary = details?.Summary;
+
+		// Strict-mode validation — runs after normalization so comparisons use the effective values.
+		if (strict is not null && strict.Mode != AspireC4StrictMode.None)
+		{
+			var userTags = details?.Tags ?? [];
+			EnforceStrictTags(strict, userTags, resource.Name);
+			EnforceStrictGroup(strict, group, resource.Name);
+			EnforceStrictMetadataKeys(strict, userMetadata, resource.Name, isRelationship: false);
+		}
 
 		return new()
 		{
@@ -514,7 +527,8 @@ public static class LikeC4ModelBuilder
 		Dictionary<string, IResource> visibleByName,
 		List<LikeC4Relationship> relationships,
 		HashSet<(string, string)> visited,
-		NormaliseMetadataBehaviour normaliseMetadataBehaviour
+		NormaliseMetadataBehaviour normaliseMetadataBehaviour,
+		AspireC4StrictOptions? strict = null
 	)
 	{
 		foreach (var annotation in resource.Annotations.OfType<ResourceRelationshipAnnotation>())
@@ -560,6 +574,19 @@ public static class LikeC4ModelBuilder
 				? annotation.Type
 				: null;
 
+			var relationshipMetadata = NormaliseMetadataKeys(details?.Metadata ?? [], normaliseMetadataBehaviour);
+			var relationshipTags = details?.Tags ?? [];
+			var relationshipKind = details?.Kind;
+
+			// Strict-mode validation for Aspire-backed relationships.
+			if (strict is not null && strict.Mode != AspireC4StrictMode.None)
+			{
+				var label = $"{resource.Name} -> {effectiveTarget.Name}";
+				EnforceStrictRelationshipKind(strict, relationshipKind, label);
+				EnforceStrictTags(strict, relationshipTags, label);
+				EnforceStrictMetadataKeys(strict, relationshipMetadata, label, isRelationship: true);
+			}
+
 			relationships.Add(
 				new LikeC4Relationship
 				{
@@ -568,11 +595,11 @@ public static class LikeC4ModelBuilder
 					Label = details?.Label ?? inferredLabel,
 					Technology = details?.Technology,
 					Description = details?.Description,
-					Kind = details?.Kind,
+					Kind = relationshipKind,
 					NavigateTo = details?.NavigateTo,
-					Tags = details?.Tags ?? [],
+					Tags = relationshipTags,
 					Links = details?.Links ?? [],
-					Metadata = NormaliseMetadataKeys(details?.Metadata ?? [], normaliseMetadataBehaviour),
+					Metadata = relationshipMetadata,
 				}
 			);
 		}
@@ -594,6 +621,17 @@ public static class LikeC4ModelBuilder
 				continue;
 			}
 
+			var diagramOnlyMetadata = NormaliseMetadataKeys(details.Metadata, normaliseMetadataBehaviour);
+
+			// Strict-mode validation for diagram-only relationships.
+			if (strict is not null && strict.Mode != AspireC4StrictMode.None)
+			{
+				var label = $"{resource.Name} -> {effectiveTarget.Name}";
+				EnforceStrictRelationshipKind(strict, details.Kind, label);
+				EnforceStrictTags(strict, details.Tags, label);
+				EnforceStrictMetadataKeys(strict, diagramOnlyMetadata, label, isRelationship: true);
+			}
+
 			relationships.Add(
 				new LikeC4Relationship
 				{
@@ -606,9 +644,87 @@ public static class LikeC4ModelBuilder
 					NavigateTo = details.NavigateTo,
 					Tags = details.Tags,
 					Links = details.Links,
-					Metadata = NormaliseMetadataKeys(details.Metadata, normaliseMetadataBehaviour),
+					Metadata = diagramOnlyMetadata,
 				}
 			);
+		}
+	}
+
+	// ── Strict-mode enforcement helpers ──────────────────────────────────────
+
+	static void EnforceStrictTags(AspireC4StrictOptions strict, IReadOnlyList<string> tags, string contextLabel)
+	{
+		if (!strict.Mode.HasFlag(AspireC4StrictMode.Tags) || tags.Count == 0)
+			return;
+
+		HashSet<string> allowed = new(strict.Tags, StringComparer.OrdinalIgnoreCase);
+		foreach (var tag in tags)
+		{
+			if (!allowed.Contains(tag))
+			{
+				throw new InvalidOperationException(
+					$"Tag '{tag}' on '{contextLabel}' is not in the allowed tags list. "
+						+ $"Add it via {nameof(AspireC4DiagramOptionsExtensions.WithAllowedTag)}(\"{tag}\") "
+						+ $"or add it to the '{AspireC4DiagramOptions.SectionName}:Strict:Tags' configuration."
+				);
+			}
+		}
+	}
+
+	static void EnforceStrictRelationshipKind(AspireC4StrictOptions strict, string? kind, string contextLabel)
+	{
+		if (!strict.Mode.HasFlag(AspireC4StrictMode.RelationshipKinds) || kind is null)
+			return;
+
+		HashSet<string> allowed = new(strict.RelationshipKinds, StringComparer.OrdinalIgnoreCase);
+		if (!allowed.Contains(kind))
+		{
+			throw new InvalidOperationException(
+				$"Relationship kind '{kind}' on '{contextLabel}' is not in the allowed relationship kinds list. "
+					+ $"Add it via {nameof(AspireC4DiagramOptionsExtensions.WithAllowedRelationshipKind)}(\"{kind}\") "
+					+ $"or add it to the '{AspireC4DiagramOptions.SectionName}:Strict:RelationshipKinds' configuration."
+			);
+		}
+	}
+
+	static void EnforceStrictGroup(AspireC4StrictOptions strict, string? group, string contextLabel)
+	{
+		if (!strict.Mode.HasFlag(AspireC4StrictMode.Groups) || group is null)
+			return;
+
+		HashSet<string> allowed = new(strict.Groups, StringComparer.OrdinalIgnoreCase);
+		if (!allowed.Contains(group))
+		{
+			throw new InvalidOperationException(
+				$"Group '{group}' on element '{contextLabel}' is not in the allowed groups list. "
+					+ $"Add it via {nameof(AspireC4DiagramOptionsExtensions.WithAllowedGroup)}(\"{group}\") "
+					+ $"or add it to the '{AspireC4DiagramOptions.SectionName}:Strict:Groups' configuration."
+			);
+		}
+	}
+
+	static void EnforceStrictMetadataKeys(
+		AspireC4StrictOptions strict,
+		IReadOnlyList<LikeC4Metadata> metadata,
+		string contextLabel,
+		bool isRelationship
+	)
+	{
+		if (!strict.Mode.HasFlag(AspireC4StrictMode.MetadataKeys) || metadata.Count == 0)
+			return;
+
+		HashSet<string> allowed = new(strict.MetadataKeys, StringComparer.OrdinalIgnoreCase);
+		foreach (var (key, _) in metadata)
+		{
+			if (!allowed.Contains(key))
+			{
+				var subject = isRelationship ? $"relationship '{contextLabel}'" : $"element '{contextLabel}'";
+				throw new InvalidOperationException(
+					$"Metadata key '{key}' on {subject} is not in the allowed metadata keys list. "
+						+ $"Add it via {nameof(AspireC4DiagramOptionsExtensions.WithAllowedMetadataKey)}(\"{key}\") "
+						+ $"or add it to the '{AspireC4DiagramOptions.SectionName}:Strict:MetadataKeys' configuration."
+				);
+			}
 		}
 	}
 }

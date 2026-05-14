@@ -2,6 +2,10 @@
 	"name": "aspirec4",
 	"version": "13.3.0-prerelease.3",
 	"description": "Aspire LikeC4 Visualization - version manifest for CD pipeline",
+	"author": {
+		"name": "Kieron lanning",
+		"url": "https://kieronlanning.dev/"
+	},
 	"private": true,
 	"type": "module",
 	"scripts": {
