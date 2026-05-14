@@ -6,7 +6,7 @@ enum LikeC4HMRPortMode
 	Configurable,
 }
 
-static class LikeC4HmrPortCompatibility
+static class LikeC4HMRPortCompatibility
 {
 	static Version? ConfigurableHmrPortMinimumVersion => new(1, 56, 0);
 

@@ -57,7 +57,7 @@ public static class AspireC4DistributedApplicationBuilderExtensions
 			var outputDir = ResolveOutputDirectory(builder.AppHostDirectory, diagramOpts.OutputDirectory);
 			Directory.CreateDirectory(outputDir);
 			var imageTag = diagramOpts.ContainerImageTag ?? LikeC4ServerResource.DefaultTag;
-			var hmrPortMode = LikeC4HmrPortCompatibility.Resolve(imageTag);
+			var hmrPortMode = LikeC4HMRPortCompatibility.Resolve(imageTag);
 			// Use the relay on Windows even in Configurable mode: Docker Desktop may fail to publish
 			// the well-known port (24678) reliably due to Hyper-V port reservations or port-cleanup
 			// races between container restarts. The relay owns port 24678 on the host side and
