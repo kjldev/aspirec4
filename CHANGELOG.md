@@ -1,5 +1,30 @@
 # aspirec4
 
+## 13.3.0-prerelease.4
+
+### Minor Changes
+
+- ### Features
+
+  - adding first-pass source generator - very much a WIP
+  - add KnownLikeC4Elements source generator
+  - stable model generation across resource state changes
+  - make WithRelationshipKindSpec strict param nullable with auto-detect
+  - add technology support to relationship kind specifications
+  - add strict mode validation to aspire c4 diagram options
+  - add guards and context-aware release guide
+
+  ### Bug Fixes
+
+  - resolve build errors and update tests post-refactor
+  - relationship kind technology uses no colon in dsl output
+  - always show release guide; exit on blockers before proceeding
+  - block release when branch is behind origin/main
+  - validate unknown args and simplify justfile recipe
+  - moved the Aspire browser token inclusion behind a AppHost options property
+
+  ### Changes
+
 ## 13.3.0-prerelease.3
 
 ### Minor Changes
