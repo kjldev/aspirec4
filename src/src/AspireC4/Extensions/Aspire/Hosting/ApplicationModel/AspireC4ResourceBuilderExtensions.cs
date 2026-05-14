@@ -1,10 +1,15 @@
 ﻿using System.ComponentModel;
-using Aspire.Hosting.ApplicationModel;
+using Aspire.Hosting.AspireC4.LikeC4.Annotations;
 
 namespace Aspire.Hosting;
 
+/// <summary>
+/// Extension methods for <see cref="IResourceBuilder{T}"/> to add annotations that customize how resources and their relationships
+/// are represented in the generated LikeC4 diagrams. These methods allow you to specify details such as labels, technologies, descriptions,
+/// summaries, and icons for resources, as well as details for relationships between resources.
+/// </summary>
 [EditorBrowsable(EditorBrowsableState.Never)]
-public static partial class AspireC4ResourceBuilderExtensions
+public static class AspireC4ResourceBuilderExtensions
 {
 	extension<T>(IResourceBuilder<T> builder)
 		where T : IResource

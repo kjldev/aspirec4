@@ -17,10 +17,9 @@
 		<IncludeSymbols>true</IncludeSymbols>
 		<SymbolPackageFormat>snupkg</SymbolPackageFormat>
 	</PropertyGroup>
-
-	<!-- <ItemGroup>
-		<PackageReference Remove="Microsoft.Extensions.Telemetry.Abstractions" />
-	</ItemGroup> -->
+	<ItemGroup>
+		<EmbeddedResource Include="BuildResources\likec4-icons.json" />
+	</ItemGroup>
 
 	<ItemGroup>
 		<None
@@ -33,21 +32,10 @@
 	</ItemGroup>
 
 	<ItemGroup>
-		<ProjectReference Include="..\AspireC4.Core\AspireC4.Core.csproj">
-			<PrivateAssets>all</PrivateAssets>
-		</ProjectReference>
+		<PackageReference Include="Aspire.Hosting" />
 	</ItemGroup>
 
-	<!-- Bundle AspireC4.Core.dll directly into lib/ (not a NuGet dependency) -->
-	<Target Name="_IncludeCoreAssemblyInPackage" BeforeTargets="_GetPackageFiles">
-		<ItemGroup>
-			<None
-				Include="$(MSBuildThisFileDirectory)bin\$(Configuration)\$(TargetFramework)\AspireC4.Core.dll"
-				Condition="Exists('$(MSBuildThisFileDirectory)bin\$(Configuration)\$(TargetFramework)\AspireC4.Core.dll')"
-			>
-				<Pack>true</Pack>
-				<PackagePath>lib/$(TargetFramework)/</PackagePath>
-			</None>
-		</ItemGroup>
-	</Target>
+	<ItemGroup>
+		<Using Include="Aspire.Hosting.ApplicationModel" />
+	</ItemGroup>
 </Project>

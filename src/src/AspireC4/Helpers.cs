@@ -33,4 +33,24 @@ static class Helpers
 
 	public static async Task<bool> IsDotAvailableAsync(CancellationToken cancellationToken = default) =>
 		await DotAvailable.GetValueAsync(cancellationToken);
+
+	/// <summary>
+	/// Normalises a tag name by stripping the leading <c>#</c> character if present.
+	/// <c>"#external"</c> and <c>"external"</c> both normalise to <c>"external"</c>,
+	/// preventing duplicates in the LikeC4 <c>specification</c> block and body tags.
+	/// </summary>
+	/// <exception cref="ArgumentException">
+	/// Thrown when <paramref name="tag"/> is <see langword="null"/>, empty, whitespace, or consists
+	/// only of <c>#</c> characters (leaving an empty name after stripping).
+	/// </exception>
+	public static string NormaliseTag(string tag)
+	{
+		ArgumentException.ThrowIfNullOrWhiteSpace(tag);
+
+		var normalized = tag.TrimStart('#').TrimEnd();
+
+		return string.IsNullOrWhiteSpace(normalized)
+			? throw new ArgumentException("Tag name must not be empty or consist only of '#' characters.", nameof(tag))
+			: normalized;
+	}
 }

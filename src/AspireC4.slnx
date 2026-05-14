@@ -8,7 +8,6 @@
 	</Folder>
 	<Folder Name="/src/">
 		<Project Path="src/AspireC4.TestAppHost/AspireC4.TestAppHost.csproj" />
-		<Project Path="src\AspireC4.Core\AspireC4.Core.csproj" />
 		<Project Path="src\AspireC4\AspireC4.csproj" />
 	</Folder>
 	<Folder Name="/tests/">

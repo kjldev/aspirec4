@@ -1,5 +1,3 @@
-using Aspire.Hosting.AspireC4;
-
 var builder = DistributedApplication.CreateBuilder(args);
 
 // Add LikeC4 visualization to the application. This will allow us to visualize the components and their relationships in a C4 model.

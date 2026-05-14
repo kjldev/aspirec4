@@ -53,7 +53,7 @@ public sealed partial class ModelBuilderTests
 	}
 
 	[Test]
-	public async Task Build_StrictTags_NoneMode_DisallowedTagDoesNotThrow()
+	public async Task Build_StrictTags_NoneMode_DisallowedTag_DoesNotThrow()
 	{
 		// Arrange
 		var resource = CreateProjectResource("api");
@@ -65,7 +65,7 @@ public sealed partial class ModelBuilderTests
 	}
 
 	[Test]
-	public async Task Build_StrictTags_StateTagsExemptFromValidation()
+	public async Task Build_StrictTags_StateTagsExempt_DoesNotThrow()
 	{
 		// Arrange — the state tag "aspire-run-state-running" is auto-injected, not user-defined
 		var resource = CreateProjectResource("api");
@@ -86,7 +86,7 @@ public sealed partial class ModelBuilderTests
 	}
 
 	[Test]
-	public async Task Build_StrictTags_HashPrefixStrippedBeforeComparison()
+	public async Task Build_StrictTags_HashPrefixNormalized_DoesNotThrow()
 	{
 		// Arrange — allowed list uses bare name; tag added with # prefix
 		var resource = CreateProjectResource("api");
@@ -98,7 +98,7 @@ public sealed partial class ModelBuilderTests
 	}
 
 	[Test]
-	public async Task Build_StrictTags_NullStrict_NoValidation()
+	public async Task Build_StrictTags_NullStrict_DoesNotThrow()
 	{
 		// Arrange
 		var resource = CreateProjectResource("api");
@@ -211,7 +211,7 @@ public sealed partial class ModelBuilderTests
 	}
 
 	[Test]
-	public async Task Build_StrictGroups_GroupComparisonIsCaseInsensitive()
+	public async Task Build_StrictGroups_CaseInsensitiveGroupName_DoesNotThrow()
 	{
 		// Arrange
 		var resource = CreateProjectResource("api");
@@ -252,7 +252,7 @@ public sealed partial class ModelBuilderTests
 	}
 
 	[Test]
-	public async Task Build_StrictMetadataKeys_AutoAspireKeysExempt()
+	public async Task Build_StrictMetadataKeys_AutoAspireKeysExempt_DoesNotThrow()
 	{
 		// Arrange — aspire-name and aspire-type are auto-injected and must not be validated
 		var resource = CreateProjectResource("api");
@@ -294,7 +294,7 @@ public sealed partial class ModelBuilderTests
 	// ── Strict mode — combined flags ──────────────────────────────────────────
 
 	[Test]
-	public async Task Build_StrictAll_AllViolationsExceptFirst_SecondViolationThrowsAfterFirst()
+	public async Task Build_StrictAll_MultipleViolations_ThrowsOnFirst()
 	{
 		// Arrange — multiple violations; first encountered throws immediately
 		var resource = CreateProjectResource("api");
@@ -310,7 +310,7 @@ public sealed partial class ModelBuilderTests
 	}
 
 	[Test]
-	public async Task Build_StrictAll_TagsAndRelationshipKindsEnforced_ValidInput_DoesNotThrow()
+	public async Task Build_StrictAll_ValidInput_DoesNotThrow()
 	{
 		// Arrange
 		var (api, db) = CreateApiAndDbResources();

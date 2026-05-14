@@ -5,15 +5,15 @@ namespace Aspire.Hosting.AspireC4;
 /// </summary>
 public sealed class AspireC4BuilderTests
 {
-	// --- BuildLocalCliCommand ---
+	// --- BuildLocalCLICommand ---
 
 	[Test]
-	public async Task BuildLocalCliCommand_Npx_UsesNpxWithLikeC4Args()
+	public async Task BuildLocalCLICommand_Npx_UsesNpxWithLikeC4Args()
 	{
 		// Arrange
 
 		// Act
-		var (command, args) = AspireC4Builder.BuildLocalCliCommand(LikeC4LocalCLIRuntime.Npx, "/tmp/likec4", 5173);
+		var (command, args) = AspireC4Builder.BuildLocalCLICommand(LocalCLIRuntime.Npx, "/tmp/likec4", 5173);
 
 		// Assert
 		await Assert.That(command).IsEqualTo("npx");
@@ -21,12 +21,12 @@ public sealed class AspireC4BuilderTests
 	}
 
 	[Test]
-	public async Task BuildLocalCliCommand_Pnpm_UsesPnpmExec()
+	public async Task BuildLocalCLICommand_Pnpm_UsesPnpmExec()
 	{
 		// Arrange
 
 		// Act
-		var (command, args) = AspireC4Builder.BuildLocalCliCommand(LikeC4LocalCLIRuntime.Pnpm, "/tmp/likec4", 5173);
+		var (command, args) = AspireC4Builder.BuildLocalCLICommand(LocalCLIRuntime.Pnpm, "/tmp/likec4", 5173);
 
 		// Assert
 		await Assert.That(command).IsEqualTo("pnpm");
@@ -34,12 +34,12 @@ public sealed class AspireC4BuilderTests
 	}
 
 	[Test]
-	public async Task BuildLocalCliCommand_Yarn_UsesYarnDlx()
+	public async Task BuildLocalCLICommand_Yarn_UsesYarnDlx()
 	{
 		// Arrange
 
 		// Act
-		var (command, args) = AspireC4Builder.BuildLocalCliCommand(LikeC4LocalCLIRuntime.Yarn, "/tmp/likec4", 5173);
+		var (command, args) = AspireC4Builder.BuildLocalCLICommand(LocalCLIRuntime.Yarn, "/tmp/likec4", 5173);
 
 		// Assert
 		await Assert.That(command).IsEqualTo("yarn");
@@ -47,12 +47,12 @@ public sealed class AspireC4BuilderTests
 	}
 
 	[Test]
-	public async Task BuildLocalCliCommand_Bun_UsesBunx()
+	public async Task BuildLocalCLICommand_Bun_UsesBunx()
 	{
 		// Arrange
 
 		// Act
-		var (command, args) = AspireC4Builder.BuildLocalCliCommand(LikeC4LocalCLIRuntime.Bun, "/tmp/likec4", 5173);
+		var (command, args) = AspireC4Builder.BuildLocalCLICommand(LocalCLIRuntime.Bun, "/tmp/likec4", 5173);
 
 		// Assert
 		await Assert.That(command).IsEqualTo("bunx");
@@ -60,39 +60,39 @@ public sealed class AspireC4BuilderTests
 	}
 
 	[Test]
-	public async Task BuildLocalCliCommand_Auto_Throws()
+	public async Task BuildLocalCLICommand_Auto_Throws()
 	{
 		// Arrange
 
 		// Act
 		static (string Command, string[] Args) Action() =>
-			AspireC4Builder.BuildLocalCliCommand(LikeC4LocalCLIRuntime.Auto, "/tmp", 5173);
+			AspireC4Builder.BuildLocalCLICommand(LocalCLIRuntime.Auto, "/tmp", 5173);
 
 		// Assert
 		await Assert.That(Action).Throws<ArgumentOutOfRangeException>();
 	}
 
 	[Test]
-	public async Task BuildLocalCliCommand_IncludesCorrectPort()
+	public async Task BuildLocalCLICommand_IncludesCorrectPort()
 	{
 		// Arrange
 
 		// Act
-		var (_, args) = AspireC4Builder.BuildLocalCliCommand(LikeC4LocalCLIRuntime.Npx, "/output", 9090);
+		var (_, args) = AspireC4Builder.BuildLocalCLICommand(LocalCLIRuntime.Npx, "/output", 9090);
 
 		// Assert
 		await Assert.That(args).Contains("9090");
 	}
 
-	// --- BuildLikeC4CliPrefix ---
+	// --- BuildLikeC4CLIPrefix ---
 
 	[Test]
-	public async Task BuildLikeC4CliPrefix_Npx_ReturnsNpxWithLikeC4()
+	public async Task BuildLikeC4CLIPrefix_Npx_ReturnsNpxWithLikeC4()
 	{
 		// Arrange
 
 		// Act
-		var (command, prefix) = AspireC4Builder.BuildLikeC4CliPrefix(LikeC4LocalCLIRuntime.Npx);
+		var (command, prefix) = AspireC4Builder.BuildLikeC4CLIPrefix(LocalCLIRuntime.Npx);
 
 		// Assert
 		await Assert.That(command).IsEqualTo("npx");
@@ -100,12 +100,12 @@ public sealed class AspireC4BuilderTests
 	}
 
 	[Test]
-	public async Task BuildLikeC4CliPrefix_Pnpm_ReturnsPnpmExecLikeC4()
+	public async Task BuildLikeC4CLIPrefix_Pnpm_ReturnsPnpmExecLikeC4()
 	{
 		// Arrange
 
 		// Act
-		var (command, prefix) = AspireC4Builder.BuildLikeC4CliPrefix(LikeC4LocalCLIRuntime.Pnpm);
+		var (command, prefix) = AspireC4Builder.BuildLikeC4CLIPrefix(LocalCLIRuntime.Pnpm);
 
 		// Assert
 		await Assert.That(command).IsEqualTo("pnpm");
@@ -113,12 +113,12 @@ public sealed class AspireC4BuilderTests
 	}
 
 	[Test]
-	public async Task BuildLikeC4CliPrefix_Bun_ReturnsBunxWithLikeC4()
+	public async Task BuildLikeC4CLIPrefix_Bun_ReturnsBunxWithLikeC4()
 	{
 		// Arrange
 
 		// Act
-		var (command, prefix) = AspireC4Builder.BuildLikeC4CliPrefix(LikeC4LocalCLIRuntime.Bun);
+		var (command, prefix) = AspireC4Builder.BuildLikeC4CLIPrefix(LocalCLIRuntime.Bun);
 
 		// Assert
 		await Assert.That(command).IsEqualTo("bunx");
@@ -126,12 +126,12 @@ public sealed class AspireC4BuilderTests
 	}
 
 	[Test]
-	public async Task BuildLikeC4CliPrefix_Yarn_ReturnsYarnDlxLikeC4()
+	public async Task BuildLikeC4CLIPrefix_Yarn_ReturnsYarnDlxLikeC4()
 	{
 		// Arrange
 
 		// Act
-		var (command, prefix) = AspireC4Builder.BuildLikeC4CliPrefix(LikeC4LocalCLIRuntime.Yarn);
+		var (command, prefix) = AspireC4Builder.BuildLikeC4CLIPrefix(LocalCLIRuntime.Yarn);
 
 		// Assert
 		await Assert.That(command).IsEqualTo("yarn");
@@ -139,12 +139,12 @@ public sealed class AspireC4BuilderTests
 	}
 
 	[Test]
-	public async Task BuildLikeC4CliPrefix_Deno_ReturnsDenoRunWithLikeC4()
+	public async Task BuildLikeC4CLIPrefix_Deno_ReturnsDenoRunWithLikeC4()
 	{
 		// Arrange
 
 		// Act
-		var (command, prefix) = AspireC4Builder.BuildLikeC4CliPrefix(LikeC4LocalCLIRuntime.Deno);
+		var (command, prefix) = AspireC4Builder.BuildLikeC4CLIPrefix(LocalCLIRuntime.Deno);
 
 		// Assert
 		await Assert.That(command).IsEqualTo("deno");

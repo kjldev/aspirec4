@@ -1,11 +1,16 @@
 using System.ComponentModel;
-using Aspire.Hosting.ApplicationModel;
+using Aspire.Hosting.AspireC4.ApplicationModel;
+using Aspire.Hosting.AspireC4.Lifecycle;
+using Aspire.Hosting.AspireC4.LikeC4.Runtime;
 using Aspire.Hosting.Lifecycle;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 
 namespace Aspire.Hosting;
 
+/// <summary>
+/// Extension methods for <see cref="IDistributedApplicationBuilder"/> to add LikeC4 live architecture diagram capabilities to an Aspire application.
+/// </summary>
 [EditorBrowsable(EditorBrowsableState.Never)]
 public static class AspireC4DistributedApplicationBuilderExtensions
 {
@@ -25,7 +30,6 @@ public static class AspireC4DistributedApplicationBuilderExtensions
 		/// local Node.js CLI instead, call <c>.WithLocalCli()</c> on the returned builder.
 		/// </para>
 		/// </remarks>
-		/// <param name="builder">The distributed application builder.</param>
 		/// <param name="name">Optional name of the LikeC4 visualization resource (used for the server container and diagram file).</param>
 		/// <param name="port">Optional host port to bind the LikeC4 server's HTTP endpoint to. By default, no fixed host port is used and Docker assigns a dynamic port.</param>
 		/// <param name="configure">Optional callback to configure <see cref="AspireC4DiagramOptions"/>.</param>
@@ -57,16 +61,16 @@ public static class AspireC4DistributedApplicationBuilderExtensions
 			var outputDir = ResolveOutputDirectory(builder.AppHostDirectory, diagramOpts.OutputDirectory);
 			Directory.CreateDirectory(outputDir);
 			var imageTag = diagramOpts.ContainerImageTag ?? LikeC4ServerResource.DefaultTag;
-			var hmrPortMode = LikeC4HMRPortCompatibility.Resolve(imageTag);
+			var hmrPortMode = HMRPortCompatibility.Resolve(imageTag);
 			// Use the relay on Windows even in Configurable mode: Docker Desktop may fail to publish
 			// the well-known port (24678) reliably due to Hyper-V port reservations or port-cleanup
 			// races between container restarts. The relay owns port 24678 on the host side and
 			// bridges incoming HMR connections to whatever dynamic port Docker happened to allocate.
-			var useHmrRelay = hmrPortMode == LikeC4HMRPortMode.FixedPort || OperatingSystem.IsWindows();
+			var useHmrRelay = hmrPortMode == HMRPortMode.FixedPort || OperatingSystem.IsWindows();
 			var defaultViewId = string.IsNullOrWhiteSpace(diagramOpts.DefaultViewId) ? null : diagramOpts.DefaultViewId;
 
 			builder
-				.Services.AddOptions<LikeC4ContainerWorkspaceOptions>()
+				.Services.AddOptions<ContainerWorkspaceOptions>()
 				.Configure(runtime =>
 				{
 					runtime.HMRPortMode = hmrPortMode;
@@ -114,7 +118,7 @@ public static class AspireC4DistributedApplicationBuilderExtensions
 				.WithArgs(async context =>
 				{
 					var wsOpts = context.ExecutionContext.ServiceProvider.GetRequiredService<
-						IOptions<LikeC4ContainerWorkspaceOptions>
+						IOptions<ContainerWorkspaceOptions>
 					>();
 					var diagOpts = context.ExecutionContext.ServiceProvider.GetRequiredService<
 						IOptions<AspireC4DiagramOptions>
@@ -151,10 +155,10 @@ public static class AspireC4DistributedApplicationBuilderExtensions
 						// Direct fixed-port mapping is only safe on non-Windows Configurable-mode images.
 						port: useHmrRelay ? null : LikeC4ServerResource.DefaultContainerUpdatePort,
 						targetPort: LikeC4ServerResource.DefaultContainerUpdatePort,
-						name: LikeC4ServerResource.HmrEndpointName
+						name: LikeC4ServerResource.HMREndpointName
 					)
 					.WithUrlForEndpoint(
-						LikeC4ServerResource.HmrEndpointName,
+						LikeC4ServerResource.HMREndpointName,
 						opts =>
 						{
 							opts.DisplayText = "LikeC4 HMR Endpoint";

@@ -1,4 +1,5 @@
 ﻿using Aspire.Hosting.AspireC4;
+using Aspire.Hosting.AspireC4.LikeC4.Annotations;
 
 namespace Aspire.Hosting;
 

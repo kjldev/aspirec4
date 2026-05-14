@@ -136,6 +136,7 @@
 		Label="C# Shared Testing Project Properties"
 	>
 		<NoWarn>$(NoWarn);CA1062;CA1515;CA1707;CA1822;</NoWarn>
+		<NoWarn>$(NoWarn);CS1591;</NoWarn>
 		<Packable>false</Packable>
 		<IsPackable>false</IsPackable>
 		<IsPublishable>false</IsPublishable>
@@ -175,6 +176,9 @@
 	>
 		<!-- Automatically included usings (TUnit is already included) -->
 		<Using Include="NSubstitute" />
+		<!-- Ensure Aspire types (e.g. KnownResourceStates) are always available in test projects -->
+		<PackageReference Include="Aspire.Hosting" />
+		<Using Include="Aspire.Hosting.ApplicationModel" />
 		<!-- Assembly attributes -->
 		<AssemblyAttribute Include="System.Diagnostics.CodeAnalysis.ExcludeFromCodeCoverageAttribute" />
 		<AssemblyAttribute Include="TUnit.Core.Category" Condition="!$(IsSharedTestingProject)">

@@ -30,9 +30,5 @@
 		<ProjectReference Include="..\AspireC4\AspireC4.csproj" IsAspireProjectResource="false" />
 		<!-- AspireC4.Core is bundled inside the AspireC4.Hosting NuGet package (PrivateAssets=all).
 		     With project references, transitive types don't flow, so reference Core directly. -->
-		<ProjectReference
-			Include="..\AspireC4.Core\AspireC4.Core.csproj"
-			IsAspireProjectResource="false"
-		/>
 	</ItemGroup>
 </Project>

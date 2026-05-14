@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Text.Json;
 using Aspire.Hosting.ApplicationModel;
+using Aspire.Hosting.AspireC4.ApplicationModel;
 using Aspire.Hosting.Testing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;

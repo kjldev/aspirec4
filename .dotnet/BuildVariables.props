@@ -1,13 +1,21 @@
 ﻿<Project>
-	<!-- Shared testing project names (drives IsSharedTestingProject detection). -->
+	<!--
+		Single source of truth for shared testing project names.
+		Defined as a property (semicolon-fenced) so that:
+		  1. IsSharedTestingProject detection can use $(_SharedTestingProjectNames.Contains(...))
+		     directly in a static Condition — no @() item expansion needed.
+		  2. The SharedTestingProjectName ItemGroup below is DERIVED from this property
+		     (properties are evaluated before items in MSBuild's static pass, so a property
+		     defined here can be referenced in an ItemGroup Include — but not the reverse).
+		  3. NamespaceRemoveSuffix uses @(SharedTestingProjectName) in a Target, where
+		     item expansion works normally.
+	-->
+	<PropertyGroup Label="Defining Shared Testing Project Names">
+		<_SharedTestingProjectNames>;SharedTestingFramework;SharedTestingInfrastructure;SharedTestingInfra;SharedTestingUtilities;SharedTestingLibrary;SharedTestingLib;SharedTestingHelpers;</_SharedTestingProjectNames>
+	</PropertyGroup>
+	<!-- Items derived from the property above — used by NamespaceRemoveSuffix. -->
 	<ItemGroup Label="Defining Shared Testing Project Names">
-		<SharedTestingProjectName Include="SharedTestingFramework" />
-		<SharedTestingProjectName Include="SharedTestingInfrastructure" />
-		<SharedTestingProjectName Include="SharedTestingInfra" />
-		<SharedTestingProjectName Include="SharedTestingUtilities" />
-		<SharedTestingProjectName Include="SharedTestingLibrary" />
-		<SharedTestingProjectName Include="SharedTestingLib" />
-		<SharedTestingProjectName Include="SharedTestingHelpers" />
+		<SharedTestingProjectName Include="$(_SharedTestingProjectNames)" />
 	</ItemGroup>
 	<!-- Namespace suffixes stripped from RootNamespace (drives NamespaceSuffixesToRemove). -->
 	<ItemGroup Label="Defining Namespace Suffixes to Remove from RootNamespace">
@@ -42,16 +50,6 @@
 		<TestType Include="Unit" />
 		<TestType Include="WhiteBox" />
 	</ItemGroup>
-	<!--
-		Semicolon-fenced list derived from SharedTestingProjectName items.
-		Item expansion in property element content is lazily resolved when the property
-		is consumed, so @() works here even though properties are evaluated before items.
-		Instance-method syntax $(Prop.Contains(...)) is required — @() in a string literal
-		inside a property-function call is not supported (MSB4184).
-	-->
-	<PropertyGroup>
-		<_SharedTestingProjectNames>;@(SharedTestingProjectName);</_SharedTestingProjectNames>
-	</PropertyGroup>
 	<!-- Defining properties to determine if it's a C# project, and what SDK type it is. -->
 	<PropertyGroup Label="Define C# Properties" Condition="'$(MSBuildProjectExtension)' == '.csproj'">
 		<!-- Set some defaults -->

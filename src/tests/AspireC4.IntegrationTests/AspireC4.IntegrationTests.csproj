@@ -1,8 +1,4 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
-	<PropertyGroup>
-		<DisableGenerateAssemblyInfoClass>true</DisableGenerateAssemblyInfoClass>
-	</PropertyGroup>
-
 	<!-- TUnit, NSubstitute, Bogus, Microsoft.Testing.Platform.MSBuild are auto-added by
 	     .dotnet/Directory.Build.props. Auto ProjectReference resolves to AspireC4.LikeC4 (core),
 	     but integration tests need to reference the Hosting project explicitly. -->
