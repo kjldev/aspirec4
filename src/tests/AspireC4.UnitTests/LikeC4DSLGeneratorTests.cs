@@ -881,7 +881,7 @@ public sealed partial class LikeC4DSLGeneratorTests
 
 		// Assert
 		await Assert.That(dsl).Contains("relationship async {");
-		await Assert.That(dsl).Contains("technology: 'AMQP'");
+		await Assert.That(dsl).Contains("technology 'AMQP'");
 		await Assert.That(dsl).Contains("}");
 	}
 
@@ -904,7 +904,7 @@ public sealed partial class LikeC4DSLGeneratorTests
 		// Assert — bare single-line form, no block body
 		await Assert.That(dsl).Contains("relationship grpc");
 		await Assert.That(dsl).DoesNotContain("relationship grpc {");
-		await Assert.That(dsl).DoesNotContain("technology:");
+		await Assert.That(dsl).DoesNotContain("technology '");
 	}
 
 	[Test]
@@ -925,7 +925,7 @@ public sealed partial class LikeC4DSLGeneratorTests
 
 		// Assert — spec-only kind still appears in specification block
 		await Assert.That(dsl).Contains("relationship event-driven {");
-		await Assert.That(dsl).Contains("technology: 'Kafka'");
+		await Assert.That(dsl).Contains("technology 'Kafka'");
 	}
 
 	[Test]
@@ -972,7 +972,7 @@ public sealed partial class LikeC4DSLGeneratorTests
 
 		// Assert — spec body used instead of bare line; kind appears exactly once in specification
 		await Assert.That(dsl).Contains("relationship grpc {");
-		await Assert.That(dsl).Contains("technology: 'gRPC'");
+		await Assert.That(dsl).Contains("technology 'gRPC'");
 		var count = CountOccurrences(dsl, "relationship grpc");
 		await Assert.That(count).IsEqualTo(1);
 	}

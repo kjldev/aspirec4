@@ -167,7 +167,7 @@ public static class LikeC4DSLGenerator
 	static void WriteRelationshipKindSpec(StringBuilder sb, LikeC4RelationshipKindSpec spec)
 	{
 		sb.Append("  relationship ").Append(spec.Name).AppendLine(" {");
-		sb.Append("    technology: '").Append(EscapeQuote(spec.Technology!)).AppendLine("'");
+		sb.Append("    technology '").Append(EscapeQuote(spec.Technology!)).AppendLine("'");
 		sb.AppendLine("  }");
 	}
 
