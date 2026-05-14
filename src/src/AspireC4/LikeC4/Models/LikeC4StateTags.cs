@@ -1,8 +1,7 @@
 namespace Aspire.Hosting.AspireC4.LikeC4.Models;
 
-/// <summary>Registry of known LikeC4 state tags for Aspire resource run states.</summary>
-[KnownLikeC4TagRegistry]
-internal static class LikeC4StateTags
+/// <summary>Known LikeC4 state tags for Aspire resource run states.</summary>
+static class LikeC4StateTags
 {
 	/// <summary>The resource is starting.</summary>
 	public const string Starting = "aspire-run-state-starting";

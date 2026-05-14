@@ -6,16 +6,16 @@ using Microsoft.CodeAnalysis.CSharp;
 
 namespace Aspire.Hosting.AspireC4.SourceGenerators;
 
-public sealed class KnownLikeC4ElementsGeneratorTests
+public sealed class KnownLikeC4RegistryGeneratorTests
 {
 	[Test]
 	public async Task ToPascalCase_WithSingleWord_ReturnsCapitalized()
 	{
 		// Arrange
-		const string name = "starting";
+		const string input = "starting";
 
 		// Act
-		var result = KnownLikeC4ElementsGenerator.ToPascalCase(name);
+		var result = KnownLikeC4RegistryGenerator.ToPascalCase(input);
 
 		// Assert
 		await Assert.That(result).IsEqualTo("Starting");
@@ -25,10 +25,10 @@ public sealed class KnownLikeC4ElementsGeneratorTests
 	public async Task ToPascalCase_WithDashSeparated_ReturnsPascalCase()
 	{
 		// Arrange
-		const string name = "aspire-run-state-starting";
+		const string input = "aspire-run-state-starting";
 
 		// Act
-		var result = KnownLikeC4ElementsGenerator.ToPascalCase(name);
+		var result = KnownLikeC4RegistryGenerator.ToPascalCase(input);
 
 		// Assert
 		await Assert.That(result).IsEqualTo("AspireRunStateStarting");
@@ -38,10 +38,10 @@ public sealed class KnownLikeC4ElementsGeneratorTests
 	public async Task ToPascalCase_WithUnderscoreSeparated_ReturnsPascalCase()
 	{
 		// Arrange
-		const string name = "runtime_unhealthy";
+		const string input = "runtime_unhealthy";
 
 		// Act
-		var result = KnownLikeC4ElementsGenerator.ToPascalCase(name);
+		var result = KnownLikeC4RegistryGenerator.ToPascalCase(input);
 
 		// Assert
 		await Assert.That(result).IsEqualTo("RuntimeUnhealthy");
@@ -51,226 +51,198 @@ public sealed class KnownLikeC4ElementsGeneratorTests
 	public async Task ToPascalCase_WithAlreadyPascalCase_ReturnsUnchanged()
 	{
 		// Arrange
-		const string name = "Starting";
+		const string input = "Starting";
 
 		// Act
-		var result = KnownLikeC4ElementsGenerator.ToPascalCase(name);
+		var result = KnownLikeC4RegistryGenerator.ToPascalCase(input);
 
 		// Assert
 		await Assert.That(result).IsEqualTo("Starting");
 	}
 
 	[Test]
-	public async Task ToPascalCase_WithEmptyString_ReturnsEmptyString()
+	public async Task ToPascalCase_WithEmptyString_ReturnsEmpty()
 	{
 		// Arrange
-		const string name = "";
+		const string input = "";
 
 		// Act
-		var result = KnownLikeC4ElementsGenerator.ToPascalCase(name);
+		var result = KnownLikeC4RegistryGenerator.ToPascalCase(input);
 
 		// Assert
 		await Assert.That(result).IsEqualTo(string.Empty);
 	}
 
 	[Test]
-	public async Task RunGenerator_WithTagRegistryClass_GeneratesTagsNestedClass()
+	public async Task RunGenerator_WithWithTagCallSite_GeneratesTagsNestedClass()
 	{
 		// Arrange
-		var source = CreateTagRegistrySource();
+		var source = CreateSourceWithCallSites(".WithTag(\"external\")");
 
 		// Act
-		var (result, _) = RunGenerator(source);
-		var generatedSource = GetGeneratedSource(result, "KnownLikeC4Elements.g.cs");
+		var result = RunGenerator(source);
+		var output = GetGeneratedSource(result, "KnownLikeC4Registry.g.cs");
 
 		// Assert
-		await Assert.That(generatedSource).IsNotNull();
-		await Assert.That(generatedSource!).Contains("public static class Tags");
-		await Assert.That(generatedSource).Contains("public const string Starting = \"aspire-run-state-starting\";");
+		await Assert.That(output).IsNotNull();
+		await Assert.That(output!).Contains("public static class Tags");
+		await Assert.That(output).Contains("public const string External = \"external\";");
+	}
+
+	[Test]
+	public async Task RunGenerator_WithWithKindCallSite_GeneratesElementKindsNestedClass()
+	{
+		// Arrange
+		var source = CreateSourceWithCallSites(".WithKind(\"async\")");
+
+		// Act
+		var result = RunGenerator(source);
+		var output = GetGeneratedSource(result, "KnownLikeC4Registry.g.cs");
+
+		// Assert
+		await Assert.That(output).IsNotNull();
+		await Assert.That(output!).Contains("public static class ElementKinds");
+		await Assert.That(output).Contains("public const string Async = \"async\";");
+	}
+
+	[Test]
+	public async Task RunGenerator_WithConstReference_FollowsConstToExtractValue()
+	{
+		// Arrange
+		var source = """
+			namespace TestApp;
+			class Annotation
+			{
+				public Annotation WithTag(string t) => this;
+			}
+			class Setup
+			{
+				public const string StateTag = "aspire-run-state-starting";
+				static void Configure(Annotation a) => a.WithTag(StateTag);
+			}
+			""";
+
+		// Act
+		var result = RunGenerator(source);
+		var output = GetGeneratedSource(result, "KnownLikeC4Registry.g.cs");
+
+		// Assert
+		await Assert.That(output).IsNotNull();
 		await Assert
-			.That(generatedSource)
-			.Contains("public const string RuntimeUnhealthy = \"aspire-run-state-runtimeunhealthy\";");
+			.That(output!)
+			.Contains("public const string AspireRunStateStarting = \"aspire-run-state-starting\";");
 	}
 
 	[Test]
-	public async Task RunGenerator_WithElementKindRegistryClass_GeneratesElementKindsNestedClass()
+	public async Task RunGenerator_WithDuplicateCallSites_DeduplicatesValues()
 	{
 		// Arrange
-		var source = CreateElementKindRegistrySource();
+		var source = CreateSourceWithCallSites(".WithTag(\"external\")", ".WithTag(\"external\")");
 
 		// Act
-		var (result, _) = RunGenerator(source);
-		var generatedSource = GetGeneratedSource(result, "KnownLikeC4Elements.g.cs");
+		var result = RunGenerator(source);
+		var output = GetGeneratedSource(result, "KnownLikeC4Registry.g.cs");
 
 		// Assert
-		await Assert.That(generatedSource).IsNotNull();
-		await Assert.That(generatedSource!).Contains("public static class ElementKinds");
-		await Assert.That(generatedSource).Contains("public const string Component = \"component\";");
-		await Assert.That(generatedSource).Contains("public const string DataBase = \"database\";");
+		await Assert.That(output).IsNotNull();
+		var count = CountOccurrences(output!, "External = \"external\"");
+		await Assert.That(count).IsEqualTo(1);
 	}
 
 	[Test]
-	public async Task RunGenerator_WithBothRegistryClasses_GeneratesBothNestedClasses()
+	public async Task RunGenerator_WithNoCallSites_ProducesNoOutput()
 	{
 		// Arrange
-		var source = CreateBothRegistrySource();
+		const string source = "namespace TestApp;";
 
 		// Act
-		var (result, _) = RunGenerator(source);
-		var generatedSource = GetGeneratedSource(result, "KnownLikeC4Elements.g.cs");
+		var result = RunGenerator(source);
+		var output = GetGeneratedSource(result, "KnownLikeC4Registry.g.cs");
 
 		// Assert
-		await Assert.That(generatedSource).IsNotNull();
-		await Assert.That(generatedSource!).Contains("public static class Tags");
-		await Assert.That(generatedSource).Contains("public static class ElementKinds");
+		await Assert.That(output).IsNull();
 	}
 
 	[Test]
-	public async Task RunGenerator_WithEmptyRegistryClass_GeneratesEmptyNestedClass()
+	public async Task RunGenerator_WithBothTagAndKindCallSites_GeneratesBothNestedClasses()
 	{
 		// Arrange
-		var source = CreateEmptyTagRegistrySource();
+		var source = CreateSourceWithCallSites(".WithTag(\"external\")", ".WithKind(\"async\")");
 
 		// Act
-		var (result, _) = RunGenerator(source);
-		var generatedSource = GetGeneratedSource(result, "KnownLikeC4Elements.g.cs");
+		var result = RunGenerator(source);
+		var output = GetGeneratedSource(result, "KnownLikeC4Registry.g.cs");
 
 		// Assert
-		await Assert.That(generatedSource is null).IsTrue();
+		await Assert.That(output).IsNotNull();
+		await Assert.That(output!).Contains("public static class Tags");
+		await Assert.That(output).Contains("public static class ElementKinds");
 	}
 
-	[Test]
-	public async Task RunGenerator_AlwaysEmitsAttributeSource()
+	static KnownLikeC4RegistryGenerator CreateSut()
 	{
-		// Arrange
-		const string source = "namespace TestAssembly;";
-
-		// Act
-		var (result, _) = RunGenerator(source);
-		var generatedSource = GetGeneratedSource(result, "KnownLikeC4Attributes.g.cs");
-
-		// Assert
-		await Assert.That(generatedSource).IsNotNull();
-		await Assert.That(generatedSource!).Contains("KnownLikeC4TagRegistryAttribute");
-		await Assert.That(generatedSource).Contains("KnownLikeC4ElementKindRegistryAttribute");
+		return new KnownLikeC4RegistryGenerator();
 	}
 
-	private static KnownLikeC4ElementsGenerator CreateSut()
+	static GeneratorDriverRunResult RunGenerator(string source)
 	{
-		return new KnownLikeC4ElementsGenerator();
-	}
+		var compilation = CSharpCompilation.Create(
+			"TestAssembly",
+			[CSharpSyntaxTree.ParseText(source)],
+			GetMetadataReferences(),
+			new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary)
+		);
 
-	private static (GeneratorDriverRunResult Result, Compilation OutputCompilation) RunGenerator(string source)
-	{
-		var inputCompilation = CreateCompilation(source);
 		var generator = CreateSut();
 		GeneratorDriver driver = CSharpGeneratorDriver.Create(generator);
-		driver = driver.RunGeneratorsAndUpdateCompilation(inputCompilation, out var outputCompilation, out _);
-		return (driver.GetRunResult(), outputCompilation);
+		driver = driver.RunGeneratorsAndUpdateCompilation(compilation, out _, out _);
+
+		return driver.GetRunResult();
 	}
 
-	private static Compilation CreateCompilation(string source)
-	{
-		return CSharpCompilation.Create(
-			assemblyName: "TestAssembly",
-			syntaxTrees: [CSharpSyntaxTree.ParseText(source)],
-			references: CreateMetadataReferences(),
-			options: CreateCompilationOptions()
-		);
-	}
-
-	private static CSharpCompilationOptions CreateCompilationOptions()
-	{
-		return new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary);
-	}
-
-	private static IEnumerable<MetadataReference> CreateMetadataReferences()
+	static IEnumerable<MetadataReference> GetMetadataReferences()
 	{
 		return AppDomain
 			.CurrentDomain.GetAssemblies()
-			.Where(static assembly => !assembly.IsDynamic && !string.IsNullOrEmpty(assembly.Location))
-			.Select(static assembly => MetadataReference.CreateFromFile(assembly.Location));
+			.Where(static a => !a.IsDynamic && !string.IsNullOrEmpty(a.Location))
+			.Select(static a => MetadataReference.CreateFromFile(a.Location));
 	}
 
-	private static string? GetGeneratedSource(GeneratorDriverRunResult result, string hintName)
+	static string? GetGeneratedSource(GeneratorDriverRunResult result, string hintName)
 	{
 		return result
-			.Results.SelectMany(static generatorResult => generatorResult.GeneratedSources)
-			.Where(generatedSource => string.Equals(generatedSource.HintName, hintName, StringComparison.Ordinal))
-			.Select(static generatedSource => generatedSource.SourceText.ToString())
+			.Results.SelectMany(static r => r.GeneratedSources)
+			.Where(s => string.Equals(s.HintName, hintName, StringComparison.Ordinal))
+			.Select(static s => s.SourceText.ToString())
 			.SingleOrDefault();
 	}
 
-	private static string CreateTagRegistrySource()
+	static string CreateSourceWithCallSites(params string[] invocations)
 	{
-		return CreateSource(
-			"""
-			[KnownLikeC4TagRegistry]
-			internal static class TestTags
+		var body = string.Join("\n        ", invocations.Select((inv, i) => $"var a{i} = new object(); a{i}{inv};"));
+
+		return $$"""
+			namespace TestApp;
+			class Setup
 			{
-			    public const string starting = "aspire-run-state-starting";
-			    public const string runtime_unhealthy = "aspire-run-state-runtimeunhealthy";
+				static void Configure()
+				{
+					{{body}}
+				}
 			}
-			"""
-		);
+			""";
 	}
 
-	private static string CreateElementKindRegistrySource()
+	static int CountOccurrences(string text, string pattern)
 	{
-		return CreateSource(
-			"""
-			[KnownLikeC4ElementKindRegistry]
-			internal static class TestElementKinds
-			{
-			    public const string COMPONENT = "component";
-			    public const string data_base = "database";
-			}
-			"""
-		);
-	}
+		int count = 0,
+			index = 0;
+		while ((index = text.IndexOf(pattern, index, StringComparison.Ordinal)) >= 0)
+		{
+			count++;
+			index += pattern.Length;
+		}
 
-	private static string CreateBothRegistrySource()
-	{
-		return CreateSource(
-			"""
-			[KnownLikeC4TagRegistry]
-			internal static class TestTags
-			{
-			    public const string starting = "aspire-run-state-starting";
-			}
-
-			[KnownLikeC4ElementKindRegistry]
-			internal static class TestElementKinds
-			{
-			    public const string COMPONENT = "component";
-			}
-			"""
-		);
-	}
-
-	private static string CreateEmptyTagRegistrySource()
-	{
-		return CreateSource(
-			"""
-			[KnownLikeC4TagRegistry]
-			internal static class TestTags
-			{
-			}
-			"""
-		);
-	}
-
-	private static string CreateSource(string registryDeclarations)
-	{
-		return """
-				namespace Aspire.Hosting.AspireC4.LikeC4.Models;
-
-				[System.AttributeUsage(System.AttributeTargets.Class)]
-				internal sealed class KnownLikeC4TagRegistryAttribute : System.Attribute { }
-
-				[System.AttributeUsage(System.AttributeTargets.Class)]
-				internal sealed class KnownLikeC4ElementKindRegistryAttribute : System.Attribute { }
-
-				""" + registryDeclarations;
+		return count;
 	}
 }
