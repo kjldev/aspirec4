@@ -1,3 +1,5 @@
+using static Aspire.Hosting.TestHelpers;
+
 namespace Aspire.Hosting.AspireC4;
 
 public sealed class AspireC4ResourceBuilderExtensionsTests
@@ -21,6 +23,4 @@ public sealed class AspireC4ResourceBuilderExtensionsTests
 		await Assert.That(annotation.Description).IsEqualTo("Background job");
 		await Assert.That(annotation.AutoIconEnabled).IsFalse();
 	}
-
-	private static IDistributedApplicationBuilder CreateAppBuilder() => DistributedApplication.CreateBuilder([]);
 }

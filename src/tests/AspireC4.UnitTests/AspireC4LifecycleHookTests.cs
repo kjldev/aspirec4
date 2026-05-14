@@ -220,13 +220,13 @@ public sealed class AspireC4LifecycleHookTests
 		await Assert.That(result).IsNull();
 	}
 
-	private static IConfiguration CreateConfig(string? browserToken)
+	static IConfiguration CreateConfig(string? browserToken)
 	{
 		var config = Substitute.For<IConfiguration>();
 		config["AppHost:BrowserToken"].Returns(browserToken);
 		return config;
 	}
 
-	private static AspireC4DiagramOptions CreateOptions(bool includeToken) =>
+	static AspireC4DiagramOptions CreateOptions(bool includeToken) =>
 		new() { IncludeAspireTokenInDashboardLinks = includeToken };
 }

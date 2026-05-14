@@ -1,4 +1,5 @@
 using Aspire.Hosting.ApplicationModel;
+using static Aspire.Hosting.TestHelpers;
 
 namespace Aspire.Hosting.AspireC4;
 
@@ -236,7 +237,5 @@ public sealed class LikeC4RelationshipDetailsAnnotationTests
 		await Assert.That(annotation.NavigateTo).IsEqualTo("my-view");
 	}
 
-	private static IDistributedApplicationBuilder CreateAppBuilder() => DistributedApplication.CreateBuilder([]);
-
-	private static LikeC4RelationshipDetailsAnnotation CreateAnnotation(string targetName) => new(targetName);
+	static LikeC4RelationshipDetailsAnnotation CreateAnnotation(string targetName) => new(targetName);
 }

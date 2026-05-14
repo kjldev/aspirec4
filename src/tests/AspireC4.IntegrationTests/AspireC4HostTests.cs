@@ -78,14 +78,13 @@ public sealed partial class AspireC4HostTests
 	}
 
 	[Test]
-	public async Task StartAsync_WhenAppStarts_GeneratesC4File(CancellationToken cancellationToken)
+	public async Task StartAsync_WhenAppStarts_GeneratesC4File()
 	{
 		// Arrange
 		// (shared app started in ClassSetUpAsync)
 
 		// Act
 		// (side effect occurred during startup)
-		await Task.CompletedTask;
 
 		// Assert
 		await Assert.That(s_modelPath).IsNotNull();

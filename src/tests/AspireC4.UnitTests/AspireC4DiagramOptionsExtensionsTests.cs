@@ -601,5 +601,5 @@ public sealed class AspireC4DiagramOptionsExtensionsTests
 		await Assert.That(sut.ElementKindSpecs.Count).IsEqualTo(1);
 	}
 
-	private static AspireC4DiagramOptions CreateSut() => new();
+	static AspireC4DiagramOptions CreateSut() => new();
 }

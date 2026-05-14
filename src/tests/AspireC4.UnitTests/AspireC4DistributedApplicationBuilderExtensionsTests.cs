@@ -1,5 +1,6 @@
 using Aspire.Hosting.ApplicationModel;
 using Microsoft.Extensions.DependencyInjection;
+using static Aspire.Hosting.TestHelpers;
 
 namespace Aspire.Hosting.AspireC4;
 
@@ -132,6 +133,4 @@ public sealed class AspireC4DistributedApplicationBuilderExtensionsTests
 			}
 		}
 	}
-
-	private static IDistributedApplicationBuilder CreateAppBuilder() => DistributedApplication.CreateBuilder([]);
 }

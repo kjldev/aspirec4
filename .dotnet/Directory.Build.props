@@ -38,20 +38,13 @@
 	<PropertyGroup>
 		<!--
 			Set the default namespace for all projects.
-			However, only if NamespacePrefix is set.
-			If it's not set, there is a Target that will error the build.
+			Only if NamespacePrefix is set — a target will error the build if it isn't.
+			Actual suffix-stripping happens in FixRootNamespaceTarget (Directory.Build.targets)
+			because @(NamespaceRemoveSuffix) only expands in targets, not in static PropertyGroups.
 		-->
 		<RootNamespace Condition="'$(NamespacePrefix)' != ''"
 			>$(NamespacePrefix).$(MSBuildProjectName)</RootNamespace
 		>
-		<!-- Define the namespace suffixes to remove -->
-		<NamespaceSuffixesToRemove>SharedTestingFramework|SharedTestingInfrastructure|SharedTestingUtilities|SharedTestingInfra|Core|EF|Shared|ClientShared|ServiceDefaults</NamespaceSuffixesToRemove>
-		<!-- Ensure we always have a base value (avoid collapsing to empty) -->
-		<_RootNsBase>$(RootNamespace)</_RootNsBase>
-		<_RootNsBase Condition="'$(_RootNsBase)' == ''">$(MSBuildProjectName)</_RootNsBase>
-
-		<!-- Remove any matching ".Suffix" segment anywhere, only when it's a real segment -->
-		<RootNamespace>$([System.Text.RegularExpressions.Regex]::Replace('$(_RootNsBase)', '\.(?:$(NamespaceSuffixesToRemove))(?=\.|$)', ''))</RootNamespace>
 	</PropertyGroup>
 	<!-- Set some Test project properties. -->
 	<PropertyGroup Label="C# Test Properties" Condition="$(IsTestProject)">
@@ -85,14 +78,17 @@
 		</EmbeddedResource>
 	</ItemGroup>
 	<ItemGroup
-		Label="C# Project Item Groups"
+		Label="C# Telemetry Packages"
 		Condition="$(IsCSharpProject) AND !$(IsTestProject) AND !$(ExcludePurviewTelemetry)"
 	>
 		<PackageReference Include="Purview.Telemetry.SourceGenerator">
 			<PrivateAssets>all</PrivateAssets>
 			<IncludeAssets>analyzers</IncludeAssets>
 		</PackageReference>
-		<PackageReference Include="Microsoft.Extensions.Telemetry.Abstractions" />
+		<PackageReference
+			Condition="!$(ExcludeMSTelemetryExtension)"
+			Include="Microsoft.Extensions.Telemetry.Abstractions"
+		/>
 	</ItemGroup>
 	<PropertyGroup Label="Container Project" Condition="$(IsContainerProject) AND !$(IsTestProject)">
 		<InvariantGlobalization>true</InvariantGlobalization>
@@ -118,7 +114,10 @@
 		<PublishRepositoryUrl>true</PublishRepositoryUrl>
 		<SymbolPackageFormat>snupkg</SymbolPackageFormat>
 	</PropertyGroup>
-	<ItemGroup Label="NuGet Package References" Condition="'$(IsTestProject)' == 'false'">
+	<ItemGroup
+		Label="NuGet Package References"
+		Condition="!$(IsTestProject) AND '$(SourceLinkPackageName)' != ''"
+	>
 		<PackageReference Include="$(SourceLinkPackageName)">
 			<PrivateAssets>all</PrivateAssets>
 			<IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
@@ -157,6 +156,12 @@
 		<EmbeddedResource Remove="TestResults/**" />
 		<None Remove="TestResults/**" />
 	</ItemGroup>
+	<PropertyGroup
+		Label="Testing NuGet Packages"
+		Condition="$(IsTestProject) OR $(IsSharedTestingProject)"
+	>
+		<DisableGenerateAssemblyInfoClass>true</DisableGenerateAssemblyInfoClass>
+	</PropertyGroup>
 	<ItemGroup
 		Label="Testing NuGet Packages"
 		Condition="$(IsTestProject) OR $(IsSharedTestingProject)"
@@ -202,10 +207,10 @@
 			Include="../../src/$(TargetProjectName)/$(TargetProjectName).csproj"
 			Condition="Exists('../../src/$(TargetProjectName)/$(TargetProjectName).csproj')"
 		/>
-		<!-- Reference to SharedTestingFramework if it exists and this isn't SharedTestingFramework itself -->
-		<ProjectReference
-			Include="../SharedTestingFramework/SharedTestingFramework.csproj"
-			Condition="Exists('../SharedTestingFramework/SharedTestingFramework.csproj')"
-		/>
+		<!-- Reference to any shared testing project that exists alongside this one.
+		     Wildcards silently match 0 files when nothing exists, so no Exists()
+		     condition is needed. Remove eliminates any self-reference. -->
+		<ProjectReference Include="../SharedTesting*/SharedTesting*.csproj" />
+		<ProjectReference Remove="../$(MSBuildProjectName)/$(MSBuildProjectName).csproj" />
 	</ItemGroup>
 </Project>

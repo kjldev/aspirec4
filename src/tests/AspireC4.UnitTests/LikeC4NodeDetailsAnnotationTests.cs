@@ -173,5 +173,5 @@ public sealed class LikeC4NodeDetailsAnnotationTests
 		await Assert.That(() => annotation.WithTag("#")).Throws<ArgumentException>();
 	}
 
-	private static LikeC4NodeDetailsAnnotation CreateAnnotation(string label = "My Service") => new(label);
+	static LikeC4NodeDetailsAnnotation CreateAnnotation(string label = "My Service") => new(label);
 }

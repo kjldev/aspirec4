@@ -90,6 +90,7 @@ public sealed partial class LikeC4IconInferenceTests
 
 	[Test]
 	[MethodDataSource(nameof(Scenarios))]
+	[DisplayName("Inferring LikeC4 icon from Aspire resource: ${scenario.Name}")]
 	public async Task Build_WithConfiguredResource_InfersExpectedIcon(IconTestScenario scenario)
 	{
 		// Arrange
@@ -103,47 +104,4 @@ public sealed partial class LikeC4IconInferenceTests
 		var element = model.Elements.Single(e => e.Name == visible.Name);
 		await Assert.That(element.Icon).IsEqualTo(scenario.ExpectedIcon);
 	}
-
-	// ── Resource factories ───────────────────────────────────────────────────────────────────
-
-	static GenericTestResource CreateSnapshotResource(string name, string resourceType)
-	{
-		GenericTestResource resource = new(name);
-		resource.Annotations.Add(
-			new ResourceSnapshotAnnotation(new CustomResourceSnapshot { ResourceType = resourceType, Properties = [] })
-		);
-		return resource;
-	}
-
-	static ContainerResource CreateContainerResource(string name) => new(name);
-
-	static T AddHiddenSnapshot<T>(T resource, string resourceType)
-		where T : Resource
-	{
-		resource.Annotations.Add(
-			new ResourceSnapshotAnnotation(
-				new CustomResourceSnapshot
-				{
-					ResourceType = resourceType,
-					IsHidden = true,
-					Properties = [],
-				}
-			)
-		);
-		return resource;
-	}
-
-	// ── Simulated Azure resource types ───────────────────────────────────────────────────────
-	// Named to match real Aspire Azure resource class names so the icon matcher receives
-	// the correct type tokens via the hidden-original lookup without having to reference the actual package.
-
-	sealed class GenericTestResource(string name) : Resource(name);
-
-	sealed class AzureManagedRedisResource(string name) : Resource(name);
-
-	sealed class AzureRedisCacheResource(string name) : Resource(name);
-
-	sealed class AzureSqlServerResource(string name) : Resource(name);
-
-	sealed class AzurePostgresFlexibleServerResource(string name) : Resource(name);
 }

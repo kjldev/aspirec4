@@ -1,6 +1,3 @@
-using Aspire.Hosting.ApplicationModel;
-using Microsoft.Extensions.DependencyInjection;
-
 namespace Aspire.Hosting.AspireC4;
 
 /// <summary>
@@ -68,10 +65,11 @@ public sealed class AspireC4BuilderTests
 		// Arrange
 
 		// Act
-		var action = () => AspireC4Builder.BuildLocalCliCommand(LikeC4LocalCLIRuntime.Auto, "/tmp", 5173);
+		static (string Command, string[] Args) Action() =>
+			AspireC4Builder.BuildLocalCliCommand(LikeC4LocalCLIRuntime.Auto, "/tmp", 5173);
 
 		// Assert
-		await Assert.That(action).Throws<ArgumentOutOfRangeException>();
+		await Assert.That(Action).Throws<ArgumentOutOfRangeException>();
 	}
 
 	[Test]
@@ -152,6 +150,4 @@ public sealed class AspireC4BuilderTests
 		await Assert.That(command).IsEqualTo("deno");
 		await Assert.That(prefix).IsEquivalentTo(["run", "--allow-all", "likec4"]);
 	}
-
-	private static IDistributedApplicationBuilder CreateAppBuilder() => DistributedApplication.CreateBuilder([]);
 }

@@ -14,5 +14,5 @@ public sealed class AspireC4DiagramOptionsTests
 		await Assert.That(options.AutoIconsEnabled).IsTrue();
 	}
 
-	private static AspireC4DiagramOptions CreateSut() => new();
+	static AspireC4DiagramOptions CreateSut() => new();
 }

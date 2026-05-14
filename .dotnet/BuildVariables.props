@@ -1,9 +1,63 @@
 ﻿<Project>
+	<!-- Shared testing project names (drives IsSharedTestingProject detection). -->
+	<ItemGroup Label="Defining Shared Testing Project Names">
+		<SharedTestingProjectName Include="SharedTestingFramework" />
+		<SharedTestingProjectName Include="SharedTestingInfrastructure" />
+		<SharedTestingProjectName Include="SharedTestingInfra" />
+		<SharedTestingProjectName Include="SharedTestingUtilities" />
+		<SharedTestingProjectName Include="SharedTestingLibrary" />
+		<SharedTestingProjectName Include="SharedTestingLib" />
+		<SharedTestingProjectName Include="SharedTestingHelpers" />
+	</ItemGroup>
+	<!-- Namespace suffixes stripped from RootNamespace (drives NamespaceSuffixesToRemove). -->
+	<ItemGroup Label="Defining Namespace Suffixes to Remove from RootNamespace">
+		<NamespaceRemoveSuffix Include="@(SharedTestingProjectName)" />
+		<NamespaceRemoveSuffix Include="Core" />
+		<NamespaceRemoveSuffix Include="EF" />
+		<NamespaceRemoveSuffix Include="Shared" />
+		<NamespaceRemoveSuffix Include="ClientShared" />
+		<NamespaceRemoveSuffix Include="ServiceDefaults" />
+	</ItemGroup>
+	<!-- Define the Testing Types. -->
+	<ItemGroup Label="Defining Testing Types">
+		<TestType Include="Accessibility" />
+		<TestType Include="Acceptance" />
+		<TestType Include="BlackBox" />
+		<TestType Include="Chaos" />
+		<TestType Include="E2E" />
+		<TestType Include="EndToEnd" />
+		<TestType Include="Environment" />
+		<TestType Include="Functional" />
+		<TestType Include="Interactive" />
+		<TestType Include="Integration" />
+		<TestType Include="Load" />
+		<TestType Include="Performance" />
+		<TestType Include="Regression" />
+		<TestType Include="Security" />
+		<TestType Include="Scenario" />
+		<TestType Include="Smoke" />
+		<TestType Include="Stress" />
+		<TestType Include="System" />
+		<TestType Include="Threat" />
+		<TestType Include="Unit" />
+		<TestType Include="WhiteBox" />
+	</ItemGroup>
+	<!--
+		Semicolon-fenced list derived from SharedTestingProjectName items.
+		Item expansion in property element content is lazily resolved when the property
+		is consumed, so @() works here even though properties are evaluated before items.
+		Instance-method syntax $(Prop.Contains(...)) is required — @() in a string literal
+		inside a property-function call is not supported (MSB4184).
+	-->
+	<PropertyGroup>
+		<_SharedTestingProjectNames>;@(SharedTestingProjectName);</_SharedTestingProjectNames>
+	</PropertyGroup>
 	<!-- Defining properties to determine if it's a C# project, and what SDK type it is. -->
 	<PropertyGroup Label="Define C# Properties" Condition="'$(MSBuildProjectExtension)' == '.csproj'">
 		<!-- Set some defaults -->
 		<IsCSharpProject>true</IsCSharpProject>
 		<ExcludePurviewTelemetry>false</ExcludePurviewTelemetry>
+		<ExcludeMSTelemetryExtension>false</ExcludeMSTelemetryExtension>
 		<DisableGenerateAssemblyInfoClass>false</DisableGenerateAssemblyInfoClass>
 		<!-- Test project types -->
 		<IsTestProject>false</IsTestProject>
@@ -29,6 +83,7 @@
 			>true</IsContainerProject
 		>
 		<IsAspireHostProject
+			Label="Detect Aspire.Sdk.Host SDK projects - this only works when the SDK attribute is on the Project element, not an Import/ PackageReference"
 			Condition="$([System.String]::Copy('$(SdkProjectName)').StartsWith('Aspire.Sdk.Host'))"
 			>true</IsAspireHostProject
 		>
@@ -39,32 +94,8 @@
 		>
 		<IsTestProject Condition="'$(TestingType)' != ''">true</IsTestProject>
 		<IsSharedTestingProject
-			Condition="('$(MSBuildProjectName)' == 'SharedTestingFramework') OR ('$(MSBuildProjectName)' == 'SharedTestingInfrastructure') OR ('$(MSBuildProjectName)' == 'SharedTestingUtilities' OR '$(MSBuildProjectName)' == 'SharedTestingInfra')"
+			Condition="$(_SharedTestingProjectNames.Contains(';$(MSBuildProjectName);'))"
 			>true</IsSharedTestingProject
 		>
 	</PropertyGroup>
-	<!-- Define the Testing Types. -->
-	<ItemGroup Label="Defining Testing Types">
-		<TestType Include="Accessibility" />
-		<TestType Include="Acceptance" />
-		<TestType Include="BlackBox" />
-		<TestType Include="Chaos" />
-		<TestType Include="E2E" />
-		<TestType Include="EndToEnd" />
-		<TestType Include="Environment" />
-		<TestType Include="Functional" />
-		<TestType Include="Interactive" />
-		<TestType Include="Integration" />
-		<TestType Include="Load" />
-		<TestType Include="Performance" />
-		<TestType Include="Regression" />
-		<TestType Include="Security" />
-		<TestType Include="Scenario" />
-		<TestType Include="Smoke" />
-		<TestType Include="Stress" />
-		<TestType Include="System" />
-		<TestType Include="Threat" />
-		<TestType Include="Unit" />
-		<TestType Include="WhiteBox" />
-	</ItemGroup>
 </Project>
