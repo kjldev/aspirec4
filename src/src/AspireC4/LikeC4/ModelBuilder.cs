@@ -1,11 +1,12 @@
-using Aspire.Hosting.ApplicationModel;
+using Aspire.Hosting.AspireC4.LikeC4.Annotations;
+using Aspire.Hosting.AspireC4.LikeC4.Models;
 
-namespace Aspire.Hosting.AspireC4;
+namespace Aspire.Hosting.AspireC4.LikeC4;
 
 /// <summary>
 /// Builds a <see cref="LikeC4Model"/> from the Aspire application model resources.
 /// </summary>
-public static class LikeC4ModelBuilder
+static class ModelBuilder
 {
 	// Aspire's well-known relationship type for wait-for dependencies — these are infrastructure
 	// concerns and should not appear as architecture relationships in the diagram.
@@ -14,7 +15,7 @@ public static class LikeC4ModelBuilder
 	/// <summary>Builds a <see cref="LikeC4Model"/> from a list of Aspire resources.</summary>
 	/// <param name="resources">All resources in the Aspire app model.</param>
 	/// <param name="resourceStates">
-	/// Optional mapping of resource name → current <see cref="LikeC4ResourceState"/>.
+	/// Optional mapping of resource name → current <see cref="KnownResourceStates"/> value.
 	/// When provided, the corresponding diagram element is coloured to reflect the live state.
 	/// </param>
 	/// <param name="autoIconsEnabled">When <see langword="true"/>, infers icons from resource type/name.</param>
@@ -22,7 +23,7 @@ public static class LikeC4ModelBuilder
 	/// <param name="normaliseMetadataBehaviour">Controls how invalid characters in metadata keys are handled.</param>
 	/// <param name="iconResolvers">
 	/// Optional list of custom icon resolvers evaluated before built-in auto-icon inference.
-	/// Each resolver receives a <see cref="LikeC4IconResolverContext"/> and should return a non-null icon string
+	/// Each resolver receives a <see cref="IconResolverContext"/> and should return a non-null icon string
 	/// to override the default, or <see langword="null"/> to defer to the next resolver or built-in inference.
 	/// </param>
 	/// <param name="includeDashboardLinks">
@@ -39,12 +40,14 @@ public static class LikeC4ModelBuilder
 	/// dashboard links use a <c>/login?t=…&amp;returnUrl=…</c> redirect URL so clicking the link in LikeC4
 	/// authenticates the browser before navigating to the resource page.
 	/// </param>
+	/// <param name="stateTagMap">Optional mapping of resource state to tag strings.</param>
 	/// <param name="resourceSnapshotUrls">
 	/// Optional mapping of resource name to externally-accessible endpoint URLs captured from Aspire resource
 	/// snapshots. When present for a resource, these URLs are used for endpoint links in preference to reading
-	/// <see cref="Aspire.Hosting.ApplicationModel.EndpointAnnotation.AllocatedEndpoint"/> directly, ensuring
+	/// <see cref="EndpointAnnotation.AllocatedEndpoint"/> directly, ensuring
 	/// the correct public port is used (the same source the Aspire dashboard uses).
 	/// </param>
+	/// <param name="strict">When <see langword="true"/>, enforces strict validation rules.</param>
 	[System.Diagnostics.CodeAnalysis.SuppressMessage(
 		"Design",
 		"CA1054:URI-like parameters should not be strings",
@@ -52,15 +55,15 @@ public static class LikeC4ModelBuilder
 	)]
 	public static LikeC4Model Build(
 		IReadOnlyList<IResource> resources,
-		IReadOnlyDictionary<string, LikeC4ResourceState>? resourceStates = null,
+		IReadOnlyDictionary<string, string?>? resourceStates = null,
 		bool autoIconsEnabled = true,
 		AspireMetadataInclusion aspireMetadataInclusion = AspireMetadataInclusion.All,
 		NormaliseMetadataBehaviour normaliseMetadataBehaviour = NormaliseMetadataBehaviour.Normalise,
-		IReadOnlyList<LikeC4IconResolver>? iconResolvers = null,
+		IReadOnlyList<IconResolver>? iconResolvers = null,
 		bool includeDashboardLinks = true,
 		string? dashboardBaseUrl = null,
 		string? dashboardBrowserToken = null,
-		IReadOnlyDictionary<LikeC4ResourceState, string?>? stateTagMap = null,
+		IReadOnlyDictionary<string, string?>? stateTagMap = null,
 		IReadOnlyDictionary<string, IReadOnlyList<(string Url, string Name)>>? resourceSnapshotUrls = null,
 		AspireC4StrictOptions? strict = null
 	)
@@ -96,10 +99,7 @@ public static class LikeC4ModelBuilder
 
 		foreach (var resource in visibleResources)
 		{
-			var state =
-				resourceStates is not null && resourceStates.TryGetValue(resource.Name, out var s)
-					? s
-					: LikeC4ResourceState.Unknown;
+			var state = resourceStates is not null && resourceStates.TryGetValue(resource.Name, out var s) ? s : null;
 
 			elements.Add(
 				BuildElement(
@@ -178,16 +178,16 @@ public static class LikeC4ModelBuilder
 
 	static LikeC4Element BuildElement(
 		IResource resource,
-		LikeC4ResourceState state,
+		string? state,
 		bool autoIconsEnabled,
 		AspireMetadataInclusion aspireMetadataInclusion = AspireMetadataInclusion.All,
 		NormaliseMetadataBehaviour normaliseMetadataBehaviour = NormaliseMetadataBehaviour.Normalise,
 		IResource? hiddenOriginal = null,
-		IReadOnlyList<LikeC4IconResolver>? iconResolvers = null,
+		IReadOnlyList<IconResolver>? iconResolvers = null,
 		bool includeDashboardLinks = true,
 		string? dashboardBaseUrl = null,
 		string? dashboardBrowserToken = null,
-		IReadOnlyDictionary<LikeC4ResourceState, string?>? stateTagMap = null,
+		IReadOnlyDictionary<string, string?>? stateTagMap = null,
 		IReadOnlyList<(string Url, string Name)>? snapshotEndpointUrls = null,
 		AspireC4StrictOptions? strict = null
 	)
@@ -217,8 +217,17 @@ public static class LikeC4ModelBuilder
 
 		// Prepend the state tag (when configured) to the element's user-defined tags.
 		IReadOnlyList<string> stateTags = [];
-		if (stateTagMap is not null && stateTagMap.TryGetValue(state, out var stateTag) && stateTag is not null)
-			stateTags = [LikeC4TagHelper.Normalize(stateTag)];
+		if (state is not null)
+		{
+			string? stateTag;
+			if (stateTagMap is not null && stateTagMap.TryGetValue(state, out var tagOverride))
+				stateTag = tagOverride;
+			else
+				stateTag = $"aspire-run-state-{state.ToLowerInvariant()}";
+
+			if (stateTag is not null)
+				stateTags = [Helpers.NormaliseTag(stateTag)];
+		}
 
 		var description = details?.Description;
 		var summary = details?.Summary;
@@ -482,7 +491,7 @@ public static class LikeC4ModelBuilder
 		string? inferredTechnology,
 		bool autoIconsEnabled,
 		IResource? hiddenOriginal = null,
-		IReadOnlyList<LikeC4IconResolver>? iconResolvers = null
+		IReadOnlyList<IconResolver>? iconResolvers = null
 	)
 	{
 		if (!string.IsNullOrWhiteSpace(details?.Icon))
@@ -493,7 +502,7 @@ public static class LikeC4ModelBuilder
 		// Custom resolvers run before auto-inference; first non-null result wins.
 		if (iconResolvers is { Count: > 0 })
 		{
-			LikeC4IconResolverContext ctx = new() { Resource = resource, HiddenOriginal = hiddenOriginal };
+			IconResolverContext ctx = new() { Resource = resource, HiddenOriginal = hiddenOriginal };
 			foreach (var resolver in iconResolvers)
 			{
 				var resolved = resolver(ctx);
@@ -506,7 +515,7 @@ public static class LikeC4ModelBuilder
 
 		return !(details?.AutoIconEnabled ?? autoIconsEnabled)
 			? null
-			: LikeC4IconMatcher.TryInferIcon([
+			: IconMatcher.TryInferIcon([
 				details?.Technology,
 				inferredTechnology,
 				// The hidden original (e.g. AzurePostgresFlexibleServerResource) carries richer

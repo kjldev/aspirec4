@@ -1,4 +1,4 @@
-namespace Aspire.Hosting.AspireC4;
+namespace Aspire.Hosting.AspireC4.LikeC4.Models;
 
 /// <summary>Represents a single element (node) in the LikeC4 architecture model.</summary>
 public sealed record LikeC4Element
@@ -27,8 +27,8 @@ public sealed record LikeC4Element
 	/// <summary>Name of the parent resource when this element is nested (via <see cref="IResourceWithParent"/>).</summary>
 	public string? ParentName { get; init; }
 
-	/// <summary>Current runtime state of the resource — controls the diagram colour.</summary>
-	public LikeC4ResourceState State { get; init; } = LikeC4ResourceState.Unknown;
+	/// <summary>Current Aspire runtime state of the resource (from <see cref="KnownResourceStates"/>). Controls the diagram colour via an auto-derived <c>aspire-run-state-*</c> tag. <see langword="null"/> means no state information is available.</summary>
+	public string? State { get; init; }
 
 	/// <summary>Tags applied to this element (e.g. <c>"external"</c>, <c>"deprecated"</c>). Declared in the specification block as <c>tag NAME</c>.</summary>
 	public IReadOnlyList<string> Tags { get; init; } = [];

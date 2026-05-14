@@ -1,6 +1,7 @@
 using System.Text;
+using Aspire.Hosting.AspireC4.LikeC4.Models;
 
-namespace Aspire.Hosting.AspireC4;
+namespace Aspire.Hosting.AspireC4.LikeC4.Generators;
 
 /// <summary>
 /// Generates a LikeC4 DSL (<c>.c4</c>) string from a <see cref="LikeC4Model"/>.
@@ -407,12 +408,12 @@ public static class LikeC4DSLGenerator
 	readonly record struct LikeC4ElementStyleOverride(string? Color, int? Opacity);
 
 	/// <summary>
-	/// Default tag-to-style mappings for the built-in <c>state-*</c> state tags.
+	/// Default tag-to-style mappings for the built-in <c>aspire-run-state-*</c> state tags.
 	/// <para>
 	/// Opacity is used to distinguish transitional from terminal states:
 	/// <list type="bullet">
-	///   <item><description><c>state-stopping</c> — 60 % opacity: visible but clearly winding down.</description></item>
-	///   <item><description><c>state-exited</c> — 30 % opacity: very faded, fully inactive.</description></item>
+	///   <item><description><c>aspire-run-state-stopping</c> — 60 % opacity: visible but clearly winding down.</description></item>
+	///   <item><description><c>aspire-run-state-exited</c> — 30 % opacity: very faded, fully inactive.</description></item>
 	/// </list>
 	/// </para>
 	/// </summary>
@@ -421,12 +422,14 @@ public static class LikeC4DSLGenerator
 		LikeC4ElementStyleOverride
 	>(StringComparer.OrdinalIgnoreCase)
 	{
-		["state-starting"] = new("sky", null),
-		["state-running"] = new("green", null),
-		["state-stopping"] = new("slate", 60),
-		["state-exited"] = new("muted", 30),
-		["state-failed"] = new("amber", null),
-		["state-error"] = new("red", null),
+		["aspire-run-state-starting"] = new("sky", null),
+		["aspire-run-state-waiting"] = new("sky", null),
+		["aspire-run-state-running"] = new("green", null),
+		["aspire-run-state-stopping"] = new("slate", 60),
+		["aspire-run-state-exited"] = new("muted", 30),
+		["aspire-run-state-finished"] = new("muted", 30),
+		["aspire-run-state-runtimeunhealthy"] = new("amber", null),
+		["aspire-run-state-failedtostart"] = new("red", null),
 	};
 
 	static void WriteViews(StringBuilder sb, LikeC4Model model, AspireC4DiagramOptions options)

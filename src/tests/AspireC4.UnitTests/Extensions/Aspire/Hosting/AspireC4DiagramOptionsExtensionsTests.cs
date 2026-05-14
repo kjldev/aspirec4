@@ -1,4 +1,7 @@
-namespace Aspire.Hosting.AspireC4;
+using Aspire.Hosting.AspireC4.LikeC4;
+using Aspire.Hosting.AspireC4.LikeC4.Models;
+
+namespace Aspire.Hosting;
 
 public sealed class AspireC4DiagramOptionsExtensionsTests
 {
@@ -489,10 +492,10 @@ public sealed class AspireC4DiagramOptionsExtensionsTests
 		var sut = CreateSut();
 
 		// Act
-		var result = sut.WithStateTag(LikeC4ResourceState.Running, "my-running");
+		var result = sut.WithStateTag(KnownResourceStates.Running, "my-running");
 
 		// Assert
-		await Assert.That(sut.StateTagMap[LikeC4ResourceState.Running]).IsEqualTo("my-running");
+		await Assert.That(sut.StateTagMap[KnownResourceStates.Running]).IsEqualTo("my-running");
 		await Assert.That(result).IsSameReferenceAs(sut);
 	}
 
@@ -503,10 +506,10 @@ public sealed class AspireC4DiagramOptionsExtensionsTests
 		var sut = CreateSut();
 
 		// Act
-		sut.WithStateTag(LikeC4ResourceState.Running, null);
+		sut.WithStateTag(KnownResourceStates.Running, null);
 
 		// Assert
-		await Assert.That(sut.StateTagMap[LikeC4ResourceState.Running]).IsNull();
+		await Assert.That(sut.StateTagMap[KnownResourceStates.Running]).IsNull();
 	}
 
 	[Test]
@@ -514,7 +517,7 @@ public sealed class AspireC4DiagramOptionsExtensionsTests
 	{
 		// Arrange
 		var sut = CreateSut();
-		static string? Resolver(LikeC4IconResolverContext _) => "tech:dotnet";
+		static string? Resolver(IconResolverContext _) => "tech:dotnet";
 
 		// Act
 		var result = sut.WithIconResolver(Resolver);
@@ -573,7 +576,7 @@ public sealed class AspireC4DiagramOptionsExtensionsTests
 			.WithAspireDashboardLinks(false)
 			.WithAspireTokenInDashboardLinks(false)
 			.WithDefaultStateStyles(false)
-			.WithStateTag(LikeC4ResourceState.Running, "live")
+			.WithStateTag(KnownResourceStates.Running, "live")
 			.WithIconResolver(_ => "tech:dotnet")
 			.WithElementKindSpec(new LikeC4ElementKindSpec("cache"));
 
@@ -596,7 +599,7 @@ public sealed class AspireC4DiagramOptionsExtensionsTests
 		await Assert.That(sut.IncludeAspireDashboardLinks).IsFalse();
 		await Assert.That(sut.IncludeAspireTokenInDashboardLinks).IsFalse();
 		await Assert.That(sut.IncludeDefaultStateStyles).IsFalse();
-		await Assert.That(sut.StateTagMap[LikeC4ResourceState.Running]).IsEqualTo("live");
+		await Assert.That(sut.StateTagMap[KnownResourceStates.Running]).IsEqualTo("live");
 		await Assert.That(sut.IconResolvers.Count).IsEqualTo(1);
 		await Assert.That(sut.ElementKindSpecs.Count).IsEqualTo(1);
 	}

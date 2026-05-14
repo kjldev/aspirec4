@@ -1,4 +1,6 @@
-namespace Aspire.Hosting.AspireC4;
+using Aspire.Hosting.AspireC4.LikeC4.Models;
+
+namespace Aspire.Hosting.AspireC4.LikeC4.Generators;
 
 public sealed partial class LikeC4DSLGeneratorTests
 {
@@ -1197,7 +1199,7 @@ public sealed partial class LikeC4DSLGeneratorTests
 	[Test]
 	[MethodDataSource(nameof(StateStyleMappings))]
 	public async Task Generate_ElementWithState_RendersExpectedStyle(
-		LikeC4ResourceState state,
+		string? state,
 		string? stateTag,
 		string? expectedColor,
 		int? expectedOpacity
@@ -1265,20 +1267,17 @@ public sealed partial class LikeC4DSLGeneratorTests
 	/// </list>
 	/// </para>
 	/// </summary>
-	public static IEnumerable<(
-		LikeC4ResourceState State,
-		string? StateTag,
-		string? Color,
-		int? Opacity
-	)> StateStyleMappings()
+	public static IEnumerable<(string? State, string? StateTag, string? Color, int? Opacity)> StateStyleMappings()
 	{
-		yield return (LikeC4ResourceState.Unknown, null, null, null);
-		yield return (LikeC4ResourceState.Starting, "state-starting", "sky", null);
-		yield return (LikeC4ResourceState.Running, "state-running", "green", null);
-		yield return (LikeC4ResourceState.Stopping, "state-stopping", "slate", 60);
-		yield return (LikeC4ResourceState.Exited, "state-exited", "muted", 30);
-		yield return (LikeC4ResourceState.Failed, "state-failed", "amber", null);
-		yield return (LikeC4ResourceState.Error, "state-error", "red", null);
+		yield return (null, null, null, null);
+		yield return (KnownResourceStates.Starting, "aspire-run-state-starting", "sky", null);
+		yield return (KnownResourceStates.Waiting, "aspire-run-state-waiting", "sky", null);
+		yield return (KnownResourceStates.Running, "aspire-run-state-running", "green", null);
+		yield return (KnownResourceStates.Stopping, "aspire-run-state-stopping", "slate", 60);
+		yield return (KnownResourceStates.Exited, "aspire-run-state-exited", "muted", 30);
+		yield return (KnownResourceStates.Finished, "aspire-run-state-finished", "muted", 30);
+		yield return (KnownResourceStates.RuntimeUnhealthy, "aspire-run-state-runtimeunhealthy", "amber", null);
+		yield return (KnownResourceStates.FailedToStart, "aspire-run-state-failedtostart", "red", null);
 	}
 
 	[Test]
@@ -1295,8 +1294,8 @@ public sealed partial class LikeC4DSLGeneratorTests
 					Label = "API",
 					Kind = LikeC4ElementKind.Component,
 					Technology = ".NET",
-					State = LikeC4ResourceState.Error,
-					Tags = ["state-error"],
+					State = KnownResourceStates.FailedToStart,
+					Tags = ["aspire-run-state-failedtostart"],
 				},
 			],
 			Relationships = [],
@@ -1333,8 +1332,8 @@ public sealed partial class LikeC4DSLGeneratorTests
 					Label = "API",
 					Kind = LikeC4ElementKind.Component,
 					Icon = "tech:dotnet",
-					State = LikeC4ResourceState.Running,
-					Tags = ["state-running"],
+					State = KnownResourceStates.Running,
+					Tags = ["aspire-run-state-running"],
 				},
 			],
 			Relationships = [],
@@ -1366,7 +1365,7 @@ public sealed partial class LikeC4DSLGeneratorTests
 					Name = "api",
 					Label = "API",
 					Kind = LikeC4ElementKind.Component,
-					State = LikeC4ResourceState.Unknown,
+					State = null,
 				},
 			],
 			Relationships = [],
@@ -1395,8 +1394,8 @@ public sealed partial class LikeC4DSLGeneratorTests
 					Name = "api",
 					Label = "API",
 					Kind = LikeC4ElementKind.Component,
-					State = LikeC4ResourceState.Running,
-					Tags = ["state-running"],
+					State = KnownResourceStates.Running,
+					Tags = ["aspire-run-state-running"],
 				},
 			],
 			Relationships = [],
@@ -1878,7 +1877,9 @@ public sealed partial class LikeC4DSLGeneratorTests
 				new LikeC4ElementKindSpec("queue")
 					.WithNotation("Message Queue")
 					.WithTechnology("RabbitMQ")
-					.WithStyle(new LikeC4ElementKindStyle { Shape = "queue", Color = "amber" }),
+					.WithStyle(
+						new LikeC4ElementKindStyle(null, null, null, null, null) { Shape = "queue", Color = "amber" }
+					),
 			],
 		};
 

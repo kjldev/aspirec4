@@ -1,11 +1,14 @@
-namespace Aspire.Hosting.AspireC4;
+using Aspire.Hosting.AspireC4.LikeC4;
+using Aspire.Hosting.AspireC4.LikeC4.Models;
+
+namespace Aspire.Hosting;
 
 /// <summary>
 /// Fluent extension methods for configuring <see cref="AspireC4DiagramOptions"/>.
 /// Allows chaining configuration in the <c>configure</c> callback of
-/// <see cref="LikeC4VisualizationExtensions.AddAspireC4"/>, e.g.:
+/// <see cref="AspireC4DistributedApplicationBuilderExtensions.AddAspireC4"/>, e.g.:
 /// <code>
-/// builder.AddAspireC4Visualization(opts => opts
+/// builder.AddAspireC4(opts => opts
 ///     .WithTitle("My App")
 ///     .WithAutoIcons(false));
 /// </code>
@@ -247,7 +250,7 @@ public static class AspireC4DiagramOptionsExtensions
 		return options;
 	}
 
-	/// <summary>Enables or disables emitting default <c>state-*</c> style rules in the generated view.</summary>
+	/// <summary>Enables or disables emitting default <c>aspire-run-state-*</c> style rules in the generated view.</summary>
 	/// <seealso cref="AspireC4DiagramOptions.IncludeDefaultStateStyles"/>
 	public static AspireC4DiagramOptions WithDefaultStateStyles(
 		this AspireC4DiagramOptions options,
@@ -259,13 +262,13 @@ public static class AspireC4DiagramOptionsExtensions
 		return options;
 	}
 
-	/// <summary>Maps a resource state to the tag applied to its diagram element.</summary>
+	/// <summary>
+	/// Overrides the tag applied to diagram elements for a specific Aspire resource state.
+	/// The <paramref name="state"/> value should be one of the <see cref="KnownResourceStates"/> string constants.
+	/// Set <paramref name="tag"/> to <see langword="null"/> to suppress tag assignment for that state.
+	/// </summary>
 	/// <seealso cref="AspireC4DiagramOptions.StateTagMap"/>
-	public static AspireC4DiagramOptions WithStateTag(
-		this AspireC4DiagramOptions options,
-		LikeC4ResourceState state,
-		string? tag
-	)
+	public static AspireC4DiagramOptions WithStateTag(this AspireC4DiagramOptions options, string state, string? tag)
 	{
 		ArgumentNullException.ThrowIfNull(options);
 		options.StateTagMap[state] = tag;
@@ -274,10 +277,7 @@ public static class AspireC4DiagramOptionsExtensions
 
 	/// <summary>Adds a custom icon resolver evaluated before built-in icon inference.</summary>
 	/// <seealso cref="AspireC4DiagramOptions.IconResolvers"/>
-	public static AspireC4DiagramOptions WithIconResolver(
-		this AspireC4DiagramOptions options,
-		LikeC4IconResolver resolver
-	)
+	public static AspireC4DiagramOptions WithIconResolver(this AspireC4DiagramOptions options, IconResolver resolver)
 	{
 		ArgumentNullException.ThrowIfNull(options);
 		ArgumentNullException.ThrowIfNull(resolver);
@@ -308,7 +308,7 @@ public static class AspireC4DiagramOptionsExtensions
 	{
 		ArgumentNullException.ThrowIfNull(options);
 		ArgumentException.ThrowIfNullOrWhiteSpace(tag);
-		options.Strict.Tags.Add(LikeC4TagHelper.Normalize(tag));
+		options.Strict.Tags.Add(Helpers.NormaliseTag(tag));
 		return options;
 	}
 

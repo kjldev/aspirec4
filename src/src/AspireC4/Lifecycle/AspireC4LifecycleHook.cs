@@ -4,13 +4,16 @@ using System.Diagnostics;
 using System.Net;
 using System.Net.Sockets;
 using System.Text.Json;
-using Aspire.Hosting.ApplicationModel;
+using Aspire.Hosting.AspireC4.ApplicationModel;
+using Aspire.Hosting.AspireC4.LikeC4;
+using Aspire.Hosting.AspireC4.LikeC4.Generators;
+using Aspire.Hosting.AspireC4.LikeC4.Runtime;
 using Aspire.Hosting.Eventing;
 using Aspire.Hosting.Lifecycle;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Options;
 
-namespace Aspire.Hosting.AspireC4;
+namespace Aspire.Hosting.AspireC4.Lifecycle;
 
 /// <summary>
 /// Aspire eventing subscriber that generates the LikeC4 <c>.c4</c> model file before the
@@ -18,7 +21,7 @@ namespace Aspire.Hosting.AspireC4;
 /// </summary>
 sealed class AspireC4LifecycleHook(
 	IOptions<AspireC4DiagramOptions> options,
-	IOptions<LikeC4ContainerWorkspaceOptions> workspaceOptions,
+	IOptions<ContainerWorkspaceOptions> workspaceOptions,
 	ResourceNotificationService resourceNotificationService,
 	IAspireC4LifecycleHookTelemetry telemetry,
 	IConfiguration configuration
@@ -27,7 +30,7 @@ sealed class AspireC4LifecycleHook(
 	// Well-known Aspire resource name for the dashboard process.
 	const string AspireDashboardResourceName = "aspire-dashboard";
 
-	readonly ConcurrentDictionary<string, LikeC4ResourceState> _resourceStates = new(StringComparer.OrdinalIgnoreCase);
+	readonly ConcurrentDictionary<string, string?> _resourceStates = new(StringComparer.OrdinalIgnoreCase);
 
 	// Maps resource name → externally-accessible endpoint URLs (from resource snapshots).
 	// Populated by WatchResourceStatesAsync; used by WriteC4FileAsync to pass the correct
@@ -359,7 +362,7 @@ sealed class AspireC4LifecycleHook(
 	{
 		try
 		{
-			var visibleNames = LikeC4ModelBuilder.GetVisibleResourceNames([.. appModel.Resources]);
+			var visibleNames = ModelBuilder.GetVisibleResourceNames([.. appModel.Resources]);
 
 			await foreach (var notification in resourceNotificationService.WatchAsync(cancellationToken))
 			{
@@ -395,7 +398,7 @@ sealed class AspireC4LifecycleHook(
 				}
 
 				_resourceStates[notification.Resource.Name] = newState;
-				telemetry.ResourceStateChanged(notification.Resource.Name, newState.ToString());
+				telemetry.ResourceStateChanged(notification.Resource.Name, newState ?? string.Empty);
 
 				ScheduleRegeneration(appModel, cancellationToken);
 			}
@@ -461,7 +464,7 @@ sealed class AspireC4LifecycleHook(
 		}
 
 		var dashboardBrowserToken = ResolveAspireBrowserToken(configuration, options.Value);
-		var model = LikeC4ModelBuilder.Build(
+		var model = ModelBuilder.Build(
 			[.. appModel.Resources],
 			_resourceStates,
 			opts.AutoIconsEnabled,
@@ -529,13 +532,13 @@ sealed class AspireC4LifecycleHook(
 
 	/// <summary>
 	/// Returns the executable and argument prefix for invoking <c>likec4</c> via the configured
-	/// runtime. In Docker mode (<see cref="LikeC4ContainerWorkspaceOptions.LocalCLIRuntime"/> is
+	/// runtime. In Docker mode (<see cref="ContainerWorkspaceOptions.LocalCLIRuntime"/> is
 	/// <see langword="null"/>), falls back to <c>npx</c> since the host still needs a JS runner
 	/// for host-side operations such as format.
 	/// </summary>
 	(string Command, string[] Prefix) BuildCliPrefix() =>
 		workspaceOptions.Value.LocalCLIRuntime is { } runtime
-			? AspireC4Builder.BuildLikeC4CliPrefix(runtime)
+			? AspireC4Builder.BuildLikeC4CLIPrefix(runtime)
 			: ("npx", ["likec4"]);
 
 	/// <summary>
@@ -744,7 +747,7 @@ sealed class AspireC4LifecycleHook(
 
 	/// <summary>
 	/// Computes the single common-ancestor bind mount for the container, adds it to the
-	/// <see cref="LikeC4ServerResource"/>, populates <see cref="LikeC4ContainerWorkspaceOptions.ContainerServePath"/>,
+	/// <see cref="LikeC4ServerResource"/>, populates <see cref="ContainerWorkspaceOptions.ContainerServePath"/>,
 	/// and appends the <c>likec4 start</c> command-line arguments.
 	/// </summary>
 	void SetupContainerBindMount(DistributedApplicationModel _, LikeC4ServerResource serverResource)
@@ -979,7 +982,7 @@ sealed class AspireC4LifecycleHook(
 			var endpoint = appModel
 				.Resources.OfType<LikeC4ServerResource>()
 				.SelectMany(resource => resource.Annotations.OfType<EndpointAnnotation>())
-				.FirstOrDefault(annotation => annotation.Name == LikeC4ServerResource.HmrEndpointName)
+				.FirstOrDefault(annotation => annotation.Name == LikeC4ServerResource.HMREndpointName)
 				?.AllocatedEndpoint;
 
 			if (endpoint is { Address.Length: > 0, Port: > 0 })
@@ -1031,34 +1034,30 @@ sealed class AspireC4LifecycleHook(
 
 	// ── State mapping ─────────────────────────────────────────────────────────
 
-	static LikeC4ResourceState MapAspireState(CustomResourceSnapshot snapshot)
+	static string? MapAspireState(CustomResourceSnapshot snapshot)
 	{
 		var style = snapshot.State?.Style;
 		var text = snapshot.State?.Text;
 
 		// Style takes semantic precedence (Aspire sets it based on exit code / health).
 		if (string.Equals(style, "error", StringComparison.OrdinalIgnoreCase))
-		{
-			return LikeC4ResourceState.Error;
-		}
+			return KnownResourceStates.FailedToStart;
 
 		if (string.Equals(style, "warn", StringComparison.OrdinalIgnoreCase))
-		{
-			return LikeC4ResourceState.Failed;
-		}
+			return KnownResourceStates.RuntimeUnhealthy;
 
 		// Use string literals — KnownResourceStates members are static readonly, not const.
 		return text switch
 		{
-			"Running" => LikeC4ResourceState.Running,
-			"Starting" or "Waiting" => LikeC4ResourceState.Starting,
-			"Stopping" => LikeC4ResourceState.Stopping,
-			"FailedToStart" or "RuntimeUnhealthy" => LikeC4ResourceState.Error,
-			// Use ExitCode to distinguish a clean stop (0 / unknown) from a crash (non-zero).
-			// This handles cases where Aspire does not set the "success" style reliably.
-			"Exited" => snapshot.ExitCode is null or 0 ? LikeC4ResourceState.Exited : LikeC4ResourceState.Failed,
-			"Finished" => LikeC4ResourceState.Exited,
-			_ => LikeC4ResourceState.Unknown,
+			"Running" => KnownResourceStates.Running,
+			"Starting" => KnownResourceStates.Starting,
+			"Waiting" => KnownResourceStates.Waiting,
+			"Stopping" => KnownResourceStates.Stopping,
+			"FailedToStart" => KnownResourceStates.FailedToStart,
+			"RuntimeUnhealthy" => KnownResourceStates.RuntimeUnhealthy,
+			"Exited" => KnownResourceStates.Exited,
+			"Finished" => KnownResourceStates.Finished,
+			_ => null,
 		};
 	}
 }

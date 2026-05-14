@@ -1,15 +1,18 @@
 using Aspire.Hosting.ApplicationModel;
+using Aspire.Hosting.AspireC4.LikeC4;
+using Aspire.Hosting.AspireC4.LikeC4.Annotations;
+using Aspire.Hosting.AspireC4.LikeC4.Models;
 
 namespace Aspire.Hosting.AspireC4;
 
-public sealed partial class LikeC4ModelBuilderTests
+public sealed partial class ModelBuilderTests
 {
 	[Test]
 	public async Task Build_WithNoResources_ReturnsEmptyModel()
 	{
 		// Arrange
 		// Act
-		var model = LikeC4ModelBuilder.Build([]);
+		var model = ModelBuilder.Build([]);
 
 		// Assert
 		await Assert.That(model.Elements).IsEmpty();
@@ -23,7 +26,7 @@ public sealed partial class LikeC4ModelBuilderTests
 		var resource = CreateProjectResource("api");
 
 		// Act
-		var model = LikeC4ModelBuilder.Build([resource]);
+		var model = ModelBuilder.Build([resource]);
 
 		// Assert
 		await Assert.That(model.Elements).Count().IsEqualTo(1);
@@ -38,7 +41,7 @@ public sealed partial class LikeC4ModelBuilderTests
 		var resource = CreateContainerResource("redis");
 
 		// Act
-		var model = LikeC4ModelBuilder.Build([resource]);
+		var model = ModelBuilder.Build([resource]);
 
 		// Assert
 		await Assert.That(model.Elements[0].Kind).IsEqualTo(LikeC4ElementKind.Container);
@@ -54,7 +57,7 @@ public sealed partial class LikeC4ModelBuilderTests
 		);
 
 		// Act
-		var model = LikeC4ModelBuilder.Build([resource]);
+		var model = ModelBuilder.Build([resource]);
 
 		// Assert
 		await Assert.That(model.Elements[0].Kind).IsEqualTo(LikeC4ElementKind.Executable);
@@ -67,7 +70,7 @@ public sealed partial class LikeC4ModelBuilderTests
 		var resource = new TestDatabaseResource("db");
 
 		// Act
-		var model = LikeC4ModelBuilder.Build([resource]);
+		var model = ModelBuilder.Build([resource]);
 
 		// Assert
 		await Assert.That(model.Elements[0].Kind).IsEqualTo(LikeC4ElementKind.Database);
@@ -80,7 +83,7 @@ public sealed partial class LikeC4ModelBuilderTests
 		var resource = new TestSystemResource("ext");
 
 		// Act
-		var model = LikeC4ModelBuilder.Build([resource]);
+		var model = ModelBuilder.Build([resource]);
 
 		// Assert
 		await Assert.That(model.Elements[0].Kind).IsEqualTo(LikeC4ElementKind.System);
@@ -94,7 +97,7 @@ public sealed partial class LikeC4ModelBuilderTests
 		resource.Annotations.Add(new ExcludeFromLikeC4Annotation());
 
 		// Act
-		var model = LikeC4ModelBuilder.Build([resource]);
+		var model = ModelBuilder.Build([resource]);
 
 		// Assert
 		await Assert.That(model.Elements).IsEmpty();
@@ -117,7 +120,7 @@ public sealed partial class LikeC4ModelBuilderTests
 		);
 
 		// Act
-		var model = LikeC4ModelBuilder.Build([resource]);
+		var model = ModelBuilder.Build([resource]);
 
 		// Assert
 		await Assert.That(model.Elements).IsEmpty();
@@ -136,7 +139,7 @@ public sealed partial class LikeC4ModelBuilderTests
 		);
 
 		// Act
-		var model = LikeC4ModelBuilder.Build([resource]);
+		var model = ModelBuilder.Build([resource]);
 
 		var element = model.Elements[0];
 		// Assert
@@ -153,7 +156,7 @@ public sealed partial class LikeC4ModelBuilderTests
 		var resource = CreateProjectResource("my-api");
 
 		// Act
-		var model = LikeC4ModelBuilder.Build([resource]);
+		var model = ModelBuilder.Build([resource]);
 
 		// Assert
 		await Assert.That(model.Elements[0].Label).IsEqualTo("my-api");
@@ -166,7 +169,7 @@ public sealed partial class LikeC4ModelBuilderTests
 		var resource = CreateProjectResource("api");
 
 		// Act
-		var model = LikeC4ModelBuilder.Build([resource]);
+		var model = ModelBuilder.Build([resource]);
 
 		// Assert
 		await Assert.That(model.Elements[0].Icon).IsEqualTo("tech:dotnet");
@@ -182,7 +185,7 @@ public sealed partial class LikeC4ModelBuilderTests
 		);
 
 		// Act
-		var model = LikeC4ModelBuilder.Build([resource]);
+		var model = ModelBuilder.Build([resource]);
 
 		// Assert
 		await Assert.That(model.Elements[0].Icon).IsEqualTo("azure:azure-managed-redis");
@@ -196,7 +199,7 @@ public sealed partial class LikeC4ModelBuilderTests
 		var resource = CreateContainerResource("azure-redis");
 
 		// Act
-		var model = LikeC4ModelBuilder.Build([resource]);
+		var model = ModelBuilder.Build([resource]);
 
 		// Assert
 		await Assert.That(model.Elements[0].Icon).IsEqualTo("azure:azure-managed-redis");
@@ -209,7 +212,7 @@ public sealed partial class LikeC4ModelBuilderTests
 		var resource = CreateContainerResource("redis");
 
 		// Act
-		var model = LikeC4ModelBuilder.Build([resource]);
+		var model = ModelBuilder.Build([resource]);
 
 		// Assert
 		await Assert.That(model.Elements[0].Icon).IsEqualTo("tech:redis");
@@ -229,7 +232,7 @@ public sealed partial class LikeC4ModelBuilderTests
 		);
 
 		// Act
-		var model = LikeC4ModelBuilder.Build([resource]);
+		var model = ModelBuilder.Build([resource]);
 
 		// Assert
 		await Assert.That(model.Elements[0].Icon!).StartsWith("azure:");
@@ -247,7 +250,7 @@ public sealed partial class LikeC4ModelBuilderTests
 		resource.Annotations.Add(new ContainerImageAnnotation { Image = "library/redis" });
 
 		// Act
-		var model = LikeC4ModelBuilder.Build([resource]);
+		var model = ModelBuilder.Build([resource]);
 
 		// Assert
 		await Assert.That(model.Elements[0].Icon).IsEqualTo("tech:redis");
@@ -264,7 +267,7 @@ public sealed partial class LikeC4ModelBuilderTests
 		resource.Annotations.Add(new ContainerImageAnnotation { Image = "library/postgres" });
 
 		// Act
-		var model = LikeC4ModelBuilder.Build([resource]);
+		var model = ModelBuilder.Build([resource]);
 
 		// Assert
 		await Assert.That(model.Elements[0].Icon).IsEqualTo("tech:postgresql");
@@ -283,7 +286,7 @@ public sealed partial class LikeC4ModelBuilderTests
 		);
 
 		// Act
-		var model = LikeC4ModelBuilder.Build([resource]);
+		var model = ModelBuilder.Build([resource]);
 
 		// Assert
 		await Assert.That(model.Elements[0].Icon).IsEqualTo("tech:nodejs");
@@ -306,7 +309,7 @@ public sealed partial class LikeC4ModelBuilderTests
 		);
 
 		// Act
-		var model = LikeC4ModelBuilder.Build([resource]);
+		var model = ModelBuilder.Build([resource]);
 
 		// Assert
 		await Assert.That(model.Elements[0].Icon).IsEqualTo("tech:nodejs");
@@ -326,7 +329,7 @@ public sealed partial class LikeC4ModelBuilderTests
 		);
 
 		// Act
-		var model = LikeC4ModelBuilder.Build([resource]);
+		var model = ModelBuilder.Build([resource]);
 
 		// Assert
 		await Assert.That(model.Elements[0].Icon).IsEqualTo("tech:pnpm");
@@ -346,7 +349,7 @@ public sealed partial class LikeC4ModelBuilderTests
 		);
 
 		// Act
-		var model = LikeC4ModelBuilder.Build([resource]);
+		var model = ModelBuilder.Build([resource]);
 
 		// Assert
 		await Assert.That(model.Elements[0].Icon).IsEqualTo("tech:java");
@@ -375,7 +378,7 @@ public sealed partial class LikeC4ModelBuilderTests
 		);
 
 		// Act
-		var model = LikeC4ModelBuilder.Build([visibleContainer, hiddenAzureResource]);
+		var model = ModelBuilder.Build([visibleContainer, hiddenAzureResource]);
 
 		// Assert
 		await Assert.That(model.Elements).Count().IsEqualTo(1);
@@ -405,7 +408,7 @@ public sealed partial class LikeC4ModelBuilderTests
 		);
 
 		// Act
-		var model = LikeC4ModelBuilder.Build([visibleContainer, hiddenAzureResource]);
+		var model = ModelBuilder.Build([visibleContainer, hiddenAzureResource]);
 
 		// Assert
 		await Assert.That(model.Elements).Count().IsEqualTo(1);
@@ -422,7 +425,7 @@ public sealed partial class LikeC4ModelBuilderTests
 		var resource = new ExecutableResource("node-app", "node", ".");
 
 		// Act
-		var model = LikeC4ModelBuilder.Build([resource]);
+		var model = ModelBuilder.Build([resource]);
 
 		// Assert
 		await Assert.That(model.Elements[0].Icon).IsEqualTo("tech:nodejs");
@@ -435,7 +438,7 @@ public sealed partial class LikeC4ModelBuilderTests
 		var resource = CreateProjectResource("api");
 
 		// Act
-		var model = LikeC4ModelBuilder.Build([resource], autoIconsEnabled: false);
+		var model = ModelBuilder.Build([resource], autoIconsEnabled: false);
 
 		// Assert
 		await Assert.That(model.Elements[0].Icon).IsNull();
@@ -454,7 +457,7 @@ public sealed partial class LikeC4ModelBuilderTests
 		);
 
 		// Act
-		var model = LikeC4ModelBuilder.Build([resource]);
+		var model = ModelBuilder.Build([resource]);
 
 		// Assert
 		await Assert.That(model.Elements[0].Icon).IsNull();
@@ -470,7 +473,7 @@ public sealed partial class LikeC4ModelBuilderTests
 		);
 
 		// Act
-		var model = LikeC4ModelBuilder.Build([resource], autoIconsEnabled: false);
+		var model = ModelBuilder.Build([resource], autoIconsEnabled: false);
 
 		// Assert
 		await Assert.That(model.Elements[0].Icon).IsEqualTo("tech:dotnet");
@@ -490,7 +493,7 @@ public sealed partial class LikeC4ModelBuilderTests
 		);
 
 		// Act
-		var model = LikeC4ModelBuilder.Build([resource], autoIconsEnabled: false);
+		var model = ModelBuilder.Build([resource], autoIconsEnabled: false);
 
 		// Assert
 		await Assert.That(model.Elements[0].Icon).IsEqualTo("bootstrap:gear");
@@ -502,11 +505,10 @@ public sealed partial class LikeC4ModelBuilderTests
 		// Arrange
 		var resource = CreateProjectResource("api");
 
-		static string? Resolver(LikeC4IconResolverContext ctx) =>
-			ctx.Resource is ProjectResource ? "tech:dotnet" : null;
+		static string? Resolver(IconResolverContext ctx) => ctx.Resource is ProjectResource ? "tech:dotnet" : null;
 
 		// Act
-		var model = LikeC4ModelBuilder.Build([resource], iconResolvers: [Resolver]);
+		var model = ModelBuilder.Build([resource], iconResolvers: [Resolver]);
 
 		// Assert
 		await Assert.That(model.Elements[0].Icon).IsEqualTo("tech:dotnet");
@@ -519,10 +521,10 @@ public sealed partial class LikeC4ModelBuilderTests
 		var resource = CreateContainerResource("redis");
 
 		// Resolver explicitly declines; auto-inference should still pick tech:redis.
-		static string? Resolver(LikeC4IconResolverContext _) => null;
+		static string? Resolver(IconResolverContext _) => null;
 
 		// Act
-		var model = LikeC4ModelBuilder.Build([resource], iconResolvers: [Resolver]);
+		var model = ModelBuilder.Build([resource], iconResolvers: [Resolver]);
 
 		// Assert
 		await Assert.That(model.Elements[0].Icon).IsEqualTo("tech:redis");
@@ -534,7 +536,7 @@ public sealed partial class LikeC4ModelBuilderTests
 		// Arrange
 		IResource? capturedHidden = null;
 
-		string? Resolver(LikeC4IconResolverContext ctx)
+		string? Resolver(IconResolverContext ctx)
 		{
 			capturedHidden = ctx.HiddenOriginal;
 			return null;
@@ -553,7 +555,7 @@ public sealed partial class LikeC4ModelBuilderTests
 		hiddenAzureResource.Annotations.Add(snapshot);
 
 		// Act
-		LikeC4ModelBuilder.Build([hiddenAzureResource, visibleContainer], iconResolvers: [Resolver]);
+		ModelBuilder.Build([hiddenAzureResource, visibleContainer], iconResolvers: [Resolver]);
 
 		// Assert
 		await Assert.That(capturedHidden).IsTypeOf<AzureManagedRedisResource>();
@@ -566,26 +568,26 @@ public sealed partial class LikeC4ModelBuilderTests
 		var resource = CreateProjectResource("api");
 		var callOrder = new List<int>();
 
-		string? First(LikeC4IconResolverContext _)
+		string? First(IconResolverContext _)
 		{
 			callOrder.Add(1);
 			return null;
 		}
 
-		string? Second(LikeC4IconResolverContext _)
+		string? Second(IconResolverContext _)
 		{
 			callOrder.Add(2);
 			return "tech:custom";
 		}
 
-		string? Third(LikeC4IconResolverContext _)
+		string? Third(IconResolverContext _)
 		{
 			callOrder.Add(3);
 			return "tech:should-not-reach";
 		}
 
 		// Act
-		var model = LikeC4ModelBuilder.Build([resource], iconResolvers: [First, Second, Third]);
+		var model = ModelBuilder.Build([resource], iconResolvers: [First, Second, Third]);
 
 		// Assert
 		await Assert.That(model.Elements[0].Icon).IsEqualTo("tech:custom");
@@ -600,7 +602,7 @@ public sealed partial class LikeC4ModelBuilderTests
 		resource.Annotations.Add(new LikeC4NodeDetailsAnnotation("API").WithTag("#external"));
 
 		// Act
-		var model = LikeC4ModelBuilder.Build([resource]);
+		var model = ModelBuilder.Build([resource]);
 
 		// Assert
 		await Assert.That(model.Elements[0].Tags).Contains("external");
@@ -616,7 +618,7 @@ public sealed partial class LikeC4ModelBuilderTests
 		api.Annotations.Add(new ResourceRelationshipAnnotation(db, "Reference"));
 
 		// Act
-		var model = LikeC4ModelBuilder.Build([api, db]);
+		var model = ModelBuilder.Build([api, db]);
 
 		// Assert
 		await Assert.That(model.Relationships).Count().IsEqualTo(1);
@@ -634,7 +636,7 @@ public sealed partial class LikeC4ModelBuilderTests
 		api.Annotations.Add(new ResourceRelationshipAnnotation(db, "WaitFor"));
 
 		// Act
-		var model = LikeC4ModelBuilder.Build([api, db]);
+		var model = ModelBuilder.Build([api, db]);
 
 		// Assert
 		await Assert.That(model.Relationships).IsEmpty();
@@ -650,7 +652,7 @@ public sealed partial class LikeC4ModelBuilderTests
 		api.Annotations.Add(new ResourceRelationshipAnnotation(db, "Reference"));
 
 		// Act
-		var model = LikeC4ModelBuilder.Build([api, db]);
+		var model = ModelBuilder.Build([api, db]);
 
 		// Assert
 		await Assert.That(model.Relationships).Count().IsEqualTo(1);
@@ -666,7 +668,7 @@ public sealed partial class LikeC4ModelBuilderTests
 		api.Annotations.Add(new ResourceRelationshipAnnotation(hidden, "Reference"));
 
 		// Act
-		var model = LikeC4ModelBuilder.Build([api, hidden]);
+		var model = ModelBuilder.Build([api, hidden]);
 
 		// Assert
 		await Assert.That(model.Relationships).IsEmpty();
@@ -680,7 +682,7 @@ public sealed partial class LikeC4ModelBuilderTests
 		var child = new TestChildResource("postgres-db", parent);
 
 		// Act
-		var model = LikeC4ModelBuilder.Build([parent, child]);
+		var model = ModelBuilder.Build([parent, child]);
 
 		var childElement = model.Elements.Single(e => e.Name == "postgres-db");
 		// Assert
@@ -697,7 +699,7 @@ public sealed partial class LikeC4ModelBuilderTests
 		api.Annotations.Add(new LikeC4RelationshipDetailsAnnotation("db").WithLabel("Reads from"));
 
 		// Act
-		var model = LikeC4ModelBuilder.Build([api, db]);
+		var model = ModelBuilder.Build([api, db]);
 
 		// Assert
 		await Assert.That(model.Relationships[0].Label).IsEqualTo("Reads from");
@@ -713,7 +715,7 @@ public sealed partial class LikeC4ModelBuilderTests
 		api.Annotations.Add(new LikeC4RelationshipDetailsAnnotation("db").WithNavigateTo("db-detail-flow"));
 
 		// Act
-		var model = LikeC4ModelBuilder.Build([api, db]);
+		var model = ModelBuilder.Build([api, db]);
 
 		// Assert
 		await Assert.That(model.Relationships[0].NavigateTo).IsEqualTo("db-detail-flow");
@@ -733,7 +735,7 @@ public sealed partial class LikeC4ModelBuilderTests
 		);
 
 		// Act
-		var model = LikeC4ModelBuilder.Build([api, db]);
+		var model = ModelBuilder.Build([api, db]);
 
 		var rel = model.Relationships[0];
 		// Assert
@@ -771,7 +773,7 @@ public sealed partial class LikeC4ModelBuilderTests
 		);
 
 		// Act
-		var model = LikeC4ModelBuilder.Build([hiddenAzureRedis, visibleContainerRedis, nodeApp]);
+		var model = ModelBuilder.Build([hiddenAzureRedis, visibleContainerRedis, nodeApp]);
 
 		var rel = model.Relationships[0];
 		// Assert
@@ -790,7 +792,7 @@ public sealed partial class LikeC4ModelBuilderTests
 		api.Annotations.Add(new LikeC4RelationshipDetailsAnnotation("db").WithLabel("Last"));
 
 		// Act
-		var model = LikeC4ModelBuilder.Build([api, db]);
+		var model = ModelBuilder.Build([api, db]);
 
 		// Assert
 		await Assert.That(model.Relationships[0].Label).IsEqualTo("Last");
@@ -805,7 +807,7 @@ public sealed partial class LikeC4ModelBuilderTests
 		api.Annotations.Add(new ResourceRelationshipAnnotation(queue, "Publishes"));
 
 		// Act
-		var model = LikeC4ModelBuilder.Build([api, queue]);
+		var model = ModelBuilder.Build([api, queue]);
 
 		// Assert
 		await Assert.That(model.Relationships[0].Label).IsEqualTo("Publishes");
@@ -837,7 +839,7 @@ public sealed partial class LikeC4ModelBuilderTests
 		nodeApp.Annotations.Add(new ResourceRelationshipAnnotation(hiddenAzureRedis, "Reference"));
 
 		// Act
-		var model = LikeC4ModelBuilder.Build([hiddenAzureRedis, visibleContainerRedis, nodeApp]);
+		var model = ModelBuilder.Build([hiddenAzureRedis, visibleContainerRedis, nodeApp]);
 
 		// Assert
 		await Assert.That(model.Relationships).Count().IsEqualTo(1);
@@ -868,7 +870,7 @@ public sealed partial class LikeC4ModelBuilderTests
 		nodeApp.Annotations.Add(new ResourceRelationshipAnnotation(hiddenAzureRedis, "WaitFor"));
 
 		// Act
-		var model = LikeC4ModelBuilder.Build([hiddenAzureRedis, visibleContainerRedis, nodeApp]);
+		var model = ModelBuilder.Build([hiddenAzureRedis, visibleContainerRedis, nodeApp]);
 
 		// Assert
 		await Assert.That(model.Relationships).IsEmpty();
@@ -896,7 +898,7 @@ public sealed partial class LikeC4ModelBuilderTests
 		nodeApp.Annotations.Add(new ResourceRelationshipAnnotation(hiddenResource, "Reference"));
 
 		// Act
-		var model = LikeC4ModelBuilder.Build([hiddenResource, nodeApp]);
+		var model = ModelBuilder.Build([hiddenResource, nodeApp]);
 
 		// Assert
 		await Assert.That(model.Relationships).IsEmpty();
@@ -926,7 +928,7 @@ public sealed partial class LikeC4ModelBuilderTests
 		nodeApp.Annotations.Add(new ResourceRelationshipAnnotation(hiddenAzureRedis, "WaitFor"));
 
 		// Act
-		var model = LikeC4ModelBuilder.Build([hiddenAzureRedis, visibleContainerRedis, nodeApp]);
+		var model = ModelBuilder.Build([hiddenAzureRedis, visibleContainerRedis, nodeApp]);
 
 		// Assert
 		await Assert.That(model.Relationships).Count().IsEqualTo(1);
@@ -940,52 +942,52 @@ public sealed partial class LikeC4ModelBuilderTests
 		// Arrange
 		var api = CreateProjectResource("api");
 		var db = CreateContainerResource("db");
-		var states = new Dictionary<string, LikeC4ResourceState>(StringComparer.OrdinalIgnoreCase)
+		var states = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase)
 		{
-			["api"] = LikeC4ResourceState.Running,
-			["db"] = LikeC4ResourceState.Error,
+			["api"] = KnownResourceStates.Running,
+			["db"] = KnownResourceStates.FailedToStart,
 		};
 
 		// Act
-		var model = LikeC4ModelBuilder.Build([api, db], states);
+		var model = ModelBuilder.Build([api, db], states);
 
 		var apiElement = model.Elements.Single(e => e.Name == "api");
 		var dbElement = model.Elements.Single(e => e.Name == "db");
 		// Assert
-		await Assert.That(apiElement.State).IsEqualTo(LikeC4ResourceState.Running);
-		await Assert.That(dbElement.State).IsEqualTo(LikeC4ResourceState.Error);
+		await Assert.That(apiElement.State).IsEqualTo(KnownResourceStates.Running);
+		await Assert.That(dbElement.State).IsEqualTo(KnownResourceStates.FailedToStart);
 	}
 
 	[Test]
-	public async Task Build_WithNoResourceStates_ElementsDefaultToUnknown()
+	public async Task Build_WithNoResourceStates_ElementsDefaultToNull()
 	{
 		// Arrange
 		var api = CreateProjectResource("api");
 
 		// Act
-		var model = LikeC4ModelBuilder.Build([api]);
+		var model = ModelBuilder.Build([api]);
 
 		// Assert
-		await Assert.That(model.Elements[0].State).IsEqualTo(LikeC4ResourceState.Unknown);
+		await Assert.That(model.Elements[0].State).IsEqualTo(null);
 	}
 
 	[Test]
-	public async Task Build_WithPartialResourceStates_UnknownForMissingEntries()
+	public async Task Build_WithPartialResourceStates_NullForMissingEntries()
 	{
 		// Arrange
 		var api = CreateProjectResource("api");
 		var db = CreateContainerResource("db");
-		var states = new Dictionary<string, LikeC4ResourceState>(StringComparer.OrdinalIgnoreCase)
+		var states = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase)
 		{
-			["api"] = LikeC4ResourceState.Starting,
+			["api"] = KnownResourceStates.Starting,
 		};
 
 		// Act
-		var model = LikeC4ModelBuilder.Build([api, db], states);
+		var model = ModelBuilder.Build([api, db], states);
 
 		var dbElement = model.Elements.Single(e => e.Name == "db");
 		// Assert
-		await Assert.That(dbElement.State).IsEqualTo(LikeC4ResourceState.Unknown);
+		await Assert.That(dbElement.State).IsEqualTo(null);
 	}
 
 	[Test]
@@ -1009,7 +1011,7 @@ public sealed partial class LikeC4ModelBuilderTests
 		var excluded = CreateContainerResource("excluded");
 		excluded.Annotations.Add(new ExcludeFromLikeC4Annotation());
 
-		var names = LikeC4ModelBuilder.GetVisibleResourceNames([visible, hidden, excluded]);
+		var names = ModelBuilder.GetVisibleResourceNames([visible, hidden, excluded]);
 
 		// Act
 		// Assert
@@ -1033,7 +1035,7 @@ public sealed partial class LikeC4ModelBuilderTests
 		);
 
 		// Act
-		var model = LikeC4ModelBuilder.Build([local, azure]);
+		var model = ModelBuilder.Build([local, azure]);
 
 		// Assert
 		await Assert.That(model.Relationships).Count().IsEqualTo(1);
@@ -1055,7 +1057,7 @@ public sealed partial class LikeC4ModelBuilderTests
 		api.Annotations.Add(new LikeC4RelationshipDetailsAnnotation("db").WithLabel("Queries").WithTechnology("SQL"));
 
 		// Act
-		var model = LikeC4ModelBuilder.Build([api, db]);
+		var model = ModelBuilder.Build([api, db]);
 
 		// Assert
 		await Assert.That(model.Relationships).Count().IsEqualTo(1);
@@ -1072,7 +1074,7 @@ public sealed partial class LikeC4ModelBuilderTests
 		api.Annotations.Add(new LikeC4RelationshipDetailsAnnotation("queue").WithKind("async"));
 
 		// Act
-		var model = LikeC4ModelBuilder.Build([api, queue]);
+		var model = ModelBuilder.Build([api, queue]);
 
 		// Assert
 		await Assert.That(model.Relationships[0].Kind).IsEqualTo("async");
@@ -1092,7 +1094,7 @@ public sealed partial class LikeC4ModelBuilderTests
 		);
 
 		// Act
-		var model = LikeC4ModelBuilder.Build([api, queue]);
+		var model = ModelBuilder.Build([api, queue]);
 
 		// Assert
 		await Assert.That(model.Relationships[0].Kind).IsEqualTo("async");
@@ -1107,7 +1109,7 @@ public sealed partial class LikeC4ModelBuilderTests
 		api.Annotations.Add(new ResourceRelationshipAnnotation(db, "Reference"));
 
 		// Act
-		var model = LikeC4ModelBuilder.Build([api, db]);
+		var model = ModelBuilder.Build([api, db]);
 
 		// Assert
 		await Assert.That(model.Relationships[0].Kind).IsNull();
@@ -1123,7 +1125,7 @@ public sealed partial class LikeC4ModelBuilderTests
 		);
 
 		// Act
-		var model = LikeC4ModelBuilder.Build([resource]);
+		var model = ModelBuilder.Build([resource]);
 
 		// Assert
 		await Assert.That(model.Elements[0].Icon).IsEqualTo("aws:lambda");
@@ -1139,7 +1141,7 @@ public sealed partial class LikeC4ModelBuilderTests
 		);
 
 		// Act
-		var model = LikeC4ModelBuilder.Build([resource]);
+		var model = ModelBuilder.Build([resource]);
 
 		// Assert
 		await Assert.That(model.Elements[0].Icon).IsEqualTo("gcp:pub-sub");
@@ -1152,7 +1154,7 @@ public sealed partial class LikeC4ModelBuilderTests
 		var resource = CreateContainerResource("rabbitmq");
 
 		// Act
-		var model = LikeC4ModelBuilder.Build([resource]);
+		var model = ModelBuilder.Build([resource]);
 
 		// Assert
 		await Assert.That(model.Elements[0].Icon).IsEqualTo("tech:rabbitmq");
@@ -1165,7 +1167,7 @@ public sealed partial class LikeC4ModelBuilderTests
 		var resource = CreateContainerResource("mongodb");
 
 		// Act
-		var model = LikeC4ModelBuilder.Build([resource]);
+		var model = ModelBuilder.Build([resource]);
 
 		// Assert
 		await Assert.That(model.Elements[0].Icon).IsEqualTo("tech:mongodb");
@@ -1180,7 +1182,7 @@ public sealed partial class LikeC4ModelBuilderTests
 		var resource = CreateProjectResource("my-api");
 
 		// Act
-		var model = LikeC4ModelBuilder.Build([resource]);
+		var model = ModelBuilder.Build([resource]);
 
 		var meta = model.Elements[0].Metadata;
 		// Assert
@@ -1197,7 +1199,7 @@ public sealed partial class LikeC4ModelBuilderTests
 		);
 
 		// Act
-		var model = LikeC4ModelBuilder.Build([resource]);
+		var model = ModelBuilder.Build([resource]);
 
 		var meta = model.Elements[0].Metadata;
 		// Assert
@@ -1211,7 +1213,7 @@ public sealed partial class LikeC4ModelBuilderTests
 		var resource = CreateProjectResource("api");
 
 		// Act
-		var model = LikeC4ModelBuilder.Build([resource], aspireMetadataInclusion: AspireMetadataInclusion.None);
+		var model = ModelBuilder.Build([resource], aspireMetadataInclusion: AspireMetadataInclusion.None);
 
 		// Assert
 		await Assert.That(model.Elements[0].Metadata).IsEmpty();
@@ -1227,7 +1229,7 @@ public sealed partial class LikeC4ModelBuilderTests
 		);
 
 		// Act
-		var model = LikeC4ModelBuilder.Build([resource], aspireMetadataInclusion: AspireMetadataInclusion.Metadata);
+		var model = ModelBuilder.Build([resource], aspireMetadataInclusion: AspireMetadataInclusion.Metadata);
 
 		// Assert
 		await Assert.That(model.Elements[0].Links).IsEmpty();
@@ -1241,7 +1243,7 @@ public sealed partial class LikeC4ModelBuilderTests
 		var resource = CreateProjectResource("api");
 
 		// Act
-		var model = LikeC4ModelBuilder.Build([resource], aspireMetadataInclusion: AspireMetadataInclusion.Links);
+		var model = ModelBuilder.Build([resource], aspireMetadataInclusion: AspireMetadataInclusion.Links);
 
 		// Assert
 		await Assert.That(model.Elements[0].Metadata.Any(m => m.Key == "aspire-name")).IsFalse();
@@ -1257,7 +1259,7 @@ public sealed partial class LikeC4ModelBuilderTests
 		resource.Annotations.Add(endpoint);
 
 		// Act
-		var model = LikeC4ModelBuilder.Build([resource]);
+		var model = ModelBuilder.Build([resource]);
 
 		var links = model.Elements[0].Links;
 		var injected = links.FirstOrDefault(l => l.Uri == "http://localhost:5000");
@@ -1276,7 +1278,7 @@ public sealed partial class LikeC4ModelBuilderTests
 		);
 
 		// Act
-		var model = LikeC4ModelBuilder.Build([resource]);
+		var model = ModelBuilder.Build([resource]);
 
 		// Assert
 		await Assert.That(model.Elements[0].Links).IsEmpty();
@@ -1292,7 +1294,7 @@ public sealed partial class LikeC4ModelBuilderTests
 		resource.Annotations.Add(endpoint);
 
 		// Act
-		var model = LikeC4ModelBuilder.Build([resource]);
+		var model = ModelBuilder.Build([resource]);
 
 		// Assert
 		await Assert.That(model.Elements[0].Links).IsEmpty();
@@ -1306,7 +1308,7 @@ public sealed partial class LikeC4ModelBuilderTests
 		resource.Annotations.Add(new LikeC4NodeDetailsAnnotation("API").WithMetadata("aspire-name", "custom-override"));
 
 		// Act
-		var model = LikeC4ModelBuilder.Build([resource]);
+		var model = ModelBuilder.Build([resource]);
 
 		var aspireNameEntries = model.Elements[0].Metadata.Where(m => m.Key == "aspire-name").ToList();
 		// User-provided entry present, auto-generated one should not duplicate it
@@ -1328,7 +1330,7 @@ public sealed partial class LikeC4ModelBuilderTests
 		);
 
 		// Act
-		var model = LikeC4ModelBuilder.Build([resource]);
+		var model = ModelBuilder.Build([resource]);
 
 		var httpLinks = model.Elements[0].Links.Where(l => l.Uri == "http://localhost:5000").ToList();
 		// Should appear only once — auto-injected duplicate is suppressed
@@ -1347,7 +1349,7 @@ public sealed partial class LikeC4ModelBuilderTests
 		resource.Annotations.Add(new LikeC4NodeDetailsAnnotation("API").WithMetadata("Azure SKU", "Standard"));
 
 		// Act
-		var model = LikeC4ModelBuilder.Build([resource]);
+		var model = ModelBuilder.Build([resource]);
 
 		var meta = model.Elements[0].Metadata;
 		// Assert
@@ -1366,7 +1368,7 @@ public sealed partial class LikeC4ModelBuilderTests
 		);
 
 		// Act
-		var model = LikeC4ModelBuilder.Build([resource]);
+		var model = ModelBuilder.Build([resource]);
 
 		// Assert
 		await Assert.That(model.Elements.Count).IsEqualTo(1);
@@ -1383,7 +1385,7 @@ public sealed partial class LikeC4ModelBuilderTests
 		resource.Annotations.Add(new LikeC4NodeDetailsAnnotation("API").WithMetadata("valid-key_123", "value"));
 
 		// Act
-		var model = LikeC4ModelBuilder.Build([resource]);
+		var model = ModelBuilder.Build([resource]);
 
 		var meta = model.Elements[0].Metadata;
 		// Assert
@@ -1398,7 +1400,7 @@ public sealed partial class LikeC4ModelBuilderTests
 		resource.Annotations.Add(new LikeC4NodeDetailsAnnotation("API").WithMetadata("Azure SKU", "Standard"));
 
 		// Act
-		var model = LikeC4ModelBuilder.Build(
+		var model = ModelBuilder.Build(
 			[resource],
 			normaliseMetadataBehaviour: NormaliseMetadataBehaviour.NormaliseLowercase
 		);
@@ -1418,9 +1420,7 @@ public sealed partial class LikeC4ModelBuilderTests
 		// Act
 		// Assert
 		await Assert
-			.That(() =>
-				LikeC4ModelBuilder.Build([resource], normaliseMetadataBehaviour: NormaliseMetadataBehaviour.Throw)
-			)
+			.That(() => ModelBuilder.Build([resource], normaliseMetadataBehaviour: NormaliseMetadataBehaviour.Throw))
 			.Throws<ArgumentException>();
 	}
 
@@ -1432,7 +1432,7 @@ public sealed partial class LikeC4ModelBuilderTests
 		resource.Annotations.Add(new LikeC4NodeDetailsAnnotation("API").WithMetadata("valid-key_123", "value"));
 
 		// Act
-		var model = LikeC4ModelBuilder.Build([resource], normaliseMetadataBehaviour: NormaliseMetadataBehaviour.Throw);
+		var model = ModelBuilder.Build([resource], normaliseMetadataBehaviour: NormaliseMetadataBehaviour.Throw);
 
 		var meta = model.Elements[0].Metadata;
 		// Assert
@@ -1458,7 +1458,7 @@ public sealed partial class LikeC4ModelBuilderTests
 		resource.Annotations.Add(new LikeC4NodeDetailsAnnotation("API").WithMetadata("My Key (v2)!", "value"));
 
 		// Act
-		var model = LikeC4ModelBuilder.Build([resource]);
+		var model = ModelBuilder.Build([resource]);
 
 		var meta = model.Elements[0].Metadata;
 		// Assert
@@ -1470,34 +1470,31 @@ public sealed partial class LikeC4ModelBuilderTests
 	// ── StateTagMap tests ─────────────────────────────────────────────────────
 
 	[Test]
-	public async Task Build_StateTagMap_DefaultMap_PrependsStateTagToElementTags()
+	public async Task Build_StateTagMap_RunningOverride_PrependsStateTagToElementTags()
 	{
 		// Arrange
 		var resource = CreateContainerResource("api");
-		var states = new Dictionary<string, LikeC4ResourceState> { { "api", LikeC4ResourceState.Running } };
-		var stateTagMap = new Dictionary<LikeC4ResourceState, string?>
-		{
-			[LikeC4ResourceState.Running] = "state-running",
-		};
+		var states = new Dictionary<string, string?> { { "api", KnownResourceStates.Running } };
+		var stateTagMap = new Dictionary<string, string?> { [KnownResourceStates.Running] = "custom-running-tag" };
 
 		// Act
-		var model = LikeC4ModelBuilder.Build([resource], resourceStates: states, stateTagMap: stateTagMap);
+		var model = ModelBuilder.Build([resource], resourceStates: states, stateTagMap: stateTagMap);
 
 		var element = model.Elements[0];
 		// Assert
-		await Assert.That(element.Tags).Contains("state-running");
+		await Assert.That(element.Tags).Contains("custom-running-tag");
 	}
 
 	[Test]
-	public async Task Build_StateTagMap_NullMapEntry_DoesNotPrependTag()
+	public async Task Build_StateTagMap_NullOverride_DoesNotPrependTag()
 	{
 		// Arrange
 		var resource = CreateContainerResource("api");
-		var states = new Dictionary<string, LikeC4ResourceState> { { "api", LikeC4ResourceState.Unknown } };
-		var stateTagMap = new Dictionary<LikeC4ResourceState, string?> { [LikeC4ResourceState.Unknown] = null };
+		var states = new Dictionary<string, string?> { { "api", KnownResourceStates.Running } };
+		var stateTagMap = new Dictionary<string, string?> { [KnownResourceStates.Running] = null };
 
 		// Act
-		var model = LikeC4ModelBuilder.Build([resource], resourceStates: states, stateTagMap: stateTagMap);
+		var model = ModelBuilder.Build([resource], resourceStates: states, stateTagMap: stateTagMap);
 
 		var element = model.Elements[0];
 		// Assert
@@ -1505,18 +1502,18 @@ public sealed partial class LikeC4ModelBuilderTests
 	}
 
 	[Test]
-	public async Task Build_StateTagMap_NullMap_NoStateTagOnElement()
+	public async Task Build_StateTagMap_NullMap_AutoDerivesStateTagOnElement()
 	{
 		// Arrange
 		var resource = CreateContainerResource("api");
-		var states = new Dictionary<string, LikeC4ResourceState> { { "api", LikeC4ResourceState.Running } };
+		var states = new Dictionary<string, string?> { { "api", KnownResourceStates.Running } };
 
 		// Act
-		var model = LikeC4ModelBuilder.Build([resource], resourceStates: states, stateTagMap: null);
+		var model = ModelBuilder.Build([resource], resourceStates: states, stateTagMap: null);
 
 		var element = model.Elements[0];
 		// Assert
-		await Assert.That(element.Tags).IsEmpty();
+		await Assert.That(element.Tags).Contains("aspire-run-state-running");
 	}
 
 	[Test]
@@ -1526,15 +1523,15 @@ public sealed partial class LikeC4ModelBuilderTests
 		var resource = CreateContainerResource("api");
 		resource.Annotations.Add(new LikeC4NodeDetailsAnnotation("API").WithTag("backend").WithTag("v2"));
 
-		var states = new Dictionary<string, LikeC4ResourceState> { { "api", LikeC4ResourceState.Error } };
-		var stateTagMap = new Dictionary<LikeC4ResourceState, string?> { [LikeC4ResourceState.Error] = "state-error" };
+		var states = new Dictionary<string, string?> { { "api", KnownResourceStates.FailedToStart } };
+		var stateTagMap = new Dictionary<string, string?> { [KnownResourceStates.FailedToStart] = "custom-error-tag" };
 
 		// Act
-		var model = LikeC4ModelBuilder.Build([resource], resourceStates: states, stateTagMap: stateTagMap);
+		var model = ModelBuilder.Build([resource], resourceStates: states, stateTagMap: stateTagMap);
 
 		var tags = model.Elements[0].Tags;
 		// Assert
-		await Assert.That(tags[0]).IsEqualTo("state-error");
+		await Assert.That(tags[0]).IsEqualTo("custom-error-tag");
 		await Assert.That(tags).Contains("backend");
 		await Assert.That(tags).Contains("v2");
 	}
@@ -1544,14 +1541,14 @@ public sealed partial class LikeC4ModelBuilderTests
 	{
 		// Arrange
 		var resource = CreateContainerResource("api");
-		var states = new Dictionary<string, LikeC4ResourceState> { { "api", LikeC4ResourceState.Failed } };
-		var stateTagMap = new Dictionary<LikeC4ResourceState, string?>
+		var states = new Dictionary<string, string?> { { "api", KnownResourceStates.RuntimeUnhealthy } };
+		var stateTagMap = new Dictionary<string, string?>
 		{
-			[LikeC4ResourceState.Failed] = "my-custom-failed-tag",
+			[KnownResourceStates.RuntimeUnhealthy] = "my-custom-failed-tag",
 		};
 
 		// Act
-		var model = LikeC4ModelBuilder.Build([resource], resourceStates: states, stateTagMap: stateTagMap);
+		var model = ModelBuilder.Build([resource], resourceStates: states, stateTagMap: stateTagMap);
 
 		// Assert
 		await Assert.That(model.Elements[0].Tags).Contains("my-custom-failed-tag");
@@ -1564,7 +1561,7 @@ public sealed partial class LikeC4ModelBuilderTests
 		var resource = CreateProjectResource("my-api");
 
 		// Act
-		var model = LikeC4ModelBuilder.Build([resource], dashboardBaseUrl: "https://localhost:15086");
+		var model = ModelBuilder.Build([resource], dashboardBaseUrl: "https://localhost:15086");
 
 		var links = model.Elements[0].Links;
 		var consoleLink = links.FirstOrDefault(l => l.Title == "Dashboard: Console Logs");
@@ -1584,7 +1581,7 @@ public sealed partial class LikeC4ModelBuilderTests
 		var resource = CreateProjectResource("api");
 
 		// Act
-		var model = LikeC4ModelBuilder.Build(
+		var model = ModelBuilder.Build(
 			[resource],
 			dashboardBaseUrl: "https://localhost:15086",
 			dashboardBrowserToken: "secret-token"
@@ -1614,7 +1611,7 @@ public sealed partial class LikeC4ModelBuilderTests
 		var resource = CreateProjectResource("my api+service");
 
 		// Act
-		var model = LikeC4ModelBuilder.Build([resource], dashboardBaseUrl: "https://localhost:15086");
+		var model = ModelBuilder.Build([resource], dashboardBaseUrl: "https://localhost:15086");
 
 		var consoleLink = model.Elements[0].Links.FirstOrDefault(l => l.Title == "Dashboard: Console Logs");
 		// Assert
@@ -1631,7 +1628,7 @@ public sealed partial class LikeC4ModelBuilderTests
 		var resource = CreateProjectResource("api");
 
 		// Act
-		var model = LikeC4ModelBuilder.Build([resource], dashboardBaseUrl: null);
+		var model = ModelBuilder.Build([resource], dashboardBaseUrl: null);
 
 		var dashboardLinks = model
 			.Elements[0]
@@ -1647,7 +1644,7 @@ public sealed partial class LikeC4ModelBuilderTests
 		var resource = CreateProjectResource("api");
 
 		// Act
-		var model = LikeC4ModelBuilder.Build(
+		var model = ModelBuilder.Build(
 			[resource],
 			includeDashboardLinks: false,
 			dashboardBaseUrl: "https://localhost:15086"
@@ -1667,7 +1664,7 @@ public sealed partial class LikeC4ModelBuilderTests
 		var resource = CreateProjectResource("api");
 
 		// Act
-		var model = LikeC4ModelBuilder.Build(
+		var model = ModelBuilder.Build(
 			[resource],
 			aspireMetadataInclusion: AspireMetadataInclusion.Metadata,
 			dashboardBaseUrl: "https://localhost:15086"
@@ -1689,7 +1686,7 @@ public sealed partial class LikeC4ModelBuilderTests
 		resource.Annotations.Add(new LikeC4NodeDetailsAnnotation("API").WithLink(expectedUrl, "My custom link"));
 
 		// Act
-		var model = LikeC4ModelBuilder.Build([resource], dashboardBaseUrl: "https://localhost:15086");
+		var model = ModelBuilder.Build([resource], dashboardBaseUrl: "https://localhost:15086");
 
 		var matchingLinks = model.Elements[0].Links.Where(l => l.Uri == expectedUrl).ToList();
 		// Assert
@@ -1718,7 +1715,7 @@ public sealed partial class LikeC4ModelBuilderTests
 		};
 
 		// Act
-		var model = LikeC4ModelBuilder.Build([resource], resourceSnapshotUrls: snapshotUrls);
+		var model = ModelBuilder.Build([resource], resourceSnapshotUrls: snapshotUrls);
 
 		var links = model.Elements[0].Links;
 		// Assert
@@ -1741,7 +1738,7 @@ public sealed partial class LikeC4ModelBuilderTests
 		};
 
 		// Act
-		var model = LikeC4ModelBuilder.Build([resource], resourceSnapshotUrls: snapshotUrls);
+		var model = ModelBuilder.Build([resource], resourceSnapshotUrls: snapshotUrls);
 
 		var links = model.Elements[0].Links;
 		// Assert
@@ -1760,7 +1757,7 @@ public sealed partial class LikeC4ModelBuilderTests
 		resource.Annotations.Add(endpoint);
 
 		// Act
-		var model = LikeC4ModelBuilder.Build([resource], resourceSnapshotUrls: null);
+		var model = ModelBuilder.Build([resource], resourceSnapshotUrls: null);
 
 		var links = model.Elements[0].Links;
 		// Assert
@@ -1783,7 +1780,7 @@ public sealed partial class LikeC4ModelBuilderTests
 		};
 
 		// Act
-		var model = LikeC4ModelBuilder.Build([resource], resourceSnapshotUrls: snapshotUrls);
+		var model = ModelBuilder.Build([resource], resourceSnapshotUrls: snapshotUrls);
 
 		var matchingLinks = model.Elements[0].Links.Where(l => l.Uri == "http://localhost:5000").ToList();
 		// Assert
@@ -1804,7 +1801,7 @@ public sealed partial class LikeC4ModelBuilderTests
 		var resource = new NodeAppResource("my-node-app");
 
 		// Act
-		var model = LikeC4ModelBuilder.Build([resource]);
+		var model = ModelBuilder.Build([resource]);
 
 		// Assert
 		await Assert.That(model.Elements[0].Icon).IsEqualTo("tech:nodejs");
@@ -1863,7 +1860,7 @@ public sealed partial class LikeC4ModelBuilderTests
 		var resource = new RabbitMQContainerResource("my-queue");
 
 		// Act
-		var model = LikeC4ModelBuilder.Build([resource]);
+		var model = ModelBuilder.Build([resource]);
 
 		// Assert
 		await Assert.That(model.Elements[0].Icon).IsEqualTo("tech:rabbitmq");
@@ -1880,7 +1877,7 @@ public sealed partial class LikeC4ModelBuilderTests
 		var resource = new MySQLDatabaseResource("mysql");
 
 		// Act
-		var model = LikeC4ModelBuilder.Build([resource]);
+		var model = ModelBuilder.Build([resource]);
 
 		// Assert
 		await Assert.That(model.Elements[0].Icon).IsEqualTo("tech:mysql");
@@ -1897,7 +1894,7 @@ public sealed partial class LikeC4ModelBuilderTests
 		var resource = new GenericDatabaseContainerResource("mongodb");
 
 		// Act
-		var model = LikeC4ModelBuilder.Build([resource]);
+		var model = ModelBuilder.Build([resource]);
 
 		// Assert
 		await Assert.That(model.Elements[0].Icon).IsEqualTo("tech:mongodb");
@@ -1915,7 +1912,7 @@ public sealed partial class LikeC4ModelBuilderTests
 		resource.Annotations.Add(new ContainerImageAnnotation { Image = "redis" });
 
 		// Act
-		var model = LikeC4ModelBuilder.Build([resource]);
+		var model = ModelBuilder.Build([resource]);
 
 		// Assert
 		await Assert.That(model.Elements[0].Icon).IsEqualTo("tech:redis");

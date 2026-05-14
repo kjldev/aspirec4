@@ -1,8 +1,10 @@
 using Aspire.Hosting.ApplicationModel;
+using Aspire.Hosting.AspireC4.LikeC4;
+using Aspire.Hosting.AspireC4.LikeC4.Annotations;
 
 namespace Aspire.Hosting.AspireC4;
 
-public sealed partial class LikeC4ModelBuilderTests
+public sealed partial class ModelBuilderTests
 {
 	// ── Strict mode — Tags ────────────────────────────────────────────────────
 
@@ -15,7 +17,7 @@ public sealed partial class LikeC4ModelBuilderTests
 		var strict = CreateStrictOptions(AspireC4StrictMode.Tags, tags: ["external"]);
 
 		// Act / Assert
-		await Assert.That(() => LikeC4ModelBuilder.Build([resource], strict: strict)).ThrowsNothing();
+		await Assert.That(() => ModelBuilder.Build([resource], strict: strict)).ThrowsNothing();
 	}
 
 	[Test]
@@ -28,7 +30,7 @@ public sealed partial class LikeC4ModelBuilderTests
 
 		// Act / Assert
 		await Assert
-			.That(() => LikeC4ModelBuilder.Build([resource], strict: strict))
+			.That(() => ModelBuilder.Build([resource], strict: strict))
 			.ThrowsException()
 			.WithMessageContaining("unknown-tag", StringComparison.Ordinal);
 	}
@@ -45,7 +47,7 @@ public sealed partial class LikeC4ModelBuilderTests
 
 		// Act / Assert
 		await Assert
-			.That(() => LikeC4ModelBuilder.Build([api, db], strict: strict))
+			.That(() => ModelBuilder.Build([api, db], strict: strict))
 			.ThrowsException()
 			.WithMessageContaining("not-allowed", StringComparison.Ordinal);
 	}
@@ -59,18 +61,18 @@ public sealed partial class LikeC4ModelBuilderTests
 		var strict = CreateStrictOptions(AspireC4StrictMode.None, tags: []);
 
 		// Act / Assert — strict.Mode is None, so no validation occurs
-		await Assert.That(() => LikeC4ModelBuilder.Build([resource], strict: strict)).ThrowsNothing();
+		await Assert.That(() => ModelBuilder.Build([resource], strict: strict)).ThrowsNothing();
 	}
 
 	[Test]
 	public async Task Build_StrictTags_StateTagsExemptFromValidation()
 	{
-		// Arrange — the state tag "state-running" is auto-injected, not user-defined
+		// Arrange — the state tag "aspire-run-state-running" is auto-injected, not user-defined
 		var resource = CreateProjectResource("api");
-		var states = new Dictionary<string, LikeC4ResourceState> { ["api"] = LikeC4ResourceState.Running };
-		IReadOnlyDictionary<LikeC4ResourceState, string?> stateTagMap = new Dictionary<LikeC4ResourceState, string?>
+		var states = new Dictionary<string, string?> { ["api"] = KnownResourceStates.Running };
+		IReadOnlyDictionary<string, string?> stateTagMap = new Dictionary<string, string?>
 		{
-			[LikeC4ResourceState.Running] = "state-running",
+			[KnownResourceStates.Running] = "aspire-run-state-running",
 		};
 		// No tags in allowed list — state tags must be exempt
 		var strict = CreateStrictOptions(AspireC4StrictMode.Tags, tags: []);
@@ -78,7 +80,7 @@ public sealed partial class LikeC4ModelBuilderTests
 		// Act / Assert
 		await Assert
 			.That(() =>
-				LikeC4ModelBuilder.Build([resource], resourceStates: states, stateTagMap: stateTagMap, strict: strict)
+				ModelBuilder.Build([resource], resourceStates: states, stateTagMap: stateTagMap, strict: strict)
 			)
 			.ThrowsNothing();
 	}
@@ -92,7 +94,7 @@ public sealed partial class LikeC4ModelBuilderTests
 		var strict = CreateStrictOptions(AspireC4StrictMode.Tags, tags: ["external"]);
 
 		// Act / Assert — "external" and "#external" normalise to the same value
-		await Assert.That(() => LikeC4ModelBuilder.Build([resource], strict: strict)).ThrowsNothing();
+		await Assert.That(() => ModelBuilder.Build([resource], strict: strict)).ThrowsNothing();
 	}
 
 	[Test]
@@ -103,7 +105,7 @@ public sealed partial class LikeC4ModelBuilderTests
 		resource.Annotations.Add(new LikeC4NodeDetailsAnnotation(resource.Name).WithTag("anything"));
 
 		// Act / Assert — null strict means no validation
-		await Assert.That(() => LikeC4ModelBuilder.Build([resource], strict: null)).ThrowsNothing();
+		await Assert.That(() => ModelBuilder.Build([resource], strict: null)).ThrowsNothing();
 	}
 
 	// ── Strict mode — RelationshipKinds ──────────────────────────────────────
@@ -119,7 +121,7 @@ public sealed partial class LikeC4ModelBuilderTests
 		var strict = CreateStrictOptions(AspireC4StrictMode.RelationshipKinds, relationshipKinds: ["async"]);
 
 		// Act / Assert
-		await Assert.That(() => LikeC4ModelBuilder.Build([api, db], strict: strict)).ThrowsNothing();
+		await Assert.That(() => ModelBuilder.Build([api, db], strict: strict)).ThrowsNothing();
 	}
 
 	[Test]
@@ -134,7 +136,7 @@ public sealed partial class LikeC4ModelBuilderTests
 
 		// Act / Assert
 		await Assert
-			.That(() => LikeC4ModelBuilder.Build([api, db], strict: strict))
+			.That(() => ModelBuilder.Build([api, db], strict: strict))
 			.ThrowsException()
 			.WithMessageContaining("grpc", StringComparison.Ordinal);
 	}
@@ -148,7 +150,7 @@ public sealed partial class LikeC4ModelBuilderTests
 		var strict = CreateStrictOptions(AspireC4StrictMode.RelationshipKinds, relationshipKinds: []);
 
 		// Act / Assert
-		await Assert.That(() => LikeC4ModelBuilder.Build([api, db], strict: strict)).ThrowsNothing();
+		await Assert.That(() => ModelBuilder.Build([api, db], strict: strict)).ThrowsNothing();
 	}
 
 	[Test]
@@ -163,7 +165,7 @@ public sealed partial class LikeC4ModelBuilderTests
 
 		// Act / Assert
 		await Assert
-			.That(() => LikeC4ModelBuilder.Build([api, db], strict: strict))
+			.That(() => ModelBuilder.Build([api, db], strict: strict))
 			.ThrowsException()
 			.WithMessageContaining("grpc", StringComparison.Ordinal);
 	}
@@ -179,7 +181,7 @@ public sealed partial class LikeC4ModelBuilderTests
 		var strict = CreateStrictOptions(AspireC4StrictMode.Groups, groups: ["Frontend"]);
 
 		// Act / Assert
-		await Assert.That(() => LikeC4ModelBuilder.Build([resource], strict: strict)).ThrowsNothing();
+		await Assert.That(() => ModelBuilder.Build([resource], strict: strict)).ThrowsNothing();
 	}
 
 	[Test]
@@ -192,7 +194,7 @@ public sealed partial class LikeC4ModelBuilderTests
 
 		// Act / Assert
 		await Assert
-			.That(() => LikeC4ModelBuilder.Build([resource], strict: strict))
+			.That(() => ModelBuilder.Build([resource], strict: strict))
 			.ThrowsException()
 			.WithMessageContaining("UnknownGroup", StringComparison.Ordinal);
 	}
@@ -205,7 +207,7 @@ public sealed partial class LikeC4ModelBuilderTests
 		var strict = CreateStrictOptions(AspireC4StrictMode.Groups, groups: []);
 
 		// Act / Assert
-		await Assert.That(() => LikeC4ModelBuilder.Build([resource], strict: strict)).ThrowsNothing();
+		await Assert.That(() => ModelBuilder.Build([resource], strict: strict)).ThrowsNothing();
 	}
 
 	[Test]
@@ -217,7 +219,7 @@ public sealed partial class LikeC4ModelBuilderTests
 		var strict = CreateStrictOptions(AspireC4StrictMode.Groups, groups: ["Frontend"]);
 
 		// Act / Assert — comparison should be case-insensitive
-		await Assert.That(() => LikeC4ModelBuilder.Build([resource], strict: strict)).ThrowsNothing();
+		await Assert.That(() => ModelBuilder.Build([resource], strict: strict)).ThrowsNothing();
 	}
 
 	// ── Strict mode — MetadataKeys ────────────────────────────────────────────
@@ -231,7 +233,7 @@ public sealed partial class LikeC4ModelBuilderTests
 		var strict = CreateStrictOptions(AspireC4StrictMode.MetadataKeys, metadataKeys: ["custom-key"]);
 
 		// Act / Assert
-		await Assert.That(() => LikeC4ModelBuilder.Build([resource], strict: strict)).ThrowsNothing();
+		await Assert.That(() => ModelBuilder.Build([resource], strict: strict)).ThrowsNothing();
 	}
 
 	[Test]
@@ -244,7 +246,7 @@ public sealed partial class LikeC4ModelBuilderTests
 
 		// Act / Assert
 		await Assert
-			.That(() => LikeC4ModelBuilder.Build([resource], strict: strict))
+			.That(() => ModelBuilder.Build([resource], strict: strict))
 			.ThrowsException()
 			.WithMessageContaining("secret-key", StringComparison.Ordinal);
 	}
@@ -263,7 +265,7 @@ public sealed partial class LikeC4ModelBuilderTests
 		// Act / Assert
 		await Assert
 			.That(() =>
-				LikeC4ModelBuilder.Build(
+				ModelBuilder.Build(
 					[resource],
 					aspireMetadataInclusion: AspireMetadataInclusion.Metadata,
 					strict: strict
@@ -284,7 +286,7 @@ public sealed partial class LikeC4ModelBuilderTests
 
 		// Act / Assert
 		await Assert
-			.That(() => LikeC4ModelBuilder.Build([api, db], strict: strict))
+			.That(() => ModelBuilder.Build([api, db], strict: strict))
 			.ThrowsException()
 			.WithMessageContaining("secret-key", StringComparison.Ordinal);
 	}
@@ -302,7 +304,7 @@ public sealed partial class LikeC4ModelBuilderTests
 
 		// Act / Assert — first violation (tags) is thrown immediately
 		await Assert
-			.That(() => LikeC4ModelBuilder.Build([resource], strict: strict))
+			.That(() => ModelBuilder.Build([resource], strict: strict))
 			.ThrowsException()
 			.WithMessageContaining("bad-tag", StringComparison.Ordinal);
 	}
@@ -327,11 +329,7 @@ public sealed partial class LikeC4ModelBuilderTests
 		// Act / Assert
 		await Assert
 			.That(() =>
-				LikeC4ModelBuilder.Build(
-					[api, db],
-					aspireMetadataInclusion: AspireMetadataInclusion.None,
-					strict: strict
-				)
+				ModelBuilder.Build([api, db], aspireMetadataInclusion: AspireMetadataInclusion.None, strict: strict)
 			)
 			.ThrowsNothing();
 	}
@@ -347,7 +345,7 @@ public sealed partial class LikeC4ModelBuilderTests
 		var strict = CreateStrictOptions(AspireC4StrictMode.Tags, tags: []);
 
 		// Act
-		var exception = await Assert.That(() => LikeC4ModelBuilder.Build([resource], strict: strict)).ThrowsException();
+		var exception = await Assert.That(() => ModelBuilder.Build([resource], strict: strict)).ThrowsException();
 
 		// Assert — message should guide the developer
 		await Assert.That(exception!.Message).Contains(nameof(AspireC4DiagramOptionsExtensions.WithAllowedTag));
@@ -363,7 +361,7 @@ public sealed partial class LikeC4ModelBuilderTests
 		var strict = CreateStrictOptions(AspireC4StrictMode.RelationshipKinds, relationshipKinds: []);
 
 		// Act
-		var exception = await Assert.That(() => LikeC4ModelBuilder.Build([api, db], strict: strict)).ThrowsException();
+		var exception = await Assert.That(() => ModelBuilder.Build([api, db], strict: strict)).ThrowsException();
 
 		// Assert
 		await Assert
@@ -380,7 +378,7 @@ public sealed partial class LikeC4ModelBuilderTests
 		var strict = CreateStrictOptions(AspireC4StrictMode.Groups, groups: []);
 
 		// Act
-		var exception = await Assert.That(() => LikeC4ModelBuilder.Build([resource], strict: strict)).ThrowsException();
+		var exception = await Assert.That(() => ModelBuilder.Build([resource], strict: strict)).ThrowsException();
 
 		// Assert
 		await Assert.That(exception!.Message).Contains(nameof(AspireC4DiagramOptionsExtensions.WithAllowedGroup));
@@ -395,7 +393,7 @@ public sealed partial class LikeC4ModelBuilderTests
 		var strict = CreateStrictOptions(AspireC4StrictMode.MetadataKeys, metadataKeys: []);
 
 		// Act
-		var exception = await Assert.That(() => LikeC4ModelBuilder.Build([resource], strict: strict)).ThrowsException();
+		var exception = await Assert.That(() => ModelBuilder.Build([resource], strict: strict)).ThrowsException();
 
 		// Assert
 		await Assert.That(exception!.Message).Contains(nameof(AspireC4DiagramOptionsExtensions.WithAllowedMetadataKey));
@@ -413,10 +411,10 @@ public sealed partial class LikeC4ModelBuilderTests
 		new()
 		{
 			Mode = mode,
-			Tags = tags?.ToList() ?? [],
-			RelationshipKinds = relationshipKinds?.ToList() ?? [],
-			Groups = groups?.ToList() ?? [],
-			MetadataKeys = metadataKeys?.ToList() ?? [],
+			Tags = tags?.ToHashSet(StringComparer.Ordinal) ?? [],
+			RelationshipKinds = relationshipKinds?.ToHashSet(StringComparer.Ordinal) ?? [],
+			Groups = groups?.ToHashSet(StringComparer.Ordinal) ?? [],
+			MetadataKeys = metadataKeys?.ToHashSet(StringComparer.Ordinal) ?? [],
 		};
 
 	static (ProjectResource Api, ContainerResource Db) CreateApiAndDbResources()

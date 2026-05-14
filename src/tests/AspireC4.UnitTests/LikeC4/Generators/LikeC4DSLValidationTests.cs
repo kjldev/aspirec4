@@ -1,8 +1,9 @@
 using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Text.Json;
+using Aspire.Hosting.AspireC4.LikeC4.Models;
 
-namespace Aspire.Hosting.AspireC4;
+namespace Aspire.Hosting.AspireC4.LikeC4.Generators;
 
 /// <summary>
 /// Validates generated LikeC4 DSL output using the real <c>likec4 validate</c> CLI
@@ -218,7 +219,7 @@ public sealed class LikeC4DSLValidationTests
 	[Test]
 	[MethodDataSource(nameof(AllResourceStates))]
 	public async Task Generate_EachResourceState_ProducesNoValidationErrors(
-		LikeC4ResourceState state,
+		string? state,
 		CancellationToken cancellationToken
 	)
 	{
@@ -247,7 +248,18 @@ public sealed class LikeC4DSLValidationTests
 		await Assert.That(result.FilteredErrors).IsEqualTo(0);
 	}
 
-	public static IEnumerable<LikeC4ResourceState> AllResourceStates() => Enum.GetValues<LikeC4ResourceState>();
+	public static IEnumerable<string?> AllResourceStates() =>
+		[
+			null,
+			KnownResourceStates.Starting,
+			KnownResourceStates.Waiting,
+			KnownResourceStates.Running,
+			KnownResourceStates.Stopping,
+			KnownResourceStates.Exited,
+			KnownResourceStates.Finished,
+			KnownResourceStates.FailedToStart,
+			KnownResourceStates.RuntimeUnhealthy,
+		];
 
 	[Test]
 	public async Task Generate_ElementWithMetadataTagsLinks_ProducesNoValidationErrors(
@@ -393,7 +405,11 @@ public sealed class LikeC4DSLValidationTests
 				{
 					Notation = "Service",
 					Technology = "ASP.NET Core",
-					Style = new LikeC4ElementKindStyle { Shape = "component", Color = "primary" },
+					Style = new LikeC4ElementKindStyle(null, null, null, null, null)
+					{
+						Shape = "component",
+						Color = "primary",
+					},
 				},
 			],
 		};
@@ -427,7 +443,7 @@ public sealed class LikeC4DSLValidationTests
 	{
 		// Arrange
 		// Stress-test: all state variants co-existing in one diagram.
-		var elements = Enum.GetValues<LikeC4ResourceState>()
+		var elements = AllResourceStates()
 			.Select(
 				(state, idx) =>
 					new LikeC4Element

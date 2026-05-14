@@ -1,8 +1,14 @@
+using Aspire.Hosting.AspireC4.LikeC4;
+using Aspire.Hosting.AspireC4.LikeC4.Models;
+
 namespace Aspire.Hosting.AspireC4;
 
 /// <summary>Configuration options for the LikeC4 diagram generation.</summary>
 public sealed class AspireC4DiagramOptions
 {
+	/// <summary>
+	/// The configuration section name for these options when bound from a configuration source (e.g. appsettings.json).
+	/// </summary>
 	public const string SectionName = "AspireC4";
 
 	/// <summary>
@@ -66,7 +72,7 @@ public sealed class AspireC4DiagramOptions
 	/// Set this to a specific version (e.g. <c>"1.56"</c>) to pin the LikeC4 server version.
 	/// </summary>
 	/// <remarks>
-	/// Ignored when <see cref="ILikeC4VisualizationBuilder.WithLocalCli"/> is used.
+	/// Ignored when <see cref="IAspireC4Builder.WithLocalCLI"/> is used.
 	/// </remarks>
 	public string? ContainerImageTag { get; set; }
 
@@ -244,30 +250,21 @@ public sealed class AspireC4DiagramOptions
 	public bool IncludeAspireTokenInDashboardLinks { get; set; }
 
 	/// <summary>
-	/// Maps each <see cref="LikeC4ResourceState"/> to the tag applied to the corresponding
-	/// element in the generated diagram. Set a state's tag to <see langword="null"/> to suppress
-	/// tag assignment for that state.
-	/// Defaults to the built-in <c>state-*</c> tag names.
+	/// Optional overrides mapping a <see cref="KnownResourceStates"/> string to the tag applied
+	/// to the corresponding element in the generated diagram. Set a state's value to
+	/// <see langword="null"/> to suppress tag assignment for that state.
+	/// When a state has no entry in this map, the tag is automatically derived as
+	/// <c>$"aspire-run-state-{state.ToLowerInvariant()}"</c>.
 	/// </summary>
 	/// <remarks>
-	/// Custom tags that match the default <c>state-*</c> names will still receive the default
-	/// style rules. Use <see cref="IncludeDefaultStateStyles"/> to opt out of the built-in styles.
+	/// Tags that match the <c>aspire-run-state-*</c> pattern will receive the default
+	/// built-in style rules. Use <see cref="IncludeDefaultStateStyles"/> to opt out.
 	/// </remarks>
 	[System.Diagnostics.CodeAnalysis.SuppressMessage("Usage", "CA2227:Collection properties should be read only")]
-	public Dictionary<LikeC4ResourceState, string?> StateTagMap { get; set; } =
-		new()
-		{
-			[LikeC4ResourceState.Unknown] = null,
-			[LikeC4ResourceState.Starting] = "state-starting",
-			[LikeC4ResourceState.Running] = "state-running",
-			[LikeC4ResourceState.Stopping] = "state-stopping",
-			[LikeC4ResourceState.Exited] = "state-exited",
-			[LikeC4ResourceState.Failed] = "state-failed",
-			[LikeC4ResourceState.Error] = "state-error",
-		};
+	public Dictionary<string, string?> StateTagMap { get; set; } = [];
 
 	/// <summary>
-	/// When <see langword="true"/>, emits <c>style element.tag = #state-* { }</c> rules in the
+	/// When <see langword="true"/>, emits <c>style element.tag = #aspire-run-state-* { }</c> rules in the
 	/// generated view for each state tag that is present in the model.
 	/// Set to <see langword="false"/> if you prefer to define state styles in your own DSL file.
 	/// Defaults to <see langword="true"/>.
@@ -276,7 +273,7 @@ public sealed class AspireC4DiagramOptions
 
 	/// <summary>
 	/// Custom icon resolvers that are evaluated before the built-in auto-icon inference.
-	/// Each resolver receives a <see cref="LikeC4IconResolverContext"/> and returns either
+	/// Each resolver receives a <see cref="IconResolverContext"/> and returns either
 	/// a LikeC4 icon string (e.g. <c>"tech:redis"</c>) or <see langword="null"/> to defer.
 	/// Resolvers are evaluated in registration order; the first non-<see langword="null"/>
 	/// result wins. If all resolvers return <see langword="null"/> (or the list is empty),
@@ -292,7 +289,7 @@ public sealed class AspireC4DiagramOptions
 	/// </code>
 	/// </example>
 	[System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1002:Do not expose generic lists")]
-	public List<LikeC4IconResolver> IconResolvers { get; } = [];
+	public List<IconResolver> IconResolvers { get; } = [];
 
 	/// <summary>
 	/// When <see cref="GenerateConfigFile"/> is <see langword="true"/>, provides additional metadata to include in the generated config file.
@@ -305,7 +302,7 @@ public sealed class AspireC4DiagramOptions
 	/// When <see cref="AspireC4StrictOptions.Mode"/> is set to anything other than
 	/// <see cref="AspireC4StrictMode.None"/>, any tag, relationship kind, group, or metadata key
 	/// used in the model that is not declared in the corresponding allowed list causes an
-	/// <see cref="System.InvalidOperationException"/> to be thrown during model building.
+	/// <see cref="InvalidOperationException"/> to be thrown during model building.
 	/// <para>
 	/// Configure via the <c>WithAllowed*</c> extension methods or bind from the
 	/// <c>AspireC4:Strict</c> configuration section.
