@@ -53,10 +53,14 @@ public static class LikeC4DSLGenerator
 			StringComparer.OrdinalIgnoreCase
 		);
 
+		// Always include all known state tags so the specification block is stable regardless
+		// of which states happen to be active right now — preventing needless file churn.
+		var knownStateTags = options.IncludeDefaultStateStyles ? DefaultStateStyles.Keys : [];
 		var allTags = model
 			.Elements.SelectMany(e => e.Tags)
 			.Concat(model.Relationships.SelectMany(r => r.Tags))
-			.Distinct()
+			.Concat(knownStateTags)
+			.Distinct(StringComparer.OrdinalIgnoreCase)
 			.OrderBy(t => t);
 
 		var specsByName = options.ElementKindSpecs.ToDictionary(s => s.Name, StringComparer.OrdinalIgnoreCase);
@@ -463,32 +467,28 @@ public static class LikeC4DSLGenerator
 			}
 
 			sb.AppendLine("    include *");
+		}
 
-			// Emit tag-predicate style rules for elements carrying known state tags.
-			// In LikeC4, element colors must be set via view-level style rules, not in the
-			// model block.
-			if (options.IncludeDefaultStateStyles)
+		// Emit tag-predicate style rules for all known state tags.
+		// These are always emitted — even for empty models — so the views block is stable
+		// regardless of which resources are currently active or what state they are in.
+		// In LikeC4, element colors must be set via view-level style rules, not in the model block.
+		if (options.IncludeDefaultStateStyles)
+		{
+			foreach (var (tag, styleOverride) in DefaultStateStyles)
 			{
-				var tagsInModel = model.Elements.SelectMany(e => e.Tags).ToHashSet(StringComparer.OrdinalIgnoreCase);
-
-				foreach (var (tag, styleOverride) in DefaultStateStyles)
+				sb.Append("    style element.tag = #").Append(tag).AppendLine(" {");
+				if (styleOverride.Color is not null)
 				{
-					if (!tagsInModel.Contains(tag))
-						continue;
-
-					sb.Append("    style element.tag = #").Append(tag).AppendLine(" {");
-					if (styleOverride.Color is not null)
-					{
-						sb.Append("      color ").AppendLine(styleOverride.Color);
-					}
-
-					if (styleOverride.Opacity is not null)
-					{
-						sb.Append("      opacity ").Append(styleOverride.Opacity).AppendLine("%");
-					}
-
-					sb.AppendLine("    }");
+					sb.Append("      color ").AppendLine(styleOverride.Color);
 				}
+
+				if (styleOverride.Opacity is not null)
+				{
+					sb.Append("      opacity ").Append(styleOverride.Opacity).AppendLine("%");
+				}
+
+				sb.AppendLine("    }");
 			}
 		}
 

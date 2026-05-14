@@ -52,12 +52,21 @@ sealed partial class AspireC4LifecycleHook
 			filename += ".c4";
 
 		var outputPath = Path.Combine(outputDir, filename);
-		await File.WriteAllTextAsync(outputPath, dsl, cancellationToken);
 
-		// Format the generated file in-place (best-effort) so the on-disk file is human-readable.
-		if (opts.FormatGeneratedFile)
+		// Skip writing (and formatting) when only the timestamp changed — i.e. the stable body
+		// is identical to what was last written.  This prevents needless git noise when state
+		// changes bounce resources through transitional states that end up back where they started.
+		var newRawBody = StripHeader(dsl);
+		if (!string.Equals(_lastRawBody, newRawBody, StringComparison.Ordinal))
 		{
-			await RunFormatAsync(outputPath, outputDir, cancellationToken);
+			_lastRawBody = newRawBody;
+			await File.WriteAllTextAsync(outputPath, dsl, cancellationToken);
+
+			// Format the generated file in-place (best-effort) so the on-disk file is human-readable.
+			if (opts.FormatGeneratedFile)
+			{
+				await RunFormatAsync(outputPath, outputDir, cancellationToken);
+			}
 		}
 
 		// Copy additional user-provided DSL files into the output directory so LikeC4
@@ -92,6 +101,31 @@ sealed partial class AspireC4LifecycleHook
 		}
 
 		telemetry.LikeC4ModelWritten(outputPath);
+	}
+
+	/// <summary>
+	/// Returns everything after the closing <c>// ===…===</c> header delimiter, i.e. the
+	/// stable body of the generated file with the timestamp stripped out.
+	/// </summary>
+	internal static string StripHeader(string content)
+	{
+		// The header is bounded by two "// ===" delimiter lines.
+		// Skip past the end of the second delimiter to obtain the timestamp-free body.
+		const string delimiter = "// ===";
+		var first = content.IndexOf(delimiter, StringComparison.Ordinal);
+		if (first < 0)
+			return content;
+
+		var firstLineEnd = content.IndexOf('\n', first);
+		if (firstLineEnd < 0)
+			return string.Empty;
+
+		var second = content.IndexOf(delimiter, firstLineEnd, StringComparison.Ordinal);
+		if (second < 0)
+			return content;
+
+		var lineEnd = content.IndexOf('\n', second);
+		return lineEnd < 0 ? string.Empty : content[(lineEnd + 1)..];
 	}
 
 	/// <summary>

@@ -1227,32 +1227,40 @@ public sealed partial class LikeC4DSLGeneratorTests
 		var dsl = LikeC4DSLGenerator.Generate(model, DefaultOptions);
 
 		// Assert
+		var viewsIdx = dsl.IndexOf("views {", StringComparison.Ordinal);
+		var modelSection = dsl[..viewsIdx];
+
 		if (expectedColor is null)
 		{
-			await Assert.That(dsl).DoesNotContain("color ");
-			await Assert.That(dsl).DoesNotContain("opacity ");
+			// No state tag on this element — the model section should not contain color or opacity.
+			// The views section will still contain all default state style rules (always emitted).
+			await Assert.That(modelSection).DoesNotContain("color ");
+			await Assert.That(modelSection).DoesNotContain("opacity ");
 		}
 		else
 		{
-			// Color overrides must appear inside a tag-predicate style rule in the views section.
-			var viewsIdx = dsl.IndexOf("views {", StringComparison.Ordinal);
+			// Color override must appear inside the tag-predicate style rule in the views section.
 			await Assert.That(dsl).Contains($"style element.tag = #{stateTag}");
 			await Assert.That(dsl).Contains($"color {expectedColor}");
 
 			var colorIdx = dsl.IndexOf($"color {expectedColor}", viewsIdx, StringComparison.Ordinal);
 			await Assert.That(colorIdx).IsGreaterThan(viewsIdx);
 
-			// Opacity should be present for states that visually distinguish transitional
-			// from terminal: Stopping (60%) is more visible than Exited (30%).
+			// Opacity is checked only within the specific style block for this tag, because
+			// other state blocks (e.g. stopping, exited) always emit their own opacity values.
+			var styleBlockStart = dsl.IndexOf($"style element.tag = #{stateTag}", viewsIdx, StringComparison.Ordinal);
+			var styleBlockOpen = dsl.IndexOf('{', styleBlockStart);
+			var styleBlockClose = dsl.IndexOf('}', styleBlockOpen);
+			var styleBlockContent = dsl[styleBlockOpen..styleBlockClose];
+
+			// Stopping (60%) is more visible than Exited/Finished (30%).
 			if (expectedOpacity is not null)
 			{
-				await Assert.That(dsl).Contains($"opacity {expectedOpacity}%");
-				var opacityIdx = dsl.IndexOf($"opacity {expectedOpacity}%", StringComparison.Ordinal);
-				await Assert.That(opacityIdx).IsGreaterThan(viewsIdx);
+				await Assert.That(styleBlockContent).Contains($"opacity {expectedOpacity}%");
 			}
 			else
 			{
-				await Assert.That(dsl).DoesNotContain("opacity ");
+				await Assert.That(styleBlockContent).DoesNotContain("opacity ");
 			}
 		}
 	}
@@ -1352,10 +1360,11 @@ public sealed partial class LikeC4DSLGeneratorTests
 	}
 
 	[Test]
-	public async Task Generate_ElementWithUnknownState_NoStyleRuleRendered()
+	public async Task Generate_ElementWithUnknownState_DefaultStateStyleRulesAlwaysEmitted()
 	{
 		// Arrange
-		// An element with Unknown state (no state tag) should produce no tag-predicate style block.
+		// Even when no element carries a state tag, all 8 known state style rules are always
+		// emitted so the generated file stays stable across state-change events.
 		LikeC4Model model = new()
 		{
 			Elements =
@@ -1374,9 +1383,14 @@ public sealed partial class LikeC4DSLGeneratorTests
 		// Act
 		var dsl = LikeC4DSLGenerator.Generate(model, DefaultOptions);
 
-		// Assert
-		await Assert.That(dsl).DoesNotContain("style element.tag");
-		await Assert.That(dsl).DoesNotContain("color");
+		// Assert — all known state style rules appear in the views section.
+		await Assert.That(dsl).Contains("style element.tag = #aspire-run-state-starting");
+		await Assert.That(dsl).Contains("style element.tag = #aspire-run-state-running");
+		await Assert.That(dsl).Contains("style element.tag = #aspire-run-state-failedtostart");
+
+		// The model section (before views {) must not contain any color property.
+		var viewsIdx = dsl.IndexOf("views {", StringComparison.Ordinal);
+		await Assert.That(dsl[..viewsIdx]).DoesNotContain("color");
 	}
 
 	[Test]
@@ -1415,6 +1429,72 @@ public sealed partial class LikeC4DSLGeneratorTests
 		// Assert
 		await Assert.That(dsl).DoesNotContain("style element.tag");
 		await Assert.That(dsl).DoesNotContain("color ");
+	}
+
+	[Test]
+	public async Task Generate_IncludeDefaultStateStyles_True_EmptyModel_AllStateTagsDeclaredInSpecification()
+	{
+		// Arrange
+		// All 8 known state tags must appear in the specification block even when no element
+		// currently carries any of them, so the generated file is stable across state changes.
+
+		// Act
+		var dsl = LikeC4DSLGenerator.Generate(LikeC4Model.Empty, DefaultOptions);
+
+		// Assert — every known state tag is declared in the specification block.
+		await Assert.That(dsl).Contains("tag aspire-run-state-starting");
+		await Assert.That(dsl).Contains("tag aspire-run-state-waiting");
+		await Assert.That(dsl).Contains("tag aspire-run-state-running");
+		await Assert.That(dsl).Contains("tag aspire-run-state-stopping");
+		await Assert.That(dsl).Contains("tag aspire-run-state-exited");
+		await Assert.That(dsl).Contains("tag aspire-run-state-finished");
+		await Assert.That(dsl).Contains("tag aspire-run-state-runtimeunhealthy");
+		await Assert.That(dsl).Contains("tag aspire-run-state-failedtostart");
+	}
+
+	[Test]
+	public async Task Generate_IncludeDefaultStateStyles_True_EmptyModel_AllStateStyleRulesEmittedInViews()
+	{
+		// Arrange
+		// All 8 known state style rules must appear in the views block even when no element
+		// currently carries any of them, so the generated file is stable across state changes.
+
+		// Act
+		var dsl = LikeC4DSLGenerator.Generate(LikeC4Model.Empty, DefaultOptions);
+
+		// Assert — every known state tag has a style rule in the views block.
+		var viewsIdx = dsl.IndexOf("views {", StringComparison.Ordinal);
+		await Assert
+			.That(dsl.IndexOf("style element.tag = #aspire-run-state-starting", viewsIdx, StringComparison.Ordinal))
+			.IsGreaterThan(viewsIdx);
+		await Assert
+			.That(dsl.IndexOf("style element.tag = #aspire-run-state-running", viewsIdx, StringComparison.Ordinal))
+			.IsGreaterThan(viewsIdx);
+		await Assert
+			.That(
+				dsl.IndexOf("style element.tag = #aspire-run-state-failedtostart", viewsIdx, StringComparison.Ordinal)
+			)
+			.IsGreaterThan(viewsIdx);
+	}
+
+	[Test]
+	public async Task Generate_IncludeDefaultStateStyles_False_EmptyModel_NoStateTagsInSpecification()
+	{
+		// Arrange
+		var opts = new AspireC4DiagramOptions
+		{
+			Title = DefaultOptions.Title,
+			OutputDirectory = DefaultOptions.OutputDirectory,
+			FileName = DefaultOptions.FileName,
+			IncludeDefaultStateStyles = false,
+		};
+
+		// Act
+		var dsl = LikeC4DSLGenerator.Generate(LikeC4Model.Empty, opts);
+
+		// Assert — when opted out, no state tags are injected.
+		await Assert.That(dsl).DoesNotContain("tag aspire-run-state-");
+		await Assert.That(dsl).DoesNotContain("style element.tag");
 	}
 
 	[Test]

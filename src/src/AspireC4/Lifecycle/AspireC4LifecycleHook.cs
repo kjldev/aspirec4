@@ -47,6 +47,11 @@ sealed partial class AspireC4LifecycleHook(
 	CancellationTokenSource? _hmrRelayCts;
 	TcpListener? _hmrRelayListener;
 
+	// The header-stripped body of the last .c4 file written to disk.
+	// Used to skip writes when the generated content has not changed, preventing needless
+	// file-system churn (and git noise) from state-change events.
+	volatile string? _lastRawBody;
+
 #if NET9_0_OR_GREATER
 	readonly Lock _debounceLock = new();
 	readonly Lock _hmrRelayLock = new();
