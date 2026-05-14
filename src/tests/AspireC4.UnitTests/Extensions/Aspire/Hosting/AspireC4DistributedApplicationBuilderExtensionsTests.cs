@@ -52,7 +52,7 @@ public sealed class AspireC4DistributedApplicationBuilderExtensionsTests
 		var expectedUseRelay = OperatingSystem.IsWindows();
 
 		// Act
-		appBuilder.AddAspireC4(configure: opts => opts.ContainerImageTag = "1.56.0");
+		appBuilder.AddAspireC4(configure: opts => opts.ContainerImageTag = "100.57.0");
 		using var provider = appBuilder.Services.BuildServiceProvider();
 		var workspaceOptions =
 			provider.GetRequiredService<Microsoft.Extensions.Options.IOptions<ContainerWorkspaceOptions>>();
