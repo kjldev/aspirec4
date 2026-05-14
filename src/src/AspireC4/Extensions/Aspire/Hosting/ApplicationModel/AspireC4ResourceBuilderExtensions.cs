@@ -64,7 +64,6 @@ public static partial class AspireC4ResourceBuilderExtensions
 		/// <c>WithReference</c>. Continue to use Aspire's <c>WithReference</c> to establish the actual
 		/// runtime dependency, or use the overload that accepts <c>withAspireReference: true</c>.
 		/// </remarks>
-		/// <param name="builder">The source resource builder.</param>
 		/// <param name="target">The target resource builder that the relationship points to.</param>
 		/// <param name="configure">Optional action that configures the relationship appearance.</param>
 		[AspireExport(

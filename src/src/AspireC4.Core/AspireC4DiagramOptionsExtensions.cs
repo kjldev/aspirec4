@@ -177,6 +177,19 @@ public static class AspireC4DiagramOptionsExtensions
 		return options;
 	}
 
+	/// <summary>Adds a custom relationship kind specification to the <c>specification { }</c> block.</summary>
+	/// <seealso cref="AspireC4DiagramOptions.RelationshipKindSpecs"/>
+	public static AspireC4DiagramOptions WithRelationshipKindSpec(
+		this AspireC4DiagramOptions options,
+		LikeC4RelationshipKindSpec spec
+	)
+	{
+		ArgumentNullException.ThrowIfNull(options);
+		ArgumentNullException.ThrowIfNull(spec);
+		options.RelationshipKindSpecs.Add(spec);
+		return options;
+	}
+
 	/// <summary>Controls which Aspire runtime metadata is injected into generated LikeC4 elements.</summary>
 	/// <seealso cref="AspireC4DiagramOptions.AutoIncludeAspireMetadata"/>
 	public static AspireC4DiagramOptions WithAutoIncludeAspireMetadata(

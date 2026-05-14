@@ -864,6 +864,140 @@ public sealed partial class LikeC4DSLGeneratorTests
 	}
 
 	[Test]
+	public async Task Generate_RelationshipKindSpec_WithTechnology_EmitsTechnologyBlock()
+	{
+		// Arrange
+		AspireC4DiagramOptions opts = new()
+		{
+			Title = "Test",
+			OutputDirectory = ".",
+			RelationshipKindSpecs = [new LikeC4RelationshipKindSpec("async").WithTechnology("AMQP")],
+		};
+
+		LikeC4Model model = new() { Elements = [], Relationships = [] };
+
+		// Act
+		var dsl = LikeC4DSLGenerator.Generate(model, opts);
+
+		// Assert
+		await Assert.That(dsl).Contains("relationship async {");
+		await Assert.That(dsl).Contains("technology: 'AMQP'");
+		await Assert.That(dsl).Contains("}");
+	}
+
+	[Test]
+	public async Task Generate_RelationshipKindSpec_WithoutTechnology_EmitsSingleLine()
+	{
+		// Arrange
+		AspireC4DiagramOptions opts = new()
+		{
+			Title = "Test",
+			OutputDirectory = ".",
+			RelationshipKindSpecs = [new LikeC4RelationshipKindSpec("grpc")],
+		};
+
+		LikeC4Model model = new() { Elements = [], Relationships = [] };
+
+		// Act
+		var dsl = LikeC4DSLGenerator.Generate(model, opts);
+
+		// Assert — bare single-line form, no block body
+		await Assert.That(dsl).Contains("relationship grpc");
+		await Assert.That(dsl).DoesNotContain("relationship grpc {");
+		await Assert.That(dsl).DoesNotContain("technology:");
+	}
+
+	[Test]
+	public async Task Generate_RelationshipKindSpec_DeclaredEvenWhenNotUsedInModel()
+	{
+		// Arrange
+		AspireC4DiagramOptions opts = new()
+		{
+			Title = "Test",
+			OutputDirectory = ".",
+			RelationshipKindSpecs = [new LikeC4RelationshipKindSpec("event-driven").WithTechnology("Kafka")],
+		};
+
+		LikeC4Model model = new() { Elements = [], Relationships = [] };
+
+		// Act
+		var dsl = LikeC4DSLGenerator.Generate(model, opts);
+
+		// Assert — spec-only kind still appears in specification block
+		await Assert.That(dsl).Contains("relationship event-driven {");
+		await Assert.That(dsl).Contains("technology: 'Kafka'");
+	}
+
+	[Test]
+	public async Task Generate_RelationshipKindFromModel_WithMatchingSpec_EmitsTechnologyBlock()
+	{
+		// Arrange
+		AspireC4DiagramOptions opts = new()
+		{
+			Title = "Test",
+			OutputDirectory = ".",
+			RelationshipKindSpecs = [new LikeC4RelationshipKindSpec("grpc").WithTechnology("gRPC")],
+		};
+
+		LikeC4Model model = new()
+		{
+			Elements =
+			[
+				new LikeC4Element
+				{
+					Name = "api",
+					Label = "API",
+					Kind = LikeC4ElementKind.Component,
+				},
+				new LikeC4Element
+				{
+					Name = "svc",
+					Label = "Svc",
+					Kind = LikeC4ElementKind.Component,
+				},
+			],
+			Relationships =
+			[
+				new LikeC4Relationship
+				{
+					SourceName = "api",
+					TargetName = "svc",
+					Kind = "grpc",
+				},
+			],
+		};
+
+		// Act
+		var dsl = LikeC4DSLGenerator.Generate(model, opts);
+
+		// Assert — spec body used instead of bare line; kind appears exactly once in specification
+		await Assert.That(dsl).Contains("relationship grpc {");
+		await Assert.That(dsl).Contains("technology: 'gRPC'");
+		var count = CountOccurrences(dsl, "relationship grpc");
+		await Assert.That(count).IsEqualTo(1);
+	}
+
+	[Test]
+	public async Task Generate_RelationshipKindSpec_TechnologyWithSingleQuote_IsEscaped()
+	{
+		// Arrange
+		AspireC4DiagramOptions opts = new()
+		{
+			Title = "Test",
+			OutputDirectory = ".",
+			RelationshipKindSpecs = [new LikeC4RelationshipKindSpec("msg").WithTechnology("O'Brien protocol")],
+		};
+
+		LikeC4Model model = new() { Elements = [], Relationships = [] };
+
+		// Act
+		var dsl = LikeC4DSLGenerator.Generate(model, opts);
+
+		// Assert — single quote inside value is escaped
+		await Assert.That(dsl).Contains("O\\'Brien protocol");
+	}
+
+	[Test]
 	public async Task Generate_ViewContainsTitle()
 	{
 		// Arrange

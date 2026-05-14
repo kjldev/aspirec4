@@ -39,11 +39,18 @@ public static class LikeC4DSLGenerator
 		var elementKindsInModel = model.Elements.Select(e => e.Kind).ToHashSet();
 		var allElementKinds = elementKindsInModel.Union(options.ElementKindSpecs.Select(s => s.Name)).OrderBy(k => k);
 
-		var relationshipKinds = model
+		var relationshipKindsInModel = model
 			.Relationships.Where(r => !string.IsNullOrWhiteSpace(r.Kind))
 			.Select(r => r.Kind!)
-			.Distinct()
+			.ToHashSet(StringComparer.OrdinalIgnoreCase);
+		var allRelationshipKinds = relationshipKindsInModel
+			.Union(options.RelationshipKindSpecs.Select(s => s.Name), StringComparer.OrdinalIgnoreCase)
 			.OrderBy(k => k);
+
+		var relationshipKindSpecsByName = options.RelationshipKindSpecs.ToDictionary(
+			s => s.Name,
+			StringComparer.OrdinalIgnoreCase
+		);
 
 		var allTags = model
 			.Elements.SelectMany(e => e.Tags)
@@ -67,9 +74,19 @@ public static class LikeC4DSLGenerator
 			}
 		}
 
-		foreach (var kind in relationshipKinds)
+		foreach (var kind in allRelationshipKinds)
 		{
-			sb.Append("  relationship ").AppendLine(kind);
+			if (
+				relationshipKindSpecsByName.TryGetValue(kind, out var relSpec)
+				&& !string.IsNullOrWhiteSpace(relSpec.Technology)
+			)
+			{
+				WriteRelationshipKindSpec(sb, relSpec);
+			}
+			else
+			{
+				sb.Append("  relationship ").AppendLine(kind);
+			}
 		}
 
 		foreach (var tag in allTags)
@@ -144,6 +161,13 @@ public static class LikeC4DSLGenerator
 			sb.AppendLine("    }");
 		}
 
+		sb.AppendLine("  }");
+	}
+
+	static void WriteRelationshipKindSpec(StringBuilder sb, LikeC4RelationshipKindSpec spec)
+	{
+		sb.Append("  relationship ").Append(spec.Name).AppendLine(" {");
+		sb.Append("    technology: '").Append(EscapeQuote(spec.Technology!)).AppendLine("'");
 		sb.AppendLine("  }");
 	}
 

@@ -132,6 +132,19 @@ public sealed class AspireC4DiagramOptions
 	public List<LikeC4ElementKindSpec> ElementKindSpecs { get; set; } = [];
 
 	/// <summary>
+	/// Custom relationship kind specifications emitted in the <c>specification { }</c> block.
+	/// Each entry may include an optional technology label.
+	/// <para>
+	/// These are additive — kinds listed here but not present in the model are still declared.
+	/// When a kind in the model matches an entry here with a technology, the full body is emitted
+	/// rather than a bare <c>relationship KIND</c> line.
+	/// </para>
+	/// </summary>
+	[System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1002:Do not expose generic lists")]
+	[System.Diagnostics.CodeAnalysis.SuppressMessage("Usage", "CA2227:Collection properties should be read only")]
+	public List<LikeC4RelationshipKindSpec> RelationshipKindSpecs { get; set; } = [];
+
+	/// <summary>
 	/// Controls which Aspire runtime metadata is automatically injected into generated LikeC4 elements.
 	/// When <see cref="AspireMetadataInclusion.Metadata"/> is set, each element receives
 	/// <c>aspire-name</c> and <c>aspire-type</c> metadata entries.
