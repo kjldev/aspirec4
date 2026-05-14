@@ -7,10 +7,12 @@ namespace Aspire.Hosting.AspireC4.LikeC4.Models;
 public sealed class LikeC4RelationshipKindSpec
 {
 	/// <param name="name">The kind identifier, e.g. <c>"async"</c> or <c>"grpc"</c>.</param>
-	public LikeC4RelationshipKindSpec(string name)
+	/// <param name="technology">Optional default technology label for all relationships of this kind (e.g. <c>"AMQP"</c>, <c>"gRPC"</c>).</param>
+	public LikeC4RelationshipKindSpec(string name, string? technology = null)
 	{
 		ArgumentException.ThrowIfNullOrWhiteSpace(name);
 		Name = name;
+		Technology = technology;
 	}
 
 	/// <summary>The kind identifier used in the DSL.</summary>

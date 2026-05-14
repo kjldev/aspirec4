@@ -12,8 +12,6 @@ public sealed partial class IconInferenceTests
 	/// </summary>
 	public static IEnumerable<IconTestScenario> Scenarios() =>
 		[
-			// ── Azure Redis ──────────────────────────────────────────────────────────────────────
-
 			new(() => (CreateSnapshotResource("redis", "Azure.ManagedRedis"), null), "azure:azure-managed-redis"),
 			new(
 				() =>
@@ -31,7 +29,6 @@ public sealed partial class IconInferenceTests
 					),
 				"azure:cache-redis"
 			),
-			// ── Azure SQL ────────────────────────────────────────────────────────────────────────
 			// Note: query tokens ["sql", "server"] score equally against both "sql-server" and
 			// "arc-sql-server" icons. "arc-sql-server" appears first in the manifest, so it wins
 			// the tie. To pin the more specific icon in a real app, use .WithLikeC4Details(icon:).
@@ -45,8 +42,6 @@ public sealed partial class IconInferenceTests
 					),
 				"azure:arc-sql-server"
 			),
-			// ── Azure Postgres ───────────────────────────────────────────────────────────────────
-
 			new(
 				() => (CreateSnapshotResource("postgres", "Azure.PostgresFlexibleServer"), null),
 				"azure:azure-database-postgre-sql-server"
@@ -62,23 +57,11 @@ public sealed partial class IconInferenceTests
 					),
 				"azure:azure-database-postgre-sql-server"
 			),
-			// ── Azure Service Bus ────────────────────────────────────────────────────────────────
-
 			new(() => (CreateSnapshotResource("servicebus", "Azure.ServiceBus"), null), "azure:azure-service-bus"),
-			// ── Azure Cosmos DB ──────────────────────────────────────────────────────────────────
-
 			new(() => (CreateSnapshotResource("cosmos", "Azure.CosmosDb"), null), "azure:azure-cosmos-db"),
-			// ── Azure Key Vault ──────────────────────────────────────────────────────────────────
-
 			new(() => (CreateSnapshotResource("keyvault", "Azure.KeyVault"), null), "azure:key-vaults"),
-			// ── Azure Event Hubs ─────────────────────────────────────────────────────────────────
-
 			new(() => (CreateSnapshotResource("eventhubs", "Azure.EventHubs"), null), "azure:event-hubs"),
-			// ── Azure Storage ────────────────────────────────────────────────────────────────────
-
 			new(() => (CreateSnapshotResource("storage", "Azure.StorageAccount"), null), "azure:storage-accounts"),
-			// ── Tech: generic containers ─────────────────────────────────────────────────────────
-
 			new(() => (CreateContainerResource("redis"), null), "tech:redis"),
 			new(() => (CreateContainerResource("postgres"), null), "tech:postgresql"),
 			new(() => (CreateContainerResource("rabbitmq"), null), "tech:rabbitmq"),

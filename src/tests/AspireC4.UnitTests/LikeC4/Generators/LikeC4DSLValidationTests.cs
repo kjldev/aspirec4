@@ -42,9 +42,7 @@ public sealed class LikeC4DSLValidationTests
 		}
 	}
 
-	// -------------------------------------------------------------------------
 	// Helper
-	// -------------------------------------------------------------------------
 
 	readonly record struct ValidationResult(bool Valid, int FilteredErrors, int TotalErrors, string RawOutput);
 
@@ -171,9 +169,7 @@ public sealed class LikeC4DSLValidationTests
 		}
 	}
 
-	// -------------------------------------------------------------------------
 	// Tests
-	// -------------------------------------------------------------------------
 
 	[Test]
 	public async Task Generate_EmptyModel_ProducesNoValidationErrors(CancellationToken cancellationToken)

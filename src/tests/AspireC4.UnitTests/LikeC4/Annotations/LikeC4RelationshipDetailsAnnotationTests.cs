@@ -4,7 +4,6 @@ namespace Aspire.Hosting.AspireC4.LikeC4.Annotations;
 
 public sealed class LikeC4RelationshipDetailsAnnotationTests
 {
-	// ── WithLikeC4Reference<IResourceWithEnvironment> tests ───────────────────
 	// The IResourceWithEnvironment overload is disambiguated from the generic IResource overload
 	// by passing the optional parameter (unique to this overload) or by using an explicit cast.
 

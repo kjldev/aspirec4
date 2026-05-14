@@ -62,7 +62,6 @@ public sealed partial class IconInferenceTests
 		return resource;
 	}
 
-	// ── Simulated Azure resource types ───────────────────────────────────────────────────────
 	// Named to match real Aspire Azure resource class names so the icon matcher receives
 	// the correct type tokens via the hidden-original lookup without having to reference the actual package.
 

@@ -655,8 +655,6 @@ static class ModelBuilder
 		}
 	}
 
-	// ── Strict-mode enforcement helpers ──────────────────────────────────────
-
 	static void EnforceStrictTags(AspireC4StrictOptions strict, IReadOnlyList<string> tags, string contextLabel)
 	{
 		if (!strict.Mode.HasFlag(AspireC4StrictMode.Tags) || tags.Count == 0)
