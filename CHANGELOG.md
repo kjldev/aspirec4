@@ -22,8 +22,13 @@
   - block release when branch is behind origin/main
   - validate unknown args and simplify justfile recipe
   - moved the Aspire browser token inclusion behind a AppHost options property
+  - fix test extension views to use current resource element names
+  - create GitHub release as draft before uploading assets to prevent immutable-release errors
 
   ### Changes
+
+  - cd: releases are gated to main; workflow is enforced to reject non-main refs even on manual dispatch
+  - cd: update GitHub Actions to Node.js 24-compatible versions (checkout@v6, setup-dotnet@v5, setup-node@v6)
 
 ## 13.3.0-prerelease.3
 
