@@ -1,13 +1,15 @@
 <Project>
 	<PropertyGroup>
 		<NamespacePrefix>Aspire.Hosting</NamespacePrefix>
-		<NoWarn>$(NoWarn);ASPIREATS001</NoWarn>
 	</PropertyGroup>
 	<Import Project="../.dotnet/Directory.Build.props" />
 	<PropertyGroup>
+		<!-- Matching the Aspire.* minimum framework -->
 		<TargetFramework>net8.0</TargetFramework>
+		<NoWarn>$(NoWarn);ASPIREATS001</NoWarn>
+		<ExcludeMSTelemetryExtension>true</ExcludeMSTelemetryExtension>
 	</PropertyGroup>
-	<ItemGroup>
-		<PackageReference Remove="Microsoft.Extensions.Telemetry.Abstractions" />
-	</ItemGroup>
+	<PropertyGroup Condition="'$(IsTestProject)' == 'true'">
+		<NoWarn>$(NoWarn);CA1034;</NoWarn>
+	</PropertyGroup>
 </Project>

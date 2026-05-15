@@ -26,7 +26,7 @@
 		<AnalysisLevel>Latest</AnalysisLevel>
 		<NoWarn>AD0001;$(NoWarn)</NoWarn>
 		<NoWarn>IDE2001;$(NoWarn)</NoWarn>
-		<NoWarn>CS1591;$(NoWarn)</NoWarn>
+		<!-- <NoWarn>CS1591;$(NoWarn)</NoWarn> -->
 		<NoWarn>CA1014;CA1848;CA2007;CA2201;CA2234;CA2225;CA2254;$(NoWarn)</NoWarn>
 		<NoWarn>RCS1090;RCS1108;$(NoWarn)</NoWarn>
 		<CurrentYear>$([System.DateTime]::Now.Year)</CurrentYear>
@@ -38,20 +38,13 @@
 	<PropertyGroup>
 		<!--
 			Set the default namespace for all projects.
-			However, only if NamespacePrefix is set.
-			If it's not set, there is a Target that will error the build.
+			Only if NamespacePrefix is set — a target will error the build if it isn't.
+			Actual suffix-stripping happens in FixRootNamespaceTarget (Directory.Build.targets)
+			because @(NamespaceRemoveSuffix) only expands in targets, not in static PropertyGroups.
 		-->
 		<RootNamespace Condition="'$(NamespacePrefix)' != ''"
 			>$(NamespacePrefix).$(MSBuildProjectName)</RootNamespace
 		>
-		<!-- Define the namespace suffixes to remove -->
-		<NamespaceSuffixesToRemove>SharedTestingFramework|SharedTestingInfrastructure|SharedTestingUtilities|SharedTestingInfra|Core|EF|Shared|ClientShared|ServiceDefaults</NamespaceSuffixesToRemove>
-		<!-- Ensure we always have a base value (avoid collapsing to empty) -->
-		<_RootNsBase>$(RootNamespace)</_RootNsBase>
-		<_RootNsBase Condition="'$(_RootNsBase)' == ''">$(MSBuildProjectName)</_RootNsBase>
-
-		<!-- Remove any matching ".Suffix" segment anywhere, only when it's a real segment -->
-		<RootNamespace>$([System.Text.RegularExpressions.Regex]::Replace('$(_RootNsBase)', '\.(?:$(NamespaceSuffixesToRemove))(?=\.|$)', ''))</RootNamespace>
 	</PropertyGroup>
 	<!-- Set some Test project properties. -->
 	<PropertyGroup Label="C# Test Properties" Condition="$(IsTestProject)">
@@ -85,14 +78,17 @@
 		</EmbeddedResource>
 	</ItemGroup>
 	<ItemGroup
-		Label="C# Project Item Groups"
+		Label="C# Telemetry Packages"
 		Condition="$(IsCSharpProject) AND !$(IsTestProject) AND !$(ExcludePurviewTelemetry)"
 	>
 		<PackageReference Include="Purview.Telemetry.SourceGenerator">
 			<PrivateAssets>all</PrivateAssets>
 			<IncludeAssets>analyzers</IncludeAssets>
 		</PackageReference>
-		<PackageReference Include="Microsoft.Extensions.Telemetry.Abstractions" />
+		<PackageReference
+			Condition="!$(ExcludeMSTelemetryExtension)"
+			Include="Microsoft.Extensions.Telemetry.Abstractions"
+		/>
 	</ItemGroup>
 	<PropertyGroup Label="Container Project" Condition="$(IsContainerProject) AND !$(IsTestProject)">
 		<InvariantGlobalization>true</InvariantGlobalization>
@@ -107,9 +103,16 @@
 	<PropertyGroup Label="Web Project" Condition="$(IsWebSdkProject) AND !$(IsWebProject)">
 		<InterceptorsNamespaces>$(InterceptorsNamespaces);Microsoft.AspNetCore.OpenApi.Generated</InterceptorsNamespaces>
 	</PropertyGroup>
+	<PropertyGroup
+		Label="Library Project Properties"
+		Condition="$(IsCSharpProject) AND !$(IsTestProject) AND !$(IsSharedTestingProject)"
+	>
+		<GenerateDocumentationFile>true</GenerateDocumentationFile>
+		<!-- Include XML documentation files alongside the DLL in the nupkg. -->
+		<AllowedOutputExtensionsInPackageBuildOutputFolder>$(AllowedOutputExtensionsInPackageBuildOutputFolder);.xml</AllowedOutputExtensionsInPackageBuildOutputFolder>
+	</PropertyGroup>
 	<!-- Package Projects -->
 	<PropertyGroup Label="NuGet Package Project Properties" Condition="$(IsPackable)">
-		<GenerateDocumentationFile>true</GenerateDocumentationFile>
 		<!-- Include symbol files (*.pdb) in the built .nupkg -->
 		<AllowedOutputExtensionsInPackageBuildOutputFolder>$(AllowedOutputExtensionsInPackageBuildOutputFolder);.pdb</AllowedOutputExtensionsInPackageBuildOutputFolder>
 		<PackageTags>$(PackageTags);</PackageTags>
@@ -118,7 +121,10 @@
 		<PublishRepositoryUrl>true</PublishRepositoryUrl>
 		<SymbolPackageFormat>snupkg</SymbolPackageFormat>
 	</PropertyGroup>
-	<ItemGroup Label="NuGet Package References" Condition="'$(IsTestProject)' == 'false'">
+	<ItemGroup
+		Label="NuGet Package References"
+		Condition="!$(IsTestProject) AND '$(SourceLinkPackageName)' != ''"
+	>
 		<PackageReference Include="$(SourceLinkPackageName)">
 			<PrivateAssets>all</PrivateAssets>
 			<IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
@@ -130,6 +136,7 @@
 		Label="C# Shared Testing Project Properties"
 	>
 		<NoWarn>$(NoWarn);CA1062;CA1515;CA1707;CA1822;</NoWarn>
+		<NoWarn>$(NoWarn);CS1591;</NoWarn>
 		<Packable>false</Packable>
 		<IsPackable>false</IsPackable>
 		<IsPublishable>false</IsPublishable>
@@ -157,12 +164,21 @@
 		<EmbeddedResource Remove="TestResults/**" />
 		<None Remove="TestResults/**" />
 	</ItemGroup>
+	<PropertyGroup
+		Label="Testing NuGet Packages"
+		Condition="$(IsTestProject) OR $(IsSharedTestingProject)"
+	>
+		<DisableGenerateAssemblyInfoClass>true</DisableGenerateAssemblyInfoClass>
+	</PropertyGroup>
 	<ItemGroup
 		Label="Testing NuGet Packages"
 		Condition="$(IsTestProject) OR $(IsSharedTestingProject)"
 	>
 		<!-- Automatically included usings (TUnit is already included) -->
 		<Using Include="NSubstitute" />
+		<!-- Ensure Aspire types (e.g. KnownResourceStates) are always available in test projects -->
+		<PackageReference Include="Aspire.Hosting" />
+		<Using Include="Aspire.Hosting.ApplicationModel" />
 		<!-- Assembly attributes -->
 		<AssemblyAttribute Include="System.Diagnostics.CodeAnalysis.ExcludeFromCodeCoverageAttribute" />
 		<AssemblyAttribute Include="TUnit.Core.Category" Condition="!$(IsSharedTestingProject)">
@@ -202,10 +218,10 @@
 			Include="../../src/$(TargetProjectName)/$(TargetProjectName).csproj"
 			Condition="Exists('../../src/$(TargetProjectName)/$(TargetProjectName).csproj')"
 		/>
-		<!-- Reference to SharedTestingFramework if it exists and this isn't SharedTestingFramework itself -->
-		<ProjectReference
-			Include="../SharedTestingFramework/SharedTestingFramework.csproj"
-			Condition="Exists('../SharedTestingFramework/SharedTestingFramework.csproj')"
-		/>
+		<!-- Reference to any shared testing project that exists alongside this one.
+		     Wildcards silently match 0 files when nothing exists, so no Exists()
+		     condition is needed. Remove eliminates any self-reference. -->
+		<ProjectReference Include="../SharedTesting*/SharedTesting*.csproj" />
+		<ProjectReference Remove="../$(MSBuildProjectName)/$(MSBuildProjectName).csproj" />
 	</ItemGroup>
 </Project>

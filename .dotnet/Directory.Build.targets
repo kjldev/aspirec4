@@ -1,5 +1,31 @@
 <Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
 	<Target
+		Name="FixRootNamespaceTarget"
+		BeforeTargets="GenerateAssemblyInfoClassTarget;GenerateGlobalUsings"
+		Condition="$(IsCSharpProject)"
+		Label="Strips known suffixes from RootNamespace. @(NamespaceRemoveSuffix) only expands
+		       inside a Target (after static item evaluation), so the regex cannot be computed
+		       in a static PropertyGroup."
+	>
+		<!--
+			@(NamespaceRemoveSuffix, '|') expands here because this target runs after all
+			static ItemGroup evaluation, unlike static PropertyGroup element values where
+			@() is stored as literal text and never expanded at property-evaluation time.
+		-->
+		<PropertyGroup>
+			<_NsRemovePattern>@(NamespaceRemoveSuffix, '|')</_NsRemovePattern>
+			<_FixedRootNamespace>$([System.Text.RegularExpressions.Regex]::Replace('$(RootNamespace)', '\.(?:$(_NsRemovePattern))(?=\.|$)', ''))</_FixedRootNamespace>
+		</PropertyGroup>
+		<!-- Fix the Using items that were added with the un-trimmed RootNamespace. -->
+		<ItemGroup Condition="'$(RootNamespace)' != '$(_FixedRootNamespace)'">
+			<Using Remove="$(RootNamespace)" />
+			<Using Include="$(_FixedRootNamespace)" />
+		</ItemGroup>
+		<PropertyGroup Condition="'$(RootNamespace)' != '$(_FixedRootNamespace)'">
+			<RootNamespace>$(_FixedRootNamespace)</RootNamespace>
+		</PropertyGroup>
+	</Target>
+	<Target
 		Name="ValidateRootNamespacePrefixTarget"
 		BeforeTargets="Compile"
 		Label="Validates the NamespacePrefix Prefix is set."

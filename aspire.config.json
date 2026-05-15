@@ -1,5 +1,5 @@
 {
-  "appHost": {
-    "path": "src/tests/AspireC4.TestAppHost/AspireC4.TestAppHost.csproj"
-  }
+	"appHost": {
+		"path": "src/src/AspireC4.TestAppHost/AspireC4.TestAppHost.csproj"
+	}
 }

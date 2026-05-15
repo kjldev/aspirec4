@@ -1,8 +1,4 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
-	<PropertyGroup>
-		<DisableGenerateAssemblyInfoClass>true</DisableGenerateAssemblyInfoClass>
-	</PropertyGroup>
-
 	<!-- TUnit, NSubstitute, Bogus, Microsoft.Testing.Platform.MSBuild are auto-added by
 	     .dotnet/Directory.Build.props. Auto ProjectReference resolves to AspireC4.LikeC4 (core),
 	     but integration tests need to reference the Hosting project explicitly. -->
@@ -12,19 +8,19 @@
 	</ItemGroup>
 
 	<ItemGroup>
-		<ProjectReference Include="..\AspireC4.TestAppHost\AspireC4.TestAppHost.csproj" />
+		<ProjectReference Include="..\..\src\AspireC4.TestAppHost\AspireC4.TestAppHost.csproj" />
 	</ItemGroup>
 
 	<!-- Propagate TestAppHost asset folders into the integration-test output directory
 	     so that typeof(TestAppHostProgram).Assembly.Location resolves them at runtime. -->
 	<ItemGroup>
 		<Content
-			Include="..\AspireC4.TestAppHost\likec4-extensions\*.c4"
+			Include="..\..\src\AspireC4.TestAppHost\likec4-extensions\*.c4"
 			CopyToOutputDirectory="PreserveNewest"
 			Link="likec4-extensions\%(Filename)%(Extension)"
 		/>
 		<Content
-			Include="..\AspireC4.TestAppHost\likec4-images\*"
+			Include="..\..\src\AspireC4.TestAppHost\likec4-images\*"
 			CopyToOutputDirectory="PreserveNewest"
 			Link="likec4-images\%(Filename)%(Extension)"
 		/>

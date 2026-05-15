@@ -1,10 +1,10 @@
-using Aspire.Hosting.ApplicationModel;
+using Aspire.Hosting.AspireC4.ApplicationModel;
 
 namespace Aspire.Hosting.AspireC4;
 
 /// <summary>
 /// Provides a fluent interface for configuring the LikeC4 visualization after calling
-/// <see cref="LikeC4VisualizationExtensions.AddAspireC4"/>.
+/// <see cref="AspireC4DistributedApplicationBuilderExtensions.AddAspireC4"/>.
 /// </summary>
 public interface IAspireC4Builder
 {
@@ -31,11 +31,11 @@ public interface IAspireC4Builder
 	/// The selected runtime must be installed and accessible on the system PATH.
 	/// </remarks>
 	/// <param name="runtime">
-	/// The CLI runtime to use. Defaults to <see cref="LikeC4LocalCLIRuntime.Auto"/>,
+	/// The CLI runtime to use. Defaults to <see cref="LocalCLIRuntime.Auto"/>,
 	/// which detects the first available runtime in the order: npx → pnpm → yarn → bun.
 	/// </param>
 	/// <returns>An updated <see cref="IAspireC4Builder"/> with the local server resource.</returns>
-	IAspireC4Builder WithLocalCLI(LikeC4LocalCLIRuntime runtime = LikeC4LocalCLIRuntime.Auto);
+	IAspireC4Builder WithLocalCLI(LocalCLIRuntime runtime = LocalCLIRuntime.Auto);
 
 	/// <summary>
 	/// Hides the LikeC4 server resource from the Aspire dashboard and instead surfaces
@@ -43,7 +43,7 @@ public interface IAspireC4Builder
 	/// </summary>
 	/// <remarks>
 	/// When enabled, the <c>likec4-visualization</c> resource is removed from the dashboard
-	/// resource list. Once the server is running, each <see cref="ApplicationModel.ProjectResource"/>
+	/// resource list. Once the server is running, each <see cref="ProjectResource"/>
 	/// gains a clickable link and a command button that opens the live diagram.
 	/// </remarks>
 	/// <param name="displayName">
@@ -65,7 +65,7 @@ public interface IAspireC4Builder
 	/// </remarks>
 	/// <param name="sourcePath">
 	/// The path to the source file. Relative paths are resolved from the current working
-	/// directory at the time <see cref="WriteC4FileAsync"/> executes. If the file does not
+	/// directory at the time writing executes. If the file does not
 	/// exist at startup the entry is silently skipped.
 	/// </param>
 	/// <returns>The same <see cref="IAspireC4Builder"/> for further configuration.</returns>

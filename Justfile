@@ -1,6 +1,8 @@
 set quiet
 
 [private]
+_root := "./"
+[private]
 _solution := "src/AspireC4.slnx"
 
 config_default := "Release"
@@ -42,11 +44,11 @@ test-integration configuration=config_default:
 # Run C# linting (CSharpier check)
 [group('dotnet')]
 lintcheck:
-    dotnet csharpier check src
+    dotnet csharpier check {{ _root }}
 # Run C# linting and auto-fix (CSharpier format)
 [group('dotnet')]
 lintfix:
-    dotnet csharpier format src
+    dotnet csharpier format {{ _root }}
 # Build and produce NuGet packages into artifacts/nuget (version read from package.json)
 [group('dotnet')]
 pack configuration=config_default: (build configuration)

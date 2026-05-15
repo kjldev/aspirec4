@@ -7,8 +7,11 @@ namespace Aspire.Hosting.AspireC4;
 public sealed class LikeC4PublishModeTests
 {
 	[Test]
-	public async Task PublishMode_GeneratesC4FileWithoutStartingServer(CancellationToken cancellationToken)
+	public async Task PublishAsync_InPublishMode_GeneratesC4FileWithoutStartingServer(
+		CancellationToken cancellationToken
+	)
 	{
+		// Arrange
 		var outputDir = Path.Combine(Path.GetTempPath(), "likec4-publish-" + Guid.NewGuid().ToString("N")[..8]);
 		var modelOutputDir = Path.Combine(outputDir, "likec4");
 		var appHostProject = GetTestAppHostProjectPath();
@@ -31,7 +34,9 @@ public sealed class LikeC4PublishModeTests
 			startInfo.Environment["AspireC4__OutputDirectory"] = modelOutputDir;
 			startInfo.Environment["AspireC4__FileName"] = "publish-model";
 			startInfo.Environment["AspireC4__Title"] = "Publish Mode Test";
+			startInfo.Environment["Logging__LogLevel__Default"] = "Debug";
 
+			// Act
 			using var process = new System.Diagnostics.Process { StartInfo = startInfo };
 			process.Start();
 
@@ -44,6 +49,7 @@ public sealed class LikeC4PublishModeTests
 			var standardError = await standardErrorTask;
 			var combinedOutput = standardOutput + Environment.NewLine + standardError;
 
+			// Assert
 			await Assert.That(process.ExitCode).IsEqualTo(0);
 			await Assert.That(File.Exists(modelPath)).IsTrue();
 			await Assert.That(File.Exists(Path.Combine(outputDir, "aspire-manifest.json"))).IsTrue();
@@ -69,6 +75,8 @@ public sealed class LikeC4PublishModeTests
 				"..",
 				"..",
 				"..",
+				"..",
+				"src",
 				"AspireC4.TestAppHost",
 				"AspireC4.TestAppHost.csproj"
 			)

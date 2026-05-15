@@ -1,4 +1,6 @@
-using Aspire.Hosting.ApplicationModel;
+using Aspire.Hosting.AspireC4.ApplicationModel;
+using Aspire.Hosting.AspireC4.LikeC4.Annotations;
+using Aspire.Hosting.AspireC4.LikeC4.Runtime;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Aspire.Hosting.AspireC4;
@@ -15,24 +17,20 @@ sealed class AspireC4Builder(
 
 	internal string OutputDirectory { get; } = outputDirectory;
 
-	public IAspireC4Builder WithLocalCLI(LikeC4LocalCLIRuntime runtime = LikeC4LocalCLIRuntime.Auto)
+	public IAspireC4Builder WithLocalCLI(LocalCLIRuntime runtime = LocalCLIRuntime.Auto)
 	{
 		// Remove the existing server resource (container by default) from the app model.
 		ApplicationBuilder.Resources.Remove(LikeC4ResourceBuilder.Resource);
 
-		var resolvedRuntime = runtime == LikeC4LocalCLIRuntime.Auto ? DetectRuntime() : runtime;
+		var resolvedRuntime = runtime == LocalCLIRuntime.Auto ? DetectRuntime() : runtime;
 
-		var (command, args) = BuildLocalCliCommand(
+		var (command, args) = BuildLocalCLICommand(
 			resolvedRuntime,
 			OutputDirectory,
 			LikeC4LocalServerResource.DefaultPort
 		);
 
-		var localResource = new LikeC4LocalServerResource(
-			LikeC4ResourceBuilder.Resource.Name,
-			command,
-			OutputDirectory
-		);
+		LikeC4LocalServerResource localResource = new(LikeC4ResourceBuilder.Resource.Name, command, OutputDirectory);
 
 		var localBuilder = ApplicationBuilder
 			.AddResource(localResource)
@@ -46,7 +44,7 @@ sealed class AspireC4Builder(
 
 		// Store the resolved runtime so the lifecycle hook can use the same JS runner
 		// when invoking host-side likec4 subcommands (format, validate).
-		ApplicationBuilder.Services.Configure<LikeC4ContainerWorkspaceOptions>(wsOpts =>
+		ApplicationBuilder.Services.Configure<ContainerWorkspaceOptions>(wsOpts =>
 			wsOpts.LocalCLIRuntime = resolvedRuntime
 		);
 
@@ -153,15 +151,13 @@ sealed class AspireC4Builder(
 		// Rancher Desktop exposes Windows drives under /mnt/<letter>/ inside WSL2.
 		// CA1308: intentional — Linux paths require lower-case.
 		if (
-			runtime == AspireC4.ContainerRuntime.RancherDesktop
+			runtime == LikeC4.Runtime.ContainerRuntime.RancherDesktop
 			&& fullPath.Length >= 2
 			&& char.IsAsciiLetter(fullPath[0])
 			&& fullPath[1] == ':'
 		)
 		{
-#pragma warning disable CA1308
-			return $"/mnt/{char.ToLowerInvariant(fullPath[0])}{fullPath[2..].Replace('\\', '/')}".ToLowerInvariant();
-#pragma warning restore CA1308
+			return $"/mnt/{char.ToLowerInvariant(fullPath[0])}{fullPath[2..].Replace('\\', '/')}".ToLowerInvariantSafe();
 		}
 
 		// All other runtimes: return the path as-is.
@@ -184,12 +180,12 @@ sealed class AspireC4Builder(
 	internal static ContainerRuntime DetectContainerRuntime()
 	{
 		if (!OperatingSystem.IsWindows())
-			return AspireC4.ContainerRuntime.Linux;
+			return LikeC4.Runtime.ContainerRuntime.Linux;
 
 		// If Podman is explicitly requested, podman.exe handles path translation itself.
 		var runtimeEnv = Environment.GetEnvironmentVariable("ASPIRE_CONTAINER_RUNTIME");
 		if (runtimeEnv?.Equals("podman", StringComparison.OrdinalIgnoreCase) == true)
-			return AspireC4.ContainerRuntime.Podman;
+			return LikeC4.Runtime.ContainerRuntime.Podman;
 
 		// Query the Docker daemon OS string to distinguish Docker Desktop from Rancher Desktop.
 		try
@@ -210,23 +206,23 @@ sealed class AspireC4Builder(
 			var os = process?.StandardOutput.ReadToEnd().Trim() ?? "";
 
 			if (os.Contains("Rancher Desktop", StringComparison.OrdinalIgnoreCase))
-				return AspireC4.ContainerRuntime.RancherDesktop;
+				return LikeC4.Runtime.ContainerRuntime.RancherDesktop;
 		}
 		catch { }
 
-		return AspireC4.ContainerRuntime.DockerDesktop;
+		return LikeC4.Runtime.ContainerRuntime.DockerDesktop;
 	}
 
-	static LikeC4LocalCLIRuntime DetectRuntime()
+	static LocalCLIRuntime DetectRuntime()
 	{
 		// Try runtimes in order of preference.
-		(LikeC4LocalCLIRuntime Runtime, string Executable)[] candidates =
+		(LocalCLIRuntime Runtime, string Executable)[] candidates =
 		[
-			(LikeC4LocalCLIRuntime.Npx, "npx"),
-			(LikeC4LocalCLIRuntime.Pnpm, "pnpm"),
-			(LikeC4LocalCLIRuntime.Yarn, "yarn"),
-			(LikeC4LocalCLIRuntime.Bun, "bun"),
-			(LikeC4LocalCLIRuntime.Deno, "deno"),
+			(LocalCLIRuntime.Npx, "npx"),
+			(LocalCLIRuntime.Pnpm, "pnpm"),
+			(LocalCLIRuntime.Yarn, "yarn"),
+			(LocalCLIRuntime.Bun, "bun"),
+			(LocalCLIRuntime.Deno, "deno"),
 		];
 
 		foreach (var (candidate, executable) in candidates)
@@ -284,14 +280,14 @@ sealed class AspireC4Builder(
 	/// Bun  → <c>("bunx", ["--bun", "likec4"])</c>
 	/// Deno → <c>("deno", ["run", "--allow-all", "likec4"])</c>
 	/// </example>
-	internal static (string Command, string[] Prefix) BuildLikeC4CliPrefix(LikeC4LocalCLIRuntime runtime) =>
+	internal static (string Command, string[] Prefix) BuildLikeC4CLIPrefix(LocalCLIRuntime runtime) =>
 		runtime switch
 		{
-			LikeC4LocalCLIRuntime.Npx => ("npx", ["likec4"]),
-			LikeC4LocalCLIRuntime.Pnpm => ("pnpm", ["exec", "likec4"]),
-			LikeC4LocalCLIRuntime.Yarn => ("yarn", ["dlx", "likec4"]),
-			LikeC4LocalCLIRuntime.Bun => ("bunx", ["likec4"]),
-			LikeC4LocalCLIRuntime.Deno => ("deno", ["run", "--allow-all", "likec4"]),
+			LocalCLIRuntime.Npx => ("npx", ["likec4"]),
+			LocalCLIRuntime.Pnpm => ("pnpm", ["exec", "likec4"]),
+			LocalCLIRuntime.Yarn => ("yarn", ["dlx", "likec4"]),
+			LocalCLIRuntime.Bun => ("bunx", ["likec4"]),
+			LocalCLIRuntime.Deno => ("deno", ["run", "--allow-all", "likec4"]),
 			_ => throw new ArgumentOutOfRangeException(nameof(runtime), runtime, $"Unsupported runtime: {runtime}"),
 		};
 
@@ -299,8 +295,8 @@ sealed class AspireC4Builder(
 	/// Resolves the executable command and arguments for the given local CLI runtime.
 	/// Internal and visible for testing.
 	/// </summary>
-	internal static (string Command, string[] Args) BuildLocalCliCommand(
-		LikeC4LocalCLIRuntime runtime,
+	internal static (string Command, string[] Args) BuildLocalCLICommand(
+		LocalCLIRuntime runtime,
 		string outputDirectory,
 		int port
 	)
@@ -308,11 +304,11 @@ sealed class AspireC4Builder(
 		var portStr = $"{port}";
 		return runtime switch
 		{
-			LikeC4LocalCLIRuntime.Npx => ("npx", ["likec4", "serve", outputDirectory, "--port", portStr]),
-			LikeC4LocalCLIRuntime.Pnpm => ("pnpm", ["exec", "likec4", "serve", outputDirectory, "--port", portStr]),
-			LikeC4LocalCLIRuntime.Yarn => ("yarn", ["dlx", "likec4", "serve", outputDirectory, "--port", portStr]),
-			LikeC4LocalCLIRuntime.Bun => ("bunx", ["--bun", "likec4", "serve", outputDirectory, "--port", portStr]),
-			LikeC4LocalCLIRuntime.Deno => (
+			LocalCLIRuntime.Npx => ("npx", ["likec4", "serve", outputDirectory, "--port", portStr]),
+			LocalCLIRuntime.Pnpm => ("pnpm", ["exec", "likec4", "serve", outputDirectory, "--port", portStr]),
+			LocalCLIRuntime.Yarn => ("yarn", ["dlx", "likec4", "serve", outputDirectory, "--port", portStr]),
+			LocalCLIRuntime.Bun => ("bunx", ["--bun", "likec4", "serve", outputDirectory, "--port", portStr]),
+			LocalCLIRuntime.Deno => (
 				"deno",
 				["run", "--allow-all", "likec4", "serve", outputDirectory, "--port", portStr]
 			),
