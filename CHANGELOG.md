@@ -1,6 +1,11 @@
 # aspirec4
 
-## 13.3.0-prerelease.4
+## 13.3.0-prerelease.6
+
+> **Note:** versions `13.3.0-prerelease.4` and `13.3.0-prerelease.5` were never published.
+> Both tags were permanently tombstoned by GitHub's immutable-release feature after failed
+> release attempts during CD pipeline repairs. This version contains all changes originally
+> intended for `prerelease.4`.
 
 ### Minor Changes
 
@@ -29,6 +34,16 @@
 
   - cd: releases are gated to main; workflow is enforced to reject non-main refs even on manual dispatch
   - cd: update GitHub Actions to Node.js 24-compatible versions (checkout@v6, setup-dotnet@v5, setup-node@v6)
+
+## 13.3.0-prerelease.4 (not published — tag tombstoned)
+
+> Tag `v13.3.0-prerelease.4` was permanently tombstoned after a failed release attempt.
+> See `13.3.0-prerelease.6` for the intended changes.
+
+## 13.3.0-prerelease.5 (not published — tag tombstoned)
+
+> Tag `v13.3.0-prerelease.5` was permanently tombstoned after a failed release attempt.
+> See `13.3.0-prerelease.6` for the intended changes.
 
 ## 13.3.0-prerelease.3
 
