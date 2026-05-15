@@ -40,11 +40,17 @@ jobs:
         name: Determine whether to publish a release
         env:
           EVENT_NAME: ${{ github.event_name }}
+          GITHUB_REF: ${{ github.ref }}
           BEFORE_SHA: ${{ github.event.before }}
           CURRENT_SHA: ${{ github.sha }}
         shell: bash
         run: |
           set -euo pipefail
+
+          if [[ "${GITHUB_REF}" != "refs/heads/main" ]]; then
+            echo "::error::Releases must only be created from main. Current ref: ${GITHUB_REF}"
+            exit 1
+          fi
 
           if [[ "${EVENT_NAME}" == "workflow_dispatch" ]]; then
             echo "should_release=true" >> "${GITHUB_OUTPUT}"
@@ -204,30 +210,40 @@ jobs:
             prerelease_flag="--prerelease"
           fi
 
-          latest_flag=""
-          if [[ "${RELEASE_MAKE_LATEST}" == "true" ]]; then
-            latest_flag="--latest"
-          fi
-
           notes_flag=""
           if [[ -z "${RELEASE_BODY}" ]]; then
             notes_flag="--generate-notes"
           fi
 
           # Create as a draft so assets can be uploaded before the release is published.
+          # Register cleanup so a transient failure at publish does not leave an orphaned
+          # draft+tag that would block duplicate-version checks on retry.
+          cleanup() {
+            echo "::warning::Release step failed — cleaning up draft release and tag to allow a clean retry."
+            gh release delete "${RELEASE_TAG}" --yes --cleanup-tag 2>/dev/null || true
+          }
+          trap cleanup ERR
+
           gh release create "${RELEASE_TAG}" \
             --draft \
             --title "${RELEASE_TAG}" \
             --target "${GITHUB_SHA}" \
             ${prerelease_flag} \
             ${notes_flag} \
-            ${latest_flag} \
             --notes "${RELEASE_BODY}" \
             ./artifacts/nuget/*.nupkg \
             ./artifacts/nuget/*.snupkg
 
           # Publish the draft — assets are already attached, so immutable-release upload errors cannot occur.
-          gh release edit "${RELEASE_TAG}" --draft=false
+          # --latest is deferred to here: GitHub rejects that flag on draft releases.
+          latest_flag=""
+          if [[ "${RELEASE_MAKE_LATEST}" == "true" ]]; then
+            latest_flag="--latest"
+          fi
+
+          gh release edit "${RELEASE_TAG}" --draft=false ${latest_flag}
+
+          trap - ERR
 
       - name: Skip release publish
         if: ${{ steps.release-trigger.outputs.should_release != 'true' }}

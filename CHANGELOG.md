@@ -27,7 +27,7 @@
 
   ### Changes
 
-  - cd: remove tag-based trigger; releases only originate from pushes to main
+  - cd: releases are gated to main; workflow is enforced to reject non-main refs even on manual dispatch
   - cd: update GitHub Actions to Node.js 24-compatible versions (checkout@v6, setup-dotnet@v5, setup-node@v6)
 
 ## 13.3.0-prerelease.3
