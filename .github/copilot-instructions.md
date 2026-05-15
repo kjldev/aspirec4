@@ -3,6 +3,7 @@
 ## Non-negotiables
 
 - **Always run `just test` (unit + integration) to verify changes** — running only `just test-unit` is not acceptable. Unit tests prove nothing about the wider system; integration tests exercise Docker, container startup, bind mounts, and the full Aspire lifecycle.
+- **Never claim a fix or task is complete unless ALL tests have passed** — every single test, not just those you believe are related to your change. All tests always are. A task is not done, a fix is not done, nothing is done until `just test` exits green with zero failures.
 - **Always run `just lintcheck` (or `just lintfix`) before committing** — CSharpier formatting is enforced and CI will reject unformatted code.
 
 ## Build, test, and lint
