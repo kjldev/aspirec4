@@ -4,7 +4,7 @@
 views {
   view data_stores {
     title 'Data Stores'
-    include azure_redis, azure_postgres, redis, postgres
+    include azure_redis, azure_postgres, local_redis, local_postgres
     include -> azure_redis ->
     include -> azure_postgres ->
   }
