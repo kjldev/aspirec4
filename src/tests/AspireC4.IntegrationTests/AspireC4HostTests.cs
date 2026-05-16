@@ -18,6 +18,9 @@ namespace Aspire.Hosting.AspireC4;
 public sealed partial class AspireC4HostTests
 {
 	const string AspireC4ResourceName = AspireC4DistributedApplicationBuilderExtensions.AspireC4ResourceName;
+	const string AspireC4ServerResourceName =
+		AspireC4DistributedApplicationBuilderExtensions.AspireC4ResourceName
+		+ AspireC4DistributedApplicationBuilderExtensions.AspireC4ServerResourceSuffix;
 	static readonly TimeSpan LikeC4StartupTimeout = TimeSpan.FromSeconds(120);
 
 	// Shared across all tests in this class — set once in ClassSetUpAsync.
@@ -129,7 +132,7 @@ public sealed partial class AspireC4HostTests
 		// Arrange
 		// (shared app started in ClassSetUpAsync)
 		await WaitForLikeC4ServerRunningAsync(cancellationToken);
-		using var client = s_app!.CreateHttpClient(AspireC4ResourceName, LikeC4ServerResource.HttpEndpointName);
+		using var client = s_app!.CreateHttpClient(AspireC4ServerResourceName, LikeC4ServerResource.HttpEndpointName);
 
 		// Act
 		HttpResponseMessage? response = null;

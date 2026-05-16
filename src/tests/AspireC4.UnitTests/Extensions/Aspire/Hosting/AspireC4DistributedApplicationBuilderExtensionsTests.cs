@@ -14,8 +14,9 @@ public sealed class AspireC4DistributedApplicationBuilderExtensionsTests
 
 		// Act
 		var visualization = appBuilder.AddAspireC4();
-		var endpoints = visualization
-			.LikeC4ResourceBuilder.Resource.Annotations.OfType<EndpointAnnotation>()
+		var serverResource = (LikeC4ServerResource)visualization.Resource.InnerResource!;
+		var endpoints = serverResource
+			.Annotations.OfType<EndpointAnnotation>()
 			.OrderBy(endpoint => endpoint.Name, StringComparer.Ordinal)
 			.ToArray();
 
@@ -101,9 +102,8 @@ public sealed class AspireC4DistributedApplicationBuilderExtensionsTests
 
 		// Act
 		var visualization = appBuilder.AddAspireC4();
-		var mounts = visualization
-			.LikeC4ResourceBuilder.Resource.Annotations.OfType<ContainerMountAnnotation>()
-			.ToArray();
+		var serverResource = (LikeC4ServerResource)visualization.Resource.InnerResource!;
+		var mounts = serverResource.Annotations.OfType<ContainerMountAnnotation>().ToArray();
 
 		// Assert
 		await Assert.That(mounts).IsEmpty();

@@ -16,7 +16,13 @@
 		<PackageTags>aspire;dotnet;aspnetcore;c4;likec4;architecture;diagram;visualisation;visualization;</PackageTags>
 		<IncludeSymbols>true</IncludeSymbols>
 		<SymbolPackageFormat>snupkg</SymbolPackageFormat>
+		<!-- 
+			Opting into the Aspire integration analyzers - hoping it'll help me to
+			figure out some issues with the TypeScript exports.
+		-->
+		<EnableAspireIntegrationAnalyzers>true</EnableAspireIntegrationAnalyzers>
 	</PropertyGroup>
+
 	<ItemGroup>
 		<EmbeddedResource Include="BuildResources\likec4-icons.json" />
 	</ItemGroup>

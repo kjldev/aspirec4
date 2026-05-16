@@ -69,7 +69,8 @@ sealed partial class AspireC4LifecycleHook(
 		eventing.Subscribe<BeforeStartEvent>(
 			async (evt, ct) =>
 			{
-				var serverResource = evt.Model.Resources.OfType<LikeC4ServerResource>().FirstOrDefault();
+				var aspirec4Resource = evt.Model.Resources.OfType<AspireC4Resource>().FirstOrDefault();
+				var serverResource = aspirec4Resource?.InnerResource as LikeC4ServerResource;
 
 				if (executionContext.IsPublishMode)
 				{
@@ -99,6 +100,13 @@ sealed partial class AspireC4LifecycleHook(
 				// Fire-and-forget: watch for resource state changes and regenerate the file.
 				// The ct is the application lifetime token; it is cancelled on shutdown.
 				_ = WatchResourceStatesAsync(evt.Model, ct);
+
+				// Forward inner resource state to AspireC4Resource so consumers watching
+				// by the outer resource name (e.g., integration tests) receive state updates.
+				if (aspirec4Resource is not null)
+				{
+					_ = ForwardInnerResourceStateAsync(aspirec4Resource, ct);
+				}
 
 				if (options.Value.IncludeAspireDashboardLinks)
 				{

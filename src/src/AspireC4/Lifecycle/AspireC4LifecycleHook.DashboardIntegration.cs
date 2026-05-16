@@ -12,9 +12,10 @@ sealed partial class AspireC4LifecycleHook
 		CancellationToken cancellationToken
 	)
 	{
-		var serverResource = appModel.Resources.FirstOrDefault(r =>
-			r is LikeC4ServerResource or LikeC4LocalServerResource
-		);
+		var aspirec4Resource = appModel.Resources.OfType<AspireC4Resource>().FirstOrDefault();
+		var serverResource =
+			aspirec4Resource?.InnerResource
+			?? appModel.Resources.FirstOrDefault(r => r is LikeC4ServerResource or LikeC4LocalServerResource);
 
 		if (serverResource is null)
 		{
@@ -159,6 +160,42 @@ sealed partial class AspireC4LifecycleHook
 					continue;
 
 				await resourceNotificationService.PublishUpdateAsync(serverResource, s => s with { IsHidden = true });
+			}
+		}
+		catch (OperationCanceledException)
+		{
+			// Normal on shutdown.
+		}
+#pragma warning disable CA1031
+		catch (Exception ex)
+		{
+			telemetry.StateWatcherFailed(ex.Message);
+		}
+#pragma warning restore CA1031
+	}
+
+	/// <summary>
+	/// Watches for state changes on the inner resource and forwards them to the outer
+	/// <see cref="AspireC4Resource"/> so consumers watching the outer resource name
+	/// (e.g., integration tests using <c>ResourceNotifications</c>) receive the correct lifecycle state.
+	/// </summary>
+	async Task ForwardInnerResourceStateAsync(AspireC4Resource outerResource, CancellationToken cancellationToken)
+	{
+		var innerResource = outerResource.InnerResource;
+		if (innerResource is null)
+			return;
+
+		try
+		{
+			await foreach (var notification in resourceNotificationService.WatchAsync(cancellationToken))
+			{
+				if (notification.Resource.Name != innerResource.Name)
+					continue;
+
+				await resourceNotificationService.PublishUpdateAsync(
+					outerResource,
+					s => s with { State = notification.Snapshot.State }
+				);
 			}
 		}
 		catch (OperationCanceledException)

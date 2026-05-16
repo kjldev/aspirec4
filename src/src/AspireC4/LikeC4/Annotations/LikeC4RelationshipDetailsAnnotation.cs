@@ -8,6 +8,7 @@ namespace Aspire.Hosting.AspireC4.LikeC4.Annotations;
 /// target — to override different relationships independently.
 /// Configure using <c>WithLikeC4Reference(target, a =&gt; a.WithKind("async").WithLabel("calls"))</c>.
 /// </summary>
+[AspireExport(ExposeProperties = true, ExposeMethods = true)]
 public sealed class LikeC4RelationshipDetailsAnnotation : IResourceAnnotation
 {
 	readonly List<string> _tags = [];

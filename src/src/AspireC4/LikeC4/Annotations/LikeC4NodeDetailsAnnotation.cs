@@ -6,6 +6,7 @@ namespace Aspire.Hosting.AspireC4.LikeC4.Annotations;
 /// Annotation that customises how a resource appears as a node in the generated LikeC4 diagram.
 /// Configure using <c>WithLikeC4Details(a =&gt; a.WithIcon(...).WithTag(...))</c>.
 /// </summary>
+[AspireExport(ExposeProperties = true, ExposeMethods = true)]
 public sealed class LikeC4NodeDetailsAnnotation : IResourceAnnotation
 {
 	readonly List<string> _tags = [];
