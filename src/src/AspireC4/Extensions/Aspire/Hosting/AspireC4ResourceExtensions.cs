@@ -241,6 +241,9 @@ public static class AspireC4ResourceExtensions
 	/// <param name="builder">The <see cref="AspireC4Resource"/> builder.</param>
 	/// <param name="configure">A callback that receives the inner server resource builder.</param>
 	/// <returns>The same <see cref="IResourceBuilder{AspireC4Resource}"/> for further configuration.</returns>
+	[AspireExportIgnore(
+		Reason = "Callback-based API accepting an IResourceBuilder — not ATS-compatible. Configure the inner server resource via the parameter-based 'withLikeC4Details' and other resource-level extensions."
+	)]
 	public static IResourceBuilder<AspireC4Resource> ConfigureServer(
 		this IResourceBuilder<AspireC4Resource> builder,
 		Action<IResourceBuilder<IResource>> configure

@@ -34,7 +34,10 @@ public static class AspireC4DistributedApplicationBuilderExtensions
 	/// <param name="port">Optional host port to bind the LikeC4 server's HTTP endpoint to. By default, no fixed host port is used and Docker assigns a dynamic port.</param>
 	/// <param name="configure">Optional callback to configure <see cref="AspireC4DiagramOptions"/>.</param>
 	/// <returns>An <see cref="IResourceBuilder{AspireC4Resource}"/> for further configuration.</returns>
-	[AspireExport(Description = "Adds a LikeC4 live architecture diagram to the Aspire application.")]
+	[AspireExport(
+		Description = "Adds a LikeC4 live architecture diagram to the Aspire application.",
+		RunSyncOnBackgroundThread = true
+	)]
 	public static IResourceBuilder<AspireC4Resource> AddAspireC4(
 		this IDistributedApplicationBuilder builder,
 		[ResourceName] string? name = null,

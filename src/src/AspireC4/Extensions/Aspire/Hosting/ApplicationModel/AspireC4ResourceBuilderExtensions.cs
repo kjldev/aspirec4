@@ -52,10 +52,8 @@ public static class AspireC4ResourceBuilderExtensions
 	/// </summary>
 	/// <param name="builder">The resource builder for the resource being customised.</param>
 	/// <param name="configure">An action that configures the LikeC4 node details annotation using fluent methods.</param>
-	[AspireExport(
-		"withLikeC4DetailsFluent",
-		MethodName = "withLikeC4Details",
-		Description = "Customises how a resource appears in the generated LikeC4 diagram using fluent options."
+	[AspireExportIgnore(
+		Reason = "Sync callback overload — use the parameter-based 'withLikeC4Details' overload for ATS compatibility."
 	)]
 	public static IResourceBuilder<T> WithLikeC4Details<T>(
 		[NotNull] this IResourceBuilder<T> builder,
@@ -86,7 +84,8 @@ public static class AspireC4ResourceBuilderExtensions
 	/// <param name="configure">Optional action that configures the relationship appearance.</param>
 	[AspireExport(
 		MethodName = "withLikeC4Reference",
-		Description = "Customises how the relationship from this resource to the target appears in the generated LikeC4 diagram."
+		Description = "Customises how the relationship from this resource to the target appears in the generated LikeC4 diagram.",
+		RunSyncOnBackgroundThread = true
 	)]
 	public static IResourceBuilder<T> WithLikeC4Reference<T, TRef>(
 		[NotNull] this IResourceBuilder<T> builder,

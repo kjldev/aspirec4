@@ -7,6 +7,11 @@ namespace Aspire.Hosting.AspireC4;
 /// </summary>
 static class AspireC4Builder
 {
+	static readonly Lazy<ContainerRuntime> ContainerRuntime = new(
+		DetectContainerRuntime,
+		LazyThreadSafetyMode.ExecutionAndPublication
+	);
+
 	/// <summary>
 	/// Returns the correct bind-mount source path for the given host directory.
 	/// </summary>
@@ -29,12 +34,12 @@ static class AspireC4Builder
 	/// </list>
 	/// On non-Windows the path is returned unchanged.
 	/// </remarks>
-	internal static string NormalizeBindMountPath(string absolutePath) =>
+	public static string NormalizeBindMountPath(string absolutePath) =>
 		NormalizeBindMountPath(absolutePath, ContainerRuntime.Value);
 
 	/// <summary>Overload with an explicit runtime — used by unit tests to avoid
 	/// spawning a <c>docker</c> process.</summary>
-	internal static string NormalizeBindMountPath(string absolutePath, ContainerRuntime runtime)
+	public static string NormalizeBindMountPath(string absolutePath, ContainerRuntime runtime)
 	{
 		var fullPath = Path.GetFullPath(absolutePath);
 
@@ -57,17 +62,12 @@ static class AspireC4Builder
 		return fullPath;
 	}
 
-	static readonly Lazy<ContainerRuntime> ContainerRuntime = new(
-		DetectContainerRuntime,
-		LazyThreadSafetyMode.ExecutionAndPublication
-	);
-
 	[System.Diagnostics.CodeAnalysis.SuppressMessage(
 		"Design",
 		"CA1031:Do not catch general exception types",
 		Justification = "Runtime detection must not throw; failure falls back to Docker Desktop behavior."
 	)]
-	internal static ContainerRuntime DetectContainerRuntime()
+	public static ContainerRuntime DetectContainerRuntime()
 	{
 		if (!OperatingSystem.IsWindows())
 			return LikeC4.Runtime.ContainerRuntime.Linux;
@@ -103,7 +103,7 @@ static class AspireC4Builder
 		return LikeC4.Runtime.ContainerRuntime.DockerDesktop;
 	}
 
-	internal static LocalCLIRuntime DetectRuntime()
+	public static LocalCLIRuntime DetectRuntime()
 	{
 		// Try runtimes in order of preference.
 		(LocalCLIRuntime Runtime, string Executable)[] candidates =
@@ -133,7 +133,7 @@ static class AspireC4Builder
 		"CA1031:Do not catch general exception types",
 		Justification = "If the exe isn't there or isn't correctly installed, it's not appropriate for use"
 	)]
-	internal static bool IsExecutableOnPath(string executable)
+	public static bool IsExecutableOnPath(string executable)
 	{
 		try
 		{
@@ -170,7 +170,7 @@ static class AspireC4Builder
 	/// Bun  → <c>("bunx", ["--bun", "likec4"])</c>
 	/// Deno → <c>("deno", ["run", "--allow-all", "likec4"])</c>
 	/// </example>
-	internal static (string Command, string[] Prefix) BuildLikeC4CLIPrefix(LocalCLIRuntime runtime) =>
+	public static (string Command, string[] Prefix) BuildLikeC4CLIPrefix(LocalCLIRuntime runtime) =>
 		runtime switch
 		{
 			LocalCLIRuntime.Npx => ("npx", ["likec4"]),
@@ -185,7 +185,7 @@ static class AspireC4Builder
 	/// Resolves the executable command and arguments for the given local CLI runtime.
 	/// Internal and visible for testing.
 	/// </summary>
-	internal static (string Command, string[] Args) BuildLocalCLICommand(
+	public static (string Command, string[] Args) BuildLocalCLICommand(
 		LocalCLIRuntime runtime,
 		string outputDirectory,
 		int port

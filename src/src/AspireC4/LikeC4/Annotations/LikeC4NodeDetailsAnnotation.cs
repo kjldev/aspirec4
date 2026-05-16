@@ -144,6 +144,7 @@ public sealed class LikeC4NodeDetailsAnnotation : IResourceAnnotation
 	/// <summary>Adds a hyperlink to this element.</summary>
 	/// <param name="url">The URL, which may be absolute or relative to the <c>.c4</c> file.</param>
 	/// <param name="title">Optional display text.</param>
+	[AspireExport(id: "withLinkNode")]
 	public LikeC4NodeDetailsAnnotation WithLink(string url, string? title = null)
 	{
 		ArgumentException.ThrowIfNullOrWhiteSpace(url);
@@ -152,9 +153,11 @@ public sealed class LikeC4NodeDetailsAnnotation : IResourceAnnotation
 	}
 
 	/// <inheritdoc cref="WithLink(string, string?)"/>
+	[AspireExport(id: "withLinkUriNode")]
 	public LikeC4NodeDetailsAnnotation WithLink(Uri uri, string? title = null) => WithLink(uri?.ToString()!, title);
 
 	/// <summary>Adds a metadata key-value pair to this element.</summary>
+	[AspireExport(id: "withMetadataNode")]
 	public LikeC4NodeDetailsAnnotation WithMetadata(string key, string value)
 	{
 		ArgumentException.ThrowIfNullOrWhiteSpace(key);
@@ -166,6 +169,7 @@ public sealed class LikeC4NodeDetailsAnnotation : IResourceAnnotation
 	}
 
 	/// <summary>Adds multiple metadata key-value pairs to this element.</summary>
+	[AspireExportIgnore(Reason = "Not supported in the exported API.")]
 	public LikeC4NodeDetailsAnnotation WithMetadata(params (string key, string value)[] metadata)
 	{
 		ArgumentNullException.ThrowIfNull(metadata);
