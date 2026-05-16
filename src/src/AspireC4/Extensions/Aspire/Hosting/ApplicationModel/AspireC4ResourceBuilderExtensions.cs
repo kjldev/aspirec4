@@ -21,10 +21,12 @@ public static class AspireC4ResourceBuilderExtensions
 	/// <param name="description">The description rendered in the diagram's detail panel.</param>
 	/// <param name="summary">The one-line summary shown in tooltips or the diagram map view.</param>
 	/// <param name="icon">The icon identifier for this element.</param>
+	/// <param name="configure">Optional action to apply additional fluent configuration (tags, links, metadata) to the node annotation.</param>
 	[AspireExport(
 		"withLikeC4DetailsParameters",
 		MethodName = "withLikeC4Details",
-		Description = "Customises how a resource appears in the generated LikeC4 diagram."
+		Description = "Customises how a resource appears in the generated LikeC4 diagram.",
+		RunSyncOnBackgroundThread = true
 	)]
 	public static IResourceBuilder<T> WithLikeC4Details<T>(
 		[NotNull] this IResourceBuilder<T> builder,
@@ -32,7 +34,8 @@ public static class AspireC4ResourceBuilderExtensions
 		string? technology = null,
 		string? description = null,
 		string? summary = null,
-		string? icon = null
+		string? icon = null,
+		Action<LikeC4NodeDetailsAnnotation>? configure = null
 	)
 		where T : IResource
 	{
@@ -43,6 +46,8 @@ public static class AspireC4ResourceBuilderExtensions
 			.WithDescription(description)
 			.WithSummary(summary)
 			.WithIcon(icon);
+
+		configure?.Invoke(annotation);
 
 		return builder.WithAnnotation(annotation, ResourceAnnotationMutationBehavior.Replace);
 	}
@@ -130,7 +135,6 @@ public static class AspireC4ResourceBuilderExtensions
 	/// </summary>
 	/// <param name="builder">The resource builder for the resource being excluded.</param>
 	[AspireExport(
-		//"excludeFromLikeC4",
 		MethodName = "excludeFromLikeC4",
 		Description = "Excludes a resource from the generated LikeC4 diagram."
 	)]
