@@ -1,5 +1,22 @@
 # aspirec4
 
+## 13.3.0-prerelease.7
+
+### Minor Changes
+
+- ### Features
+
+  - bundle SG with runtime bridge via ModuleInitializer
+  - redesign source generators with [LikeC4Registry] attribute
+  - extend source generators with WithLikeC4Group support and ASPIREC4004 diagnostic
+  - adding correct support for TypeScript app hosts
+
+  ### Bug Fixes
+
+  - resolve ASPIREEXPORT010/008 warnings on exported methods
+
+  ### Changes
+
 ## 13.3.0-prerelease.6
 
 > **Note:** versions `13.3.0-prerelease.4` and `13.3.0-prerelease.5` were never published.

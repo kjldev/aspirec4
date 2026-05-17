@@ -41,8 +41,6 @@ jobs:
         env:
           EVENT_NAME: ${{ github.event_name }}
           GITHUB_REF: ${{ github.ref }}
-          BEFORE_SHA: ${{ github.event.before }}
-          CURRENT_SHA: ${{ github.sha }}
         shell: bash
         run: |
           set -euo pipefail
@@ -57,16 +55,15 @@ jobs:
             exit 0
           fi
 
-          if [[ "${BEFORE_SHA}" == "0000000000000000000000000000000000000000" ]]; then
-            changed_files="$(git show --name-only --pretty='' "${CURRENT_SHA}")"
-          else
-            changed_files="$(git diff --name-only "${BEFORE_SHA}" "${CURRENT_SHA}")"
-          fi
+          version="$(node -p "require('./package.json').version")"
+          tag="v${version}"
 
-          if grep -Fxq "package.json" <<< "${changed_files}"; then
-            echo "should_release=true" >> "${GITHUB_OUTPUT}"
-          else
+          if git ls-remote --exit-code --tags origin "refs/tags/${tag}" > /dev/null 2>&1; then
+            echo "Tag ${tag} already exists — no new release needed."
             echo "should_release=false" >> "${GITHUB_OUTPUT}"
+          else
+            echo "Tag ${tag} does not exist — proceeding with release."
+            echo "should_release=true" >> "${GITHUB_OUTPUT}"
           fi
 
       - id: version
@@ -247,4 +244,4 @@ jobs:
 
       - name: Skip release publish
         if: ${{ steps.release-trigger.outputs.should_release != 'true' }}
-        run: echo "package.json did not change on this push, so release publishing was skipped."
+        run: echo "The current package.json version already has a release tag — publishing was skipped."
