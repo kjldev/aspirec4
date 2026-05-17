@@ -1,13 +1,9 @@
 <Project Sdk="Microsoft.NET.Sdk">
 	<PropertyGroup>
 		<TargetFramework>netstandard2.0</TargetFramework>
-		<ExcludePurviewTelemetry>true</ExcludePurviewTelemetry>
-		<DisableGenerateAssemblyInfoClass>true</DisableGenerateAssemblyInfoClass>
-		<ImplicitUsings>disable</ImplicitUsings>
-		<EnforceExtendedAnalyzerRules>true</EnforceExtendedAnalyzerRules>
 		<DisableSourceLink>true</DisableSourceLink>
 		<SourceLinkPackageName></SourceLinkPackageName>
-		<NoWarn>$(NoWarn);CS1591;CA1812</NoWarn>
+		<NoWarn>$(NoWarn);CS1591;CA1812;RS2008</NoWarn>
 		<IsPackable>false</IsPackable>
 	</PropertyGroup>
 	<ItemGroup>
