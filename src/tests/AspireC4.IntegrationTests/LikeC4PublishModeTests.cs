@@ -35,6 +35,10 @@ public sealed class LikeC4PublishModeTests
 			startInfo.Environment["AspireC4__FileName"] = "publish-model";
 			startInfo.Environment["AspireC4__Title"] = "Publish Mode Test";
 			startInfo.Environment["Logging__LogLevel__Default"] = "Debug";
+			// Disable strict mode: the TestAppHost has intentionally undeclared values used to
+			// trigger source generator warnings. The PostConfigure in AddAspireC4 re-reads this
+			// from config after the user's configure callback, so the env var takes effect.
+			startInfo.Environment["AspireC4__Strict__Mode"] = "None";
 
 			// Act
 			using var process = new System.Diagnostics.Process { StartInfo = startInfo };

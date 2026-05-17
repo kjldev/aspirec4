@@ -19,13 +19,6 @@ For more details on all of these tools and components, see:
 "
 			)
 			.WithStrictMode(AspireC4StrictMode.All)
-			.WithAllowedTag(AppLikeC4Registry.Tags.LocalDev)
-			.WithAllowedRelationshipKind(AppLikeC4Registry.RelationshipKinds.Resp)
-			.WithAllowedRelationshipKind(AppLikeC4Registry.RelationshipKinds.TcpIp)
-			.WithAllowedGroup(AppLikeC4Registry.Groups.LocalDevSyncGroup)
-			.WithAllowedGroup(AppLikeC4Registry.Groups.LocalDevSyncGroup1)
-			.WithAllowedMetadataKey(AppLikeC4Registry.MetadataKeys.AzureSku)
-			.WithAllowedMetadataKey(AppLikeC4Registry.MetadataKeys.UseCase)
 	)
 	// This is to configure certain parts of the AppHost and AspireC4 purely for this example test app.
 	.ConfigureTestHost();
@@ -107,7 +100,7 @@ var localPostgres = builder
 		opts.WithDescription("For testing Azure Postgres vs. local Postgres")
 			.WithSummary("Local Postgres for development")
 			.WithLink("https://www.postgresql.org/", "Learn more about Postgres")
-			.WithTag("local-dev")
+			.WithTag("local-dev1")
 	)
 	.WithLikeC4Group("Local Dev/ Sync Group 1");
 

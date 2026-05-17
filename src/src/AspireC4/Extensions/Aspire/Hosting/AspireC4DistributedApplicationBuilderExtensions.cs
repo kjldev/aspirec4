@@ -59,6 +59,23 @@ public static class AspireC4DistributedApplicationBuilderExtensions
 				opts.OutputDirectory = ResolveOutputDirectory(builder.AppHostDirectory, opts.OutputDirectory);
 			});
 
+		// Apply registry values from the source-generator-produced module initializer, then
+		// allow configuration (env vars, appsettings) to override the strict mode that the
+		// user may have set inside their configure callback — BindConfiguration runs before
+		// Configure callbacks, so an env-var override would otherwise be overwritten.
+		var configuration = builder.Configuration;
+		builder.Services.PostConfigure<AspireC4DiagramOptions>(opts =>
+		{
+			LikeC4RegistryBridge.Apply(opts.Strict);
+
+			var strictModeRaw = configuration[$"{AspireC4DiagramOptions.SectionName}:Strict:Mode"];
+			if (
+				!string.IsNullOrEmpty(strictModeRaw)
+				&& Enum.TryParse<AspireC4StrictMode>(strictModeRaw, ignoreCase: true, out var overrideMode)
+			)
+				opts.Strict.Mode = overrideMode;
+		});
+
 		var diagramOpts = new AspireC4DiagramOptions();
 		configure?.Invoke(diagramOpts);
 

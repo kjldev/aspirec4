@@ -49,6 +49,10 @@ public sealed partial class AspireC4HostTests
 				["AspireC4:Title"] = "Integration Test Architecture",
 				// Disable HMR so no relay port is bound during testing.
 				["AspireC4:DisableHMR"] = "true",
+				// Disable strict mode: integration tests verify lifecycle and file generation,
+				// not strict-enforcement behaviour. The TestAppHost intentionally has undeclared
+				// values (e.g. "local-dev1") that would throw at runtime with strict mode on.
+				["AspireC4:Strict:Mode"] = "None",
 			}
 		);
 

@@ -1,6 +1,4 @@
-using Aspire.Hosting.AspireC4;
-
-namespace Aspire.Hosting;
+namespace Aspire.Hosting.AspireC4.TestAppHost;
 
 /// <summary>
 /// Registry of known LikeC4 values for the AspireC4 test app host.
@@ -30,7 +28,6 @@ static class AppLikeC4Registry
 	internal static class Groups
 	{
 		public const string LocalDevSyncGroup = "Local Dev/ Sync Group";
-		public const string LocalDevSyncGroup1 = "Local Dev/ Sync Group 1";
 	}
 
 	/// <summary>Known metadata keys used with <c>.WithMetadata()</c>.</summary>

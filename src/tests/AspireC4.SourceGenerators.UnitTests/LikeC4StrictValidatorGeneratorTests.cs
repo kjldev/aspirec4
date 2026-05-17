@@ -598,11 +598,11 @@ public sealed class LikeC4StrictValidatorGeneratorTests
 	}
 
 	[Test]
-	public async Task RunGenerator_WithDefinitionsClassGroupsAndCaseMismatch_EmitsUndeclaredGroupDiagnostic(
+	public async Task RunGenerator_WithDefinitionsClassGroupsAndCaseVariant_EmitsNoDiagnostic(
 		CancellationToken cancellationToken
 	)
 	{
-		// Arrange — "frontend" (lowercase) ≠ "Frontend" declared → catches case-typo bugs
+		// Arrange — group comparison is case-insensitive (OrdinalIgnoreCase), so "frontend" matches "Frontend"
 		var source = BuildSourceWithDefinitionsClass(
 			groupConstants: [("Frontend", "Frontend")],
 			callSites: [".WithLikeC4Group(\"frontend\")"]
@@ -883,6 +883,150 @@ public sealed class LikeC4StrictValidatorGeneratorTests
 	}
 
 	// -----------------------------------------------------------------------
+	// DisableAspireC4SourceGenerator MSBuild property
+	// -----------------------------------------------------------------------
+
+	[Test]
+	public async Task RunGenerator_WithDisabledPropertyTrue_EmitsNoDiagnosticsEvenWithUndeclaredValues(
+		CancellationToken cancellationToken
+	)
+	{
+		// Arrange — declared registry has "valid-tag" only; call site uses "undeclared-tag"
+		var source = BuildSourceWithDefinitionsClass(
+			tagsConstants: [("ValidTag", "valid-tag")],
+			callSites: [".WithTag(\"undeclared-tag\")"]
+		);
+
+		// Act
+		var result = RunGenerator(source, disabled: true, cancellationToken: cancellationToken);
+
+		// Assert — generator disabled, so no ASPIREC4001 should fire
+		await Assert
+			.That(result.Diagnostics.Where(d => d.Id.StartsWith("ASPIREC4", StringComparison.Ordinal)))
+			.IsEmpty();
+	}
+
+	[Test]
+	public async Task RunGenerator_WithDisabledPropertyFalse_EmitsDiagnosticsAsNormal(
+		CancellationToken cancellationToken
+	)
+	{
+		// Arrange — declared registry has "valid-tag" only; call site uses "undeclared-tag"
+		var source = BuildSourceWithDefinitionsClass(
+			tagsConstants: [("ValidTag", "valid-tag")],
+			callSites: [".WithTag(\"undeclared-tag\")"]
+		);
+
+		// Act — disabled=false is the default; verification that normal validation still runs
+		var result = RunGenerator(source, disabled: false, cancellationToken: cancellationToken);
+
+		// Assert — validation is active, undeclared tag triggers ASPIREC4001
+		var diagnostics = GetDiagnostics(result, "ASPIREC4001");
+		await Assert.That(diagnostics.Count).IsGreaterThan(0);
+	}
+
+	// -----------------------------------------------------------------------
+	// Module initializer generation (LikeC4RegistryStrictConfiguration.g.cs)
+	// -----------------------------------------------------------------------
+
+	[Test]
+	public async Task RunGenerator_WithRegistryClass_GeneratesModuleInitializerFile(CancellationToken cancellationToken)
+	{
+		// Arrange
+		var source = BuildSourceWithDefinitionsClass(
+			tagsConstants: [("LocalDev", "local-dev")],
+			relationshipKindConstants: [("Resp", "RESP")],
+			groupConstants: [("DevGroup", "Dev Group")],
+			metadataKeyConstants: [("AzureSku", "Azure_SKU")]
+		);
+
+		// Act
+		var result = RunGenerator(source, cancellationToken: cancellationToken);
+
+		// Assert — initializer file is generated
+		var generated = GetGeneratedSource(result, "LikeC4RegistryStrictConfiguration.g.cs");
+		await Assert.That(generated).IsNotNull();
+		await Assert.That(generated).Contains("[ModuleInitializer]");
+		await Assert.That(generated).Contains("LikeC4RegistryBridge.Register");
+	}
+
+	[Test]
+	public async Task RunGenerator_WithRegistryClass_GeneratedInitializerContainsAllRegistryValues(
+		CancellationToken cancellationToken
+	)
+	{
+		// Arrange
+		var source = BuildSourceWithDefinitionsClass(
+			tagsConstants: [("LocalDev", "local-dev")],
+			relationshipKindConstants: [("Resp", "RESP"), ("TcpIp", "tcp-ip")],
+			groupConstants: [("DevGroup", "Dev Group")],
+			metadataKeyConstants: [("AzureSku", "Azure_SKU"), ("UseCase", "Use_Case")]
+		);
+
+		// Act
+		var result = RunGenerator(source, cancellationToken: cancellationToken);
+		var generated = GetGeneratedSource(result, "LikeC4RegistryStrictConfiguration.g.cs");
+
+		// Assert — each declared value appears in the generated output
+		await Assert.That(generated).IsNotNull();
+		await Assert.That(generated).Contains("opts.Tags.Add(\"local-dev\")");
+		await Assert.That(generated).Contains("opts.RelationshipKinds.Add(\"RESP\")");
+		await Assert.That(generated).Contains("opts.RelationshipKinds.Add(\"tcp-ip\")");
+		await Assert.That(generated).Contains("opts.Groups.Add(\"Dev Group\")");
+		await Assert.That(generated).Contains("opts.MetadataKeys.Add(\"Azure_SKU\")");
+		await Assert.That(generated).Contains("opts.MetadataKeys.Add(\"Use_Case\")");
+	}
+
+	[Test]
+	public async Task RunGenerator_WithDisabledPropertyTrue_DoesNotGenerateModuleInitializerFile(
+		CancellationToken cancellationToken
+	)
+	{
+		// Arrange
+		var source = BuildSourceWithDefinitionsClass(tagsConstants: [("LocalDev", "local-dev")]);
+
+		// Act
+		var result = RunGenerator(source, disabled: true, cancellationToken: cancellationToken);
+
+		// Assert — generator disabled means no module initializer is emitted
+		var generated = GetGeneratedSource(result, "LikeC4RegistryStrictConfiguration.g.cs");
+		await Assert.That(generated).IsNull();
+	}
+
+	[Test]
+	public async Task RunGenerator_WithNoRegistryClass_DoesNotGenerateModuleInitializerFile(
+		CancellationToken cancellationToken
+	)
+	{
+		// Arrange — source has call sites but no [LikeC4Registry] class
+		var source = BuildSourceWithCallSites(".WithTag(\"some-tag\")");
+
+		// Act
+		var result = RunGenerator(source, cancellationToken: cancellationToken);
+
+		// Assert — no registry class → no module initializer
+		var generated = GetGeneratedSource(result, "LikeC4RegistryStrictConfiguration.g.cs");
+		await Assert.That(generated).IsNull();
+	}
+
+	[Test]
+	public async Task RunGenerator_WithRegistryClassWithSpecialCharacters_EscapesValuesCorrectly(
+		CancellationToken cancellationToken
+	)
+	{
+		// Arrange — group name contains a quote and backslash
+		var source = BuildSourceWithDefinitionsClass(groupConstants: [("SlashGroup", "Dev/ Sync Group")]);
+
+		// Act
+		var result = RunGenerator(source, cancellationToken: cancellationToken);
+		var generated = GetGeneratedSource(result, "LikeC4RegistryStrictConfiguration.g.cs");
+
+		// Assert — the slash is preserved as-is (only quotes and backslashes are escaped)
+		await Assert.That(generated).IsNotNull();
+		await Assert.That(generated).Contains("opts.Groups.Add(\"Dev/ Sync Group\")");
+	}
+
+	// -----------------------------------------------------------------------
 	// Helpers
 	// -----------------------------------------------------------------------
 
@@ -892,6 +1036,7 @@ public sealed class LikeC4StrictValidatorGeneratorTests
 		string source,
 		TestAdditionalText[]? additionalFiles = null,
 		bool strictMode = false,
+		bool disabled = false,
 		CancellationToken cancellationToken = default
 	)
 	{
@@ -905,9 +1050,14 @@ public sealed class LikeC4StrictValidatorGeneratorTests
 		var generator = CreateSut();
 		var additionalTexts = additionalFiles?.Cast<AdditionalText>().ToArray() ?? [];
 
-		AnalyzerConfigOptionsProvider? optionsProvider = strictMode
-			? new TestAnalyzerConfigOptionsProvider("build_property.AspireC4Strict", "true")
-			: null;
+		var buildProperties = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+		if (strictMode)
+			buildProperties["build_property.AspireC4Strict"] = "true";
+		if (disabled)
+			buildProperties["build_property.DisableAspireC4SourceGenerator"] = "true";
+
+		AnalyzerConfigOptionsProvider? optionsProvider =
+			buildProperties.Count > 0 ? new TestAnalyzerConfigOptionsProvider(buildProperties) : null;
 
 		GeneratorDriver driver = CSharpGeneratorDriver.Create(
 			generators: [generator.AsSourceGenerator()],
@@ -1027,9 +1177,9 @@ public sealed class LikeC4StrictValidatorGeneratorTests
 		public override SourceText? GetText(CancellationToken cancellationToken = default) => SourceText.From(content);
 	}
 
-	sealed class TestAnalyzerConfigOptionsProvider(string key, string value) : AnalyzerConfigOptionsProvider
+	sealed class TestAnalyzerConfigOptionsProvider(Dictionary<string, string> options) : AnalyzerConfigOptionsProvider
 	{
-		readonly TestAnalyzerConfigOptions _options = new(key, value);
+		readonly TestAnalyzerConfigOptions _options = new(options);
 
 		public override AnalyzerConfigOptions GlobalOptions => _options;
 
@@ -1038,18 +1188,9 @@ public sealed class LikeC4StrictValidatorGeneratorTests
 		public override AnalyzerConfigOptions GetOptions(AdditionalText textFile) => _options;
 	}
 
-	sealed class TestAnalyzerConfigOptions(string key, string value) : AnalyzerConfigOptions
+	sealed class TestAnalyzerConfigOptions(Dictionary<string, string> options) : AnalyzerConfigOptions
 	{
-		public override bool TryGetValue(string requestedKey, [NotNullWhen(true)] out string? optionValue)
-		{
-			if (string.Equals(requestedKey, key, StringComparison.OrdinalIgnoreCase))
-			{
-				optionValue = value;
-				return true;
-			}
-
-			optionValue = null;
-			return false;
-		}
+		public override bool TryGetValue(string requestedKey, [NotNullWhen(true)] out string? optionValue) =>
+			options.TryGetValue(requestedKey, out optionValue);
 	}
 }
