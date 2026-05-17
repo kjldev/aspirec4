@@ -565,6 +565,7 @@ dist
 # general
 
 [Bb]uild/
+!/src/src/AspireC4/build/
 *.o
 [Dd]ebug*/
 [Rr]elease*/
