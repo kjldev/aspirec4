@@ -45,6 +45,7 @@ public sealed class LikeC4StrictValidatorGenerator : IIncrementalGenerator
 
 	const string WithTagMethodName = "WithTag";
 	const string WithKindMethodName = "WithKind";
+	const string WithGroupMethodName = "WithLikeC4Group";
 
 	/// <summary>
 	/// Line-level patterns safe to apply globally. In LikeC4 DSL, these token sequences only
@@ -116,6 +117,18 @@ public sealed class LikeC4StrictValidatorGenerator : IIncrementalGenerator
 			+ "Consolidate all tag, element-kind, and relationship-kind definitions into a single class."
 	);
 
+	/// <summary>Emitted when a <c>.WithLikeC4Group()</c> argument is not declared in the active definitions.</summary>
+	public static readonly DiagnosticDescriptor UndeclaredGroup = new DiagnosticDescriptor(
+		id: "ASPIREC4004",
+		title: "Undeclared LikeC4 group",
+		messageFormat: "Group '{0}' is not declared. Add it as 'public const string' in the 'Groups' nested class of your [LikeC4Definitions] class.",
+		category: "AspireC4",
+		defaultSeverity: DiagnosticSeverity.Error,
+		isEnabledByDefault: true,
+		description: "All group names passed to WithLikeC4Group() must be declared as public const string fields "
+			+ "in the Groups nested class of a [LikeC4Definitions]-annotated class."
+	);
+
 	// --- Injected attribute ---
 
 	const string AttributeSource =
@@ -176,14 +189,20 @@ public sealed class LikeC4StrictValidatorGenerator : IIncrementalGenerator
 		// Call-site string values to validate.
 		var tagCallSites = CreateCallSiteProvider(context, WithTagMethodName).Collect();
 		var kindCallSites = CreateCallSiteProvider(context, WithKindMethodName).Collect();
+		var groupCallSites = CreateCallSiteProvider(context, WithGroupMethodName).Collect();
 
 		// Combine everything and validate.
 		context.RegisterSourceOutput(
-			isStrictMode.Combine(dslDefinitions).Combine(classDefinitions).Combine(tagCallSites).Combine(kindCallSites),
+			isStrictMode
+				.Combine(dslDefinitions)
+				.Combine(classDefinitions)
+				.Combine(tagCallSites)
+				.Combine(kindCallSites)
+				.Combine(groupCallSites),
 			static (ctx, data) =>
 			{
-				var ((((isStrict, dslDefs), classDefs), tags), kinds) = data;
-				Validate(ctx, isStrict, dslDefs, classDefs, tags, kinds);
+				var (((((isStrict, dslDefs), classDefs), tags), kinds), groups) = data;
+				Validate(ctx, isStrict, dslDefs, classDefs, tags, kinds, groups);
 			}
 		);
 	}
@@ -252,6 +271,7 @@ public sealed class LikeC4StrictValidatorGenerator : IIncrementalGenerator
 		var tags = new List<string>();
 		var elementKinds = new List<string>();
 		var relationshipKinds = new List<string>();
+		var groups = new List<string>();
 
 		foreach (var nested in classSymbol.GetTypeMembers())
 		{
@@ -268,6 +288,9 @@ public sealed class LikeC4StrictValidatorGenerator : IIncrementalGenerator
 					break;
 				case "RelationshipKinds":
 					target = relationshipKinds;
+					break;
+				case "Groups":
+					target = groups;
 					break;
 				default:
 					continue;
@@ -293,7 +316,8 @@ public sealed class LikeC4StrictValidatorGenerator : IIncrementalGenerator
 			location,
 			tags.ToImmutableArray(),
 			elementKinds.ToImmutableArray(),
-			relationshipKinds.ToImmutableArray()
+			relationshipKinds.ToImmutableArray(),
+			groups.ToImmutableArray()
 		);
 	}
 
@@ -342,7 +366,8 @@ public sealed class LikeC4StrictValidatorGenerator : IIncrementalGenerator
 		DslDefinitions dslDefs,
 		ImmutableArray<ClassDefinitions> classDefs,
 		ImmutableArray<CallSiteInfo> tagCallSites,
-		ImmutableArray<CallSiteInfo> kindCallSites
+		ImmutableArray<CallSiteInfo> kindCallSites,
+		ImmutableArray<CallSiteInfo> groupCallSites
 	)
 	{
 		// Enforce single definitions class per assembly (report all duplicates beyond the first).
@@ -375,6 +400,11 @@ public sealed class LikeC4StrictValidatorGenerator : IIncrementalGenerator
 				: Enumerable.Empty<string>()
 		);
 
+		// Groups are class-based only (LikeC4 specification blocks have no group keyword).
+		var allowedGroups = hasClassValidation
+			? BuildAllowedSet(Enumerable.Empty<string>(), classDefs.SelectMany(static d => d.Groups))
+			: new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
 		foreach (var site in tagCallSites)
 		{
 			if (!allowedTags.Contains(site.Value))
@@ -388,6 +418,16 @@ public sealed class LikeC4StrictValidatorGenerator : IIncrementalGenerator
 			{
 				if (!allowedKinds.Contains(site.Value))
 					ctx.ReportDiagnostic(Diagnostic.Create(UndeclaredKind, site.Location, site.Value));
+			}
+		}
+
+		// Validate group names only when the [LikeC4Definitions] class declares a Groups nested class.
+		if (allowedGroups.Count > 0)
+		{
+			foreach (var site in groupCallSites)
+			{
+				if (!allowedGroups.Contains(site.Value))
+					ctx.ReportDiagnostic(Diagnostic.Create(UndeclaredGroup, site.Location, site.Value));
 			}
 		}
 	}
@@ -459,6 +499,7 @@ sealed class ClassDefinitions : IEquatable<ClassDefinitions>
 		null,
 		ImmutableArray<string>.Empty,
 		ImmutableArray<string>.Empty,
+		ImmutableArray<string>.Empty,
 		ImmutableArray<string>.Empty
 	);
 
@@ -467,7 +508,8 @@ sealed class ClassDefinitions : IEquatable<ClassDefinitions>
 		Location? location,
 		ImmutableArray<string> tags,
 		ImmutableArray<string> elementKinds,
-		ImmutableArray<string> relationshipKinds
+		ImmutableArray<string> relationshipKinds,
+		ImmutableArray<string> groups
 	)
 	{
 		DisplayName = displayName;
@@ -475,6 +517,7 @@ sealed class ClassDefinitions : IEquatable<ClassDefinitions>
 		Tags = tags;
 		ElementKinds = elementKinds;
 		RelationshipKinds = relationshipKinds;
+		Groups = groups;
 	}
 
 	public string DisplayName { get; }
@@ -485,6 +528,7 @@ sealed class ClassDefinitions : IEquatable<ClassDefinitions>
 	public ImmutableArray<string> Tags { get; }
 	public ImmutableArray<string> ElementKinds { get; }
 	public ImmutableArray<string> RelationshipKinds { get; }
+	public ImmutableArray<string> Groups { get; }
 
 	public bool Equals(ClassDefinitions other)
 	{
@@ -494,7 +538,8 @@ sealed class ClassDefinitions : IEquatable<ClassDefinitions>
 		return DisplayName == other.DisplayName
 			&& Tags.SequenceEqual(other.Tags, StringComparer.Ordinal)
 			&& ElementKinds.SequenceEqual(other.ElementKinds, StringComparer.Ordinal)
-			&& RelationshipKinds.SequenceEqual(other.RelationshipKinds, StringComparer.Ordinal);
+			&& RelationshipKinds.SequenceEqual(other.RelationshipKinds, StringComparer.Ordinal)
+			&& Groups.SequenceEqual(other.Groups, StringComparer.Ordinal);
 	}
 
 	public override bool Equals(object obj) => Equals(obj as ClassDefinitions);
@@ -507,6 +552,7 @@ sealed class ClassDefinitions : IEquatable<ClassDefinitions>
 			h = (h * 397) ^ Tags.Length;
 			h = (h * 397) ^ ElementKinds.Length;
 			h = (h * 397) ^ RelationshipKinds.Length;
+			h = (h * 397) ^ Groups.Length;
 			return h;
 		}
 	}

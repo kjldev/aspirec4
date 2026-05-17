@@ -180,6 +180,97 @@ public sealed class KnownLikeC4RegistryGeneratorTests
 		await Assert.That(output).Contains("public static class ElementKinds");
 	}
 
+	[Test]
+	public async Task RunGenerator_WithWithLikeC4GroupCallSite_GeneratesGroupsNestedClass(
+		CancellationToken cancellationToken
+	)
+	{
+		// Arrange
+		var source = CreateSourceWithCallSites(".WithLikeC4Group(\"Frontend\")");
+
+		// Act
+		var result = RunGenerator(source, cancellationToken);
+		var output = GetGeneratedSource(result, "KnownLikeC4Registry.g.cs");
+
+		// Assert
+		await Assert.That(output).IsNotNull();
+		await Assert.That(output!).Contains("public static class Groups");
+		await Assert.That(output).Contains("public const string Frontend = \"Frontend\";");
+	}
+
+	[Test]
+	public async Task RunGenerator_WithMultiWordGroupName_GeneratesPascalCasedConstant(
+		CancellationToken cancellationToken
+	)
+	{
+		// Arrange
+		var source = CreateSourceWithCallSites(".WithLikeC4Group(\"local-dev-services\")");
+
+		// Act
+		var result = RunGenerator(source, cancellationToken);
+		var output = GetGeneratedSource(result, "KnownLikeC4Registry.g.cs");
+
+		// Assert
+		await Assert.That(output).IsNotNull();
+		await Assert.That(output!).Contains("public const string LocalDevServices = \"local-dev-services\";");
+	}
+
+	[Test]
+	public async Task RunGenerator_WithDuplicateGroupCallSites_DeduplicatesValues(CancellationToken cancellationToken)
+	{
+		// Arrange
+		var source = CreateSourceWithCallSites(".WithLikeC4Group(\"Frontend\")", ".WithLikeC4Group(\"Frontend\")");
+
+		// Act
+		var result = RunGenerator(source, cancellationToken);
+		var output = GetGeneratedSource(result, "KnownLikeC4Registry.g.cs");
+
+		// Assert
+		await Assert.That(output).IsNotNull();
+		var count = CountOccurrences(output!, "Frontend = \"Frontend\"");
+		await Assert.That(count).IsEqualTo(1);
+	}
+
+	[Test]
+	public async Task RunGenerator_WithGroupCallSiteOnly_ProducesOutputWithGroupsClass(
+		CancellationToken cancellationToken
+	)
+	{
+		// Arrange
+		var source = CreateSourceWithCallSites(".WithLikeC4Group(\"Backend\")");
+
+		// Act
+		var result = RunGenerator(source, cancellationToken);
+		var output = GetGeneratedSource(result, "KnownLikeC4Registry.g.cs");
+
+		// Assert
+		await Assert.That(output).IsNotNull();
+		await Assert.That(output!).Contains("public static class Groups");
+	}
+
+	[Test]
+	public async Task RunGenerator_WithAllThreeCallSiteTypes_GeneratesAllThreeNestedClasses(
+		CancellationToken cancellationToken
+	)
+	{
+		// Arrange
+		var source = CreateSourceWithCallSites(
+			".WithTag(\"external\")",
+			".WithKind(\"async\")",
+			".WithLikeC4Group(\"Frontend\")"
+		);
+
+		// Act
+		var result = RunGenerator(source, cancellationToken);
+		var output = GetGeneratedSource(result, "KnownLikeC4Registry.g.cs");
+
+		// Assert
+		await Assert.That(output).IsNotNull();
+		await Assert.That(output!).Contains("public static class Tags");
+		await Assert.That(output).Contains("public static class ElementKinds");
+		await Assert.That(output).Contains("public static class Groups");
+	}
+
 	static KnownLikeC4RegistryGenerator CreateSut() => new();
 
 	static GeneratorDriverRunResult RunGenerator(string source, CancellationToken cancellationToken)

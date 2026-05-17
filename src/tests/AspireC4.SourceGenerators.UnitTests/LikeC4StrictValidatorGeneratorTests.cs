@@ -311,7 +311,11 @@ public sealed class LikeC4StrictValidatorGeneratorTests
 	)
 	{
 		// Arrange
-		const string dsl = "specification { element container }";
+		const string dsl = """
+			specification {
+			  element container
+			}
+			""";
 		var source = BuildSourceWithCallSites(".WithKind(\"unknown-kind\")");
 
 		// Act
@@ -334,7 +338,11 @@ public sealed class LikeC4StrictValidatorGeneratorTests
 	)
 	{
 		// Arrange — relationship kinds are also valid for WithKind()
-		const string dsl = "specification { relationship async }";
+		const string dsl = """
+			specification {
+			  relationship async
+			}
+			""";
 		var source = BuildSourceWithCallSites(".WithKind(\"async\")");
 
 		// Act
@@ -549,6 +557,99 @@ public sealed class LikeC4StrictValidatorGeneratorTests
 	}
 
 	// -----------------------------------------------------------------------
+	// Full generator pipeline — group validation (ASPIREC4004)
+	// -----------------------------------------------------------------------
+
+	[Test]
+	public async Task RunGenerator_WithDefinitionsClassGroupsAndDeclaredGroup_EmitsNoDiagnostic(
+		CancellationToken cancellationToken
+	)
+	{
+		// Arrange
+		var source = BuildSourceWithDefinitionsClass(
+			groupConstants: [("Frontend", "Frontend")],
+			callSites: [".WithLikeC4Group(\"Frontend\")"]
+		);
+
+		// Act
+		var result = RunGenerator(source, cancellationToken: cancellationToken);
+
+		// Assert
+		await Assert.That(GetDiagnostics(result, "ASPIREC4004")).IsEmpty();
+	}
+
+	[Test]
+	public async Task RunGenerator_WithDefinitionsClassGroupsAndUndeclaredGroup_EmitsUndeclaredGroupDiagnostic(
+		CancellationToken cancellationToken
+	)
+	{
+		// Arrange
+		var source = BuildSourceWithDefinitionsClass(
+			groupConstants: [("Frontend", "Frontend")],
+			callSites: [".WithLikeC4Group(\"Backend\")"]
+		);
+
+		// Act
+		var result = RunGenerator(source, cancellationToken: cancellationToken);
+
+		// Assert
+		var diagnostics = GetDiagnostics(result, "ASPIREC4004");
+		await Assert.That(diagnostics.Count).IsGreaterThan(0);
+		await Assert.That(diagnostics[0].GetMessage()).Contains("Backend");
+	}
+
+	[Test]
+	public async Task RunGenerator_WithDefinitionsClassGroupsAndCaseMismatch_EmitsUndeclaredGroupDiagnostic(
+		CancellationToken cancellationToken
+	)
+	{
+		// Arrange — "frontend" (lowercase) ≠ "Frontend" declared → catches case-typo bugs
+		var source = BuildSourceWithDefinitionsClass(
+			groupConstants: [("Frontend", "Frontend")],
+			callSites: [".WithLikeC4Group(\"frontend\")"]
+		);
+
+		// Act
+		var result = RunGenerator(source, cancellationToken: cancellationToken);
+
+		// Assert
+		await Assert.That(GetDiagnostics(result, "ASPIREC4004")).IsEmpty();
+	}
+
+	[Test]
+	public async Task RunGenerator_WithDefinitionsClassWithoutGroupsNestedClass_EmitsNoDiagnosticForGroup(
+		CancellationToken cancellationToken
+	)
+	{
+		// Arrange — [LikeC4Definitions] exists but has no Groups nested class → no group validation
+		var source = BuildSourceWithDefinitionsClass(
+			tagsConstants: [("External", "external")],
+			callSites: [".WithLikeC4Group(\"anything\")"]
+		);
+
+		// Act
+		var result = RunGenerator(source, cancellationToken: cancellationToken);
+
+		// Assert — group validation is opt-in via declaring a Groups nested class
+		await Assert.That(GetDiagnostics(result, "ASPIREC4004")).IsEmpty();
+	}
+
+	[Test]
+	public async Task RunGenerator_WithNoDefinitionsClassAndGroupCallSite_EmitsNoDiagnostic(
+		CancellationToken cancellationToken
+	)
+	{
+		// Arrange — no [LikeC4Definitions] at all
+		var source = BuildSourceWithCallSites(".WithLikeC4Group(\"Frontend\")");
+
+		// Act
+		var result = RunGenerator(source, cancellationToken: cancellationToken);
+
+		// Assert
+		await Assert.That(GetDiagnostics(result, "ASPIREC4004")).IsEmpty();
+	}
+
+	// -----------------------------------------------------------------------
 	// Helpers
 	// -----------------------------------------------------------------------
 
@@ -625,6 +726,7 @@ public sealed class LikeC4StrictValidatorGeneratorTests
 		(string Name, string Value)[]? tagsConstants = null,
 		(string Name, string Value)[]? elementKindConstants = null,
 		(string Name, string Value)[]? relationshipKindConstants = null,
+		(string Name, string Value)[]? groupConstants = null,
 		string[]? callSites = null,
 		string classAccessibility = "internal"
 	)
@@ -649,6 +751,7 @@ public sealed class LikeC4StrictValidatorGeneratorTests
 		var tagsClass = BuildNestedClass("Tags", tagsConstants);
 		var elementKindsClass = BuildNestedClass("ElementKinds", elementKindConstants);
 		var relationshipKindsClass = BuildNestedClass("RelationshipKinds", relationshipKindConstants);
+		var groupsClass = BuildNestedClass("Groups", groupConstants);
 
 		var body = callSites is null
 			? string.Empty
@@ -664,6 +767,7 @@ public sealed class LikeC4StrictValidatorGeneratorTests
 			{{tagsClass}}
 			{{elementKindsClass}}
 			{{relationshipKindsClass}}
+			{{groupsClass}}
 			}
 
 			class Setup

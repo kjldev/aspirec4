@@ -20,26 +20,38 @@ public sealed class KnownLikeC4RegistryGenerator : IIncrementalGenerator
 
 	const string WithTagMethodName = "WithTag";
 	const string WithKindMethodName = "WithKind";
+	const string WithGroupMethodName = "WithLikeC4Group";
 
 	/// <summary>Initializes the incremental generator pipeline.</summary>
 	public void Initialize(IncrementalGeneratorInitializationContext context)
 	{
 		var tagValues = CreateStringArgProvider(context, WithTagMethodName).Collect();
 		var kindValues = CreateStringArgProvider(context, WithKindMethodName).Collect();
+		var groupValues = CreateStringArgProvider(context, WithGroupMethodName).Collect();
 
 		context.RegisterSourceOutput(
-			tagValues.Combine(kindValues),
-			static (ctx, source) => EmitRegistry(ctx, source.Left, source.Right)
+			tagValues.Combine(kindValues).Combine(groupValues),
+			static (ctx, source) => EmitRegistry(ctx, source.Left.Left, source.Left.Right, source.Right)
 		);
 	}
 
 	/// <summary>Converts a dash/underscore-separated name into PascalCase.</summary>
+	/// <remarks>
+	/// Any character that is not a letter, digit, hyphen, or underscore is treated as a
+	/// word separator (replaced with a hyphen) before splitting. This allows group names
+	/// such as "Local Dev/ Sync Group" to be safely converted to "LocalDevSyncGroup".
+	/// </remarks>
 	internal static string ToPascalCase(string name)
 	{
 		if (string.IsNullOrEmpty(name))
 			return string.Empty;
 
-		var segments = name.Split(NameSeparators, StringSplitOptions.RemoveEmptyEntries);
+		// Normalize non-separator, non-alnum characters to hyphens so they act as word boundaries.
+		var sanitized = new string(
+			name.Select(static c => char.IsLetterOrDigit(c) || c == '-' || c == '_' ? c : '-').ToArray()
+		);
+
+		var segments = sanitized.Split(NameSeparators, StringSplitOptions.RemoveEmptyEntries);
 		if (segments.Length == 0)
 			return string.Empty;
 
@@ -94,13 +106,15 @@ public sealed class KnownLikeC4RegistryGenerator : IIncrementalGenerator
 	static void EmitRegistry(
 		SourceProductionContext context,
 		ImmutableArray<string> tagValues,
-		ImmutableArray<string> kindValues
+		ImmutableArray<string> kindValues,
+		ImmutableArray<string> groupValues
 	)
 	{
 		var tags = NormalizeToFields(tagValues);
 		var kinds = NormalizeToFields(kindValues);
+		var groups = NormalizeToFields(groupValues);
 
-		if (tags.IsEmpty && kinds.IsEmpty)
+		if (tags.IsEmpty && kinds.IsEmpty && groups.IsEmpty)
 			return;
 
 		StringBuilder sb = new();
@@ -120,6 +134,8 @@ public sealed class KnownLikeC4RegistryGenerator : IIncrementalGenerator
 		AppendNestedClass(sb, "Tags", "Known tags discovered from .WithTag(...) call sites.", tags);
 		sb.AppendLine();
 		AppendNestedClass(sb, "ElementKinds", "Known element kinds discovered from .WithKind(...) call sites.", kinds);
+		sb.AppendLine();
+		AppendNestedClass(sb, "Groups", "Known group names discovered from .WithLikeC4Group(...) call sites.", groups);
 		sb.AppendLine("}");
 		sb.AppendLine();
 		sb.AppendLine("#pragma warning restore CS1591");
