@@ -241,9 +241,13 @@ sealed partial class AspireC4LifecycleHook
 	{
 		for (var attempt = 0; attempt < 300; attempt++)
 		{
-			var endpoint = appModel
-				.Resources.OfType<LikeC4ServerResource>()
-				.SelectMany(resource => resource.Annotations.OfType<EndpointAnnotation>())
+			// Find the LikeC4ServerResource — either directly or as the inner resource of AspireC4Resource.
+			var serverResource =
+				appModel.Resources.OfType<AspireC4Resource>().FirstOrDefault()?.InnerResource as LikeC4ServerResource
+				?? appModel.Resources.OfType<LikeC4ServerResource>().FirstOrDefault();
+
+			var endpoint = serverResource
+				?.Annotations.OfType<EndpointAnnotation>()
 				.FirstOrDefault(annotation => annotation.Name == LikeC4ServerResource.HMREndpointName)
 				?.AllocatedEndpoint;
 

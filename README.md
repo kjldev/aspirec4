@@ -168,6 +168,95 @@ The LikeC4 sidecar resource itself is always excluded.
 
 ---
 
+## Strict mode and the source generator
+
+AspireC4 ships a bundled Roslyn source generator that validates `WithTag()`, `WithKind()`, `WithLikeC4Group()`, and `WithMetadata()` call sites at **compile time** and bridges the declared values into **runtime strict enforcement** — no extra NuGet package required.
+
+### Defining the registry
+
+Create a class in your AppHost annotated with `[LikeC4Registry]`. Nest static classes named `Tags`, `ElementKinds`, `RelationshipKinds`, `Groups`, and/or `MetadataKeys` inside it. Each `public const string` field in those nested classes declares an allowed value:
+
+```csharp
+[LikeC4Registry]
+internal static class MyRegistry
+{
+    internal static class Tags
+    {
+        public const string LocalDev = "local-dev";
+        public const string Staging  = "staging";
+    }
+
+    internal static class RelationshipKinds
+    {
+        public const string Http = "HTTP";
+        public const string Grpc = "gRPC";
+    }
+
+    internal static class Groups
+    {
+        public const string Backend = "Backend Services";
+    }
+
+    internal static class MetadataKeys
+    {
+        public const string Region = "Region";
+    }
+}
+```
+
+- Only one `[LikeC4Registry]` class is allowed per assembly.
+- Any accessibility modifier (`internal`, `private`, `public`) works.
+- The class may be nested inside another class.
+- The `[LikeC4Registry]` attribute is injected automatically by the source generator — no `using` directive is needed.
+
+### Compile-time diagnostics
+
+Once the registry is in place, the source generator emits diagnostics for any undeclared values used at call sites:
+
+| Code | Applies to | Severity |
+|------|-----------|---------|
+| `ASPIREC4001` | `.WithTag()` | Warning |
+| `ASPIREC4002` | `.WithKind()` on a relationship | Warning |
+| `ASPIREC4003` | `.WithKind()` on an element | Warning |
+| `ASPIREC4004` | `.WithLikeC4Group()` | Warning |
+| `ASPIREC4005` | `.WithMetadata()` key | Warning |
+
+### Runtime strict enforcement
+
+The source generator emits a `[ModuleInitializer]` that pre-populates `AspireC4StrictOptions` with all declared values before `Main()` runs. You can then enable runtime enforcement in your `AddAspireC4` call without having to repeat every value:
+
+```csharp
+builder.AddAspireC4(o => o.WithStrictMode(AspireC4StrictMode.All));
+```
+
+At runtime, any resource that uses an undeclared value (tag, group, metadata key, or relationship kind) throws an `InvalidOperationException` before the diagram is written. Values declared in `[LikeC4Registry]` are automatically trusted — no `WithAllowedTag()` / `WithAllowedGroup()` / etc. calls needed.
+
+### Disabling the source generator
+
+Add the following to your AppHost `.csproj` (or `Directory.Build.props`) to opt out:
+
+```xml
+<PropertyGroup>
+  <DisableAspireC4SourceGenerator>true</DisableAspireC4SourceGenerator>
+</PropertyGroup>
+```
+
+When disabled, no compile-time diagnostics are emitted and no module initializer is generated. The `[LikeC4Registry]` attribute is still injected so existing code continues to compile, but strict enforcement must be configured entirely via `WithAllowedTag()` etc.
+
+### DSL-file mode
+
+Alternatively (or in addition), you can point the generator at existing `.c4`/`.likec4` additional files:
+
+```xml
+<PropertyGroup>
+  <AspireC4Strict>true</AspireC4Strict>
+</PropertyGroup>
+```
+
+With this flag set, `specification { tag … }`, `specification { relationship … }`, and `specification { element … }` blocks in any `.c4` additional file in the project are parsed and merged with registry values for validation. Both modes may be active simultaneously.
+
+---
+
 ## Limitations
 
 - **Static diagram tool**: LikeC4 renders a static (file-based) diagram. State updates require a HMR refresh.

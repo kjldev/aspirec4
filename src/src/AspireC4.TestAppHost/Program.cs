@@ -18,6 +18,7 @@ For more details on all of these tools and components, see:
 - [AspireC4](https://kjl.dev/projects/aspirec4/)
 "
 			)
+			.WithStrictMode(AspireC4StrictMode.All)
 	)
 	// This is to configure certain parts of the AppHost and AspireC4 purely for this example test app.
 	.ConfigureTestHost();
@@ -91,7 +92,7 @@ When using Azure Managed Redis with `.RunAsContainer()`, the application will di
 			.WithLink("https://redis.io/", "Learn more about Redis")
 			.WithTag("local-dev")
 	)
-	.WithLikeC4Group("Local Dev/ Sync Group");
+	.WithLikeC4Group(AppLikeC4Registry.Groups.LocalDevSyncGroup);
 
 var localPostgres = builder
 	.AddPostgres("local-postgres")
@@ -99,9 +100,9 @@ var localPostgres = builder
 		opts.WithDescription("For testing Azure Postgres vs. local Postgres")
 			.WithSummary("Local Postgres for development")
 			.WithLink("https://www.postgresql.org/", "Learn more about Postgres")
-			.WithTag("local-dev")
+			.WithTag("local-dev1")
 	)
-	.WithLikeC4Group("Local Dev/ Sync Group");
+	.WithLikeC4Group("Local Dev/ Sync Group 1");
 
 // Our app...
 var nodeApp = builder

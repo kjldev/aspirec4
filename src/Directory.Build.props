@@ -8,6 +8,7 @@
 		<TargetFramework>net8.0</TargetFramework>
 		<NoWarn>$(NoWarn);ASPIREATS001</NoWarn>
 		<ExcludeMSTelemetryExtension>true</ExcludeMSTelemetryExtension>
+		<EnforceExtendedAnalyzerRules>true</EnforceExtendedAnalyzerRules>
 	</PropertyGroup>
 	<PropertyGroup Condition="'$(IsTestProject)' == 'true'">
 		<NoWarn>$(NoWarn);CA1034;</NoWarn>

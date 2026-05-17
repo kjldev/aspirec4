@@ -8,10 +8,10 @@ namespace Aspire.Hosting.AspireC4.ApplicationModel;
 /// architecture diagram.
 /// </summary>
 /// <remarks>
-/// To use a local Node.js CLI instead of Docker, call
-/// <see cref="IAspireC4Builder.WithLocalCLI"/> on the returned builder.
+/// This is an implementation detail of <see cref="AspireC4Resource"/>. To switch to a local
+/// Node.js CLI instead, call <c>.WithLocalCLI()</c> on the
+/// <c>IResourceBuilder&lt;AspireC4Resource&gt;</c> returned by <c>AddAspireC4()</c>.
 /// </remarks>
-[AspireExport]
 public sealed class LikeC4ServerResource : ContainerResource
 {
 	/// <summary>The name of the HTTP endpoint exposed by the LikeC4 server.</summary>

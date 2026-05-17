@@ -1,121 +1,16 @@
-using Aspire.Hosting.AspireC4.ApplicationModel;
-using Aspire.Hosting.AspireC4.LikeC4.Annotations;
 using Aspire.Hosting.AspireC4.LikeC4.Runtime;
-using Microsoft.Extensions.DependencyInjection;
 
 namespace Aspire.Hosting.AspireC4;
 
-sealed class AspireC4Builder(
-	IDistributedApplicationBuilder applicationBuilder,
-	IResourceBuilder<IResource> serverResourceBuilder,
-	string outputDirectory
-) : IAspireC4Builder
+/// <summary>
+/// Internal utility methods shared between <see cref="AspireC4ResourceExtensions"/> and the lifecycle hook.
+/// </summary>
+static class AspireC4Builder
 {
-	public IDistributedApplicationBuilder ApplicationBuilder { get; } = applicationBuilder;
-
-	public IResourceBuilder<IResource> LikeC4ResourceBuilder { get; } = serverResourceBuilder;
-
-	internal string OutputDirectory { get; } = outputDirectory;
-
-	public IAspireC4Builder WithLocalCLI(LocalCLIRuntime runtime = LocalCLIRuntime.Auto)
-	{
-		// Remove the existing server resource (container by default) from the app model.
-		ApplicationBuilder.Resources.Remove(LikeC4ResourceBuilder.Resource);
-
-		var resolvedRuntime = runtime == LocalCLIRuntime.Auto ? DetectRuntime() : runtime;
-
-		var (command, args) = BuildLocalCLICommand(
-			resolvedRuntime,
-			OutputDirectory,
-			LikeC4LocalServerResource.DefaultPort
-		);
-
-		LikeC4LocalServerResource localResource = new(LikeC4ResourceBuilder.Resource.Name, command, OutputDirectory);
-
-		var localBuilder = ApplicationBuilder
-			.AddResource(localResource)
-			.WithArgs(args)
-			.WithHttpEndpoint(
-				name: LikeC4LocalServerResource.HttpEndpointName,
-				targetPort: LikeC4LocalServerResource.DefaultPort
-			)
-			.WithExternalHttpEndpoints()
-			.WithAnnotation(new ExcludeFromLikeC4Annotation(), ResourceAnnotationMutationBehavior.Replace);
-
-		// Store the resolved runtime so the lifecycle hook can use the same JS runner
-		// when invoking host-side likec4 subcommands (format, validate).
-		ApplicationBuilder.Services.Configure<ContainerWorkspaceOptions>(wsOpts =>
-			wsOpts.LocalCLIRuntime = resolvedRuntime
-		);
-
-		return new AspireC4Builder(ApplicationBuilder, localBuilder, OutputDirectory);
-	}
-
-	public IAspireC4Builder WithHideFromDashboard(string displayName = "Architecture Diagram")
-	{
-		ArgumentException.ThrowIfNullOrWhiteSpace(displayName);
-
-		ApplicationBuilder.Services.Configure<AspireC4DiagramOptions>(opts =>
-		{
-			opts.HideFromDashboard = true;
-			opts.DashboardLinkDisplayName = displayName;
-		});
-
-		return this;
-	}
-
-	public IAspireC4Builder WithAdditionalDSLFile(string sourcePath)
-	{
-		ArgumentException.ThrowIfNullOrWhiteSpace(sourcePath);
-
-		var absoluteSource = Path.GetFullPath(sourcePath);
-		ApplicationBuilder.Services.Configure<AspireC4DiagramOptions>(opts =>
-			opts.AdditionalDSLFiles.Add(absoluteSource)
-		);
-
-		return this;
-	}
-
-	public IAspireC4Builder WithAdditionalDSLFolder(string folderPath)
-	{
-		ArgumentException.ThrowIfNullOrWhiteSpace(folderPath);
-
-		var absoluteFolder = Path.GetFullPath(folderPath);
-		if (!Directory.Exists(absoluteFolder))
-			throw new DirectoryNotFoundException($"The additional DSL folder does not exist: '{absoluteFolder}'");
-
-		ApplicationBuilder.Services.Configure<AspireC4DiagramOptions>(opts =>
-			opts.AdditionalDSLFolders.Add(absoluteFolder)
-		);
-
-		return this;
-	}
-
-	public IAspireC4Builder WithImageAliasFolder(string aliasKey, string folderPath)
-	{
-		ArgumentException.ThrowIfNullOrWhiteSpace(aliasKey);
-		ArgumentException.ThrowIfNullOrWhiteSpace(folderPath);
-
-		if (!aliasKey.StartsWith('@'))
-			throw new ArgumentException("Image alias keys must start with '@'.", nameof(aliasKey));
-
-		var absoluteFolder = Path.GetFullPath(folderPath);
-		if (!Directory.Exists(absoluteFolder))
-			throw new DirectoryNotFoundException($"The image alias folder does not exist: '{absoluteFolder}'");
-
-		ApplicationBuilder.Services.Configure<AspireC4DiagramOptions>(opts =>
-			opts.ImageAliases[aliasKey] = absoluteFolder
-		);
-
-		return this;
-	}
-
-	public IAspireC4Builder WithoutConfigFileGeneration()
-	{
-		ApplicationBuilder.Services.Configure<AspireC4DiagramOptions>(opts => opts.GenerateConfigFile = false);
-
-		return this;
-	}
+	static readonly Lazy<ContainerRuntime> ContainerRuntime = new(
+		DetectContainerRuntime,
+		LazyThreadSafetyMode.ExecutionAndPublication
+	);
 
 	/// <summary>
 	/// Returns the correct bind-mount source path for the given host directory.
@@ -139,12 +34,12 @@ sealed class AspireC4Builder(
 	/// </list>
 	/// On non-Windows the path is returned unchanged.
 	/// </remarks>
-	internal static string NormalizeBindMountPath(string absolutePath) =>
+	public static string NormalizeBindMountPath(string absolutePath) =>
 		NormalizeBindMountPath(absolutePath, ContainerRuntime.Value);
 
 	/// <summary>Overload with an explicit runtime — used by unit tests to avoid
 	/// spawning a <c>docker</c> process.</summary>
-	internal static string NormalizeBindMountPath(string absolutePath, ContainerRuntime runtime)
+	public static string NormalizeBindMountPath(string absolutePath, ContainerRuntime runtime)
 	{
 		var fullPath = Path.GetFullPath(absolutePath);
 
@@ -167,17 +62,12 @@ sealed class AspireC4Builder(
 		return fullPath;
 	}
 
-	static readonly Lazy<ContainerRuntime> ContainerRuntime = new(
-		DetectContainerRuntime,
-		LazyThreadSafetyMode.ExecutionAndPublication
-	);
-
 	[System.Diagnostics.CodeAnalysis.SuppressMessage(
 		"Design",
 		"CA1031:Do not catch general exception types",
 		Justification = "Runtime detection must not throw; failure falls back to Docker Desktop behavior."
 	)]
-	internal static ContainerRuntime DetectContainerRuntime()
+	public static ContainerRuntime DetectContainerRuntime()
 	{
 		if (!OperatingSystem.IsWindows())
 			return LikeC4.Runtime.ContainerRuntime.Linux;
@@ -213,7 +103,7 @@ sealed class AspireC4Builder(
 		return LikeC4.Runtime.ContainerRuntime.DockerDesktop;
 	}
 
-	static LocalCLIRuntime DetectRuntime()
+	public static LocalCLIRuntime DetectRuntime()
 	{
 		// Try runtimes in order of preference.
 		(LocalCLIRuntime Runtime, string Executable)[] candidates =
@@ -243,7 +133,7 @@ sealed class AspireC4Builder(
 		"CA1031:Do not catch general exception types",
 		Justification = "If the exe isn't there or isn't correctly installed, it's not appropriate for use"
 	)]
-	static bool IsExecutableOnPath(string executable)
+	public static bool IsExecutableOnPath(string executable)
 	{
 		try
 		{
@@ -280,7 +170,7 @@ sealed class AspireC4Builder(
 	/// Bun  → <c>("bunx", ["--bun", "likec4"])</c>
 	/// Deno → <c>("deno", ["run", "--allow-all", "likec4"])</c>
 	/// </example>
-	internal static (string Command, string[] Prefix) BuildLikeC4CLIPrefix(LocalCLIRuntime runtime) =>
+	public static (string Command, string[] Prefix) BuildLikeC4CLIPrefix(LocalCLIRuntime runtime) =>
 		runtime switch
 		{
 			LocalCLIRuntime.Npx => ("npx", ["likec4"]),
@@ -295,7 +185,7 @@ sealed class AspireC4Builder(
 	/// Resolves the executable command and arguments for the given local CLI runtime.
 	/// Internal and visible for testing.
 	/// </summary>
-	internal static (string Command, string[] Args) BuildLocalCLICommand(
+	public static (string Command, string[] Args) BuildLocalCLICommand(
 		LocalCLIRuntime runtime,
 		string outputDirectory,
 		int port

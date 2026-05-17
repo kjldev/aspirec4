@@ -8,6 +8,7 @@ namespace Aspire.Hosting.AspireC4.LikeC4.Annotations;
 /// target — to override different relationships independently.
 /// Configure using <c>WithLikeC4Reference(target, a =&gt; a.WithKind("async").WithLabel("calls"))</c>.
 /// </summary>
+[AspireExport(ExposeProperties = true, ExposeMethods = true)]
 public sealed class LikeC4RelationshipDetailsAnnotation : IResourceAnnotation
 {
 	readonly List<string> _tags = [];
@@ -99,6 +100,7 @@ public sealed class LikeC4RelationshipDetailsAnnotation : IResourceAnnotation
 	/// <summary>Adds a hyperlink to this relationship.</summary>
 	/// <param name="url">The URL, which may be absolute or relative to the <c>.c4</c> file.</param>
 	/// <param name="title">Optional display text.</param>
+	[AspireExport(id: "withLinkRelationship")]
 	public LikeC4RelationshipDetailsAnnotation WithLink(string url, string? title = null)
 	{
 		ArgumentException.ThrowIfNullOrWhiteSpace(url);
@@ -107,10 +109,12 @@ public sealed class LikeC4RelationshipDetailsAnnotation : IResourceAnnotation
 	}
 
 	/// <inheritdoc cref="WithLink(string, string?)"/>
+	[AspireExport(id: "withLinkUriRelationship")]
 	public LikeC4RelationshipDetailsAnnotation WithLink(Uri uri, string? title = null) =>
 		WithLink(uri?.ToString()!, title);
 
 	/// <summary>Adds a metadata key-value pair to this relationship.</summary>
+	[AspireExport(id: "withMetadataRelationship")]
 	public LikeC4RelationshipDetailsAnnotation WithMetadata(string key, string value)
 	{
 		ArgumentException.ThrowIfNullOrWhiteSpace(key);
@@ -121,6 +125,7 @@ public sealed class LikeC4RelationshipDetailsAnnotation : IResourceAnnotation
 	}
 
 	/// <summary>Adds multiple metadata key-value pairs to this relationship.</summary>
+	[AspireExportIgnore(Reason = "Not supported in the exported API.")]
 	public LikeC4RelationshipDetailsAnnotation WithMetadata(params (string key, string value)[] metadata)
 	{
 		ArgumentNullException.ThrowIfNull(metadata);
