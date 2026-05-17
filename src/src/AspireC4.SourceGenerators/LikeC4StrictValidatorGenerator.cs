@@ -1,10 +1,7 @@
-using System;
-using System.Collections.Generic;
 using System.Collections.Immutable;
-using System.Linq;
+using System.Globalization;
 using System.Text;
 using System.Text.RegularExpressions;
-using System.Threading;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Text;
@@ -27,10 +24,11 @@ namespace Aspire.Hosting.AspireC4.SourceGenerators;
 ///   </item>
 ///   <item>
 ///     <description>
-///       <b>Class-based mode</b>: a class annotated with <c>[LikeC4Definitions]</c> (any accessibility,
-///       any nesting level) provides <c>public const string</c> fields inside nested classes named
-///       <c>Tags</c>, <c>ElementKinds</c>, and <c>RelationshipKinds</c>. Those constants are the
-///       source of truth. Only one such class is allowed per assembly.
+///       <b>Class-based mode</b>: a class annotated with <c>[LikeC4Registry]</c> (any accessibility,
+///       any nesting level) provides <c>public const string</c> fields inside nested static classes
+///       named <c>Tags</c>, <c>ElementKinds</c>, <c>RelationshipKinds</c>, <c>Groups</c>, and/or
+///       <c>MetadataKeys</c>, or directly on the class via <c>[KnownType(LikeC4RegistryType.X)]</c>.
+///       Only one such class is allowed per assembly.
 ///     </description>
 ///   </item>
 /// </list>
@@ -40,33 +38,35 @@ namespace Aspire.Hosting.AspireC4.SourceGenerators;
 public sealed class LikeC4StrictValidatorGenerator : IIncrementalGenerator
 {
 	const string AttributeNamespace = "Aspire.Hosting.AspireC4";
-	const string AttributeShortName = "LikeC4DefinitionsAttribute";
+	const string AttributeShortName = "LikeC4RegistryAttribute";
 	const string AttributeFullName = AttributeNamespace + "." + AttributeShortName;
 
 	const string WithTagMethodName = "WithTag";
 	const string WithKindMethodName = "WithKind";
 	const string WithGroupMethodName = "WithLikeC4Group";
 
+	// LikeC4RegistryType enum values (matching the injected enum)
+	const int RegistryTypeTag = 0;
+	const int RegistryTypeElementKind = 1;
+	const int RegistryTypeRelationshipKind = 2;
+	const int RegistryTypeGroup = 3;
+	const int RegistryTypeMetadataKey = 4;
+
 	/// <summary>
 	/// Line-level patterns safe to apply globally. In LikeC4 DSL, these token sequences only
-	/// appear inside <c>specification { }</c> blocks:
-	/// <list type="bullet">
-	///   <item><c>tag X</c> — in model blocks tags appear as <c>#tagname</c>, not <c>tag X</c></item>
-	///   <item><c>element X</c> — in model blocks the form is <c>id = kind 'label'</c></item>
-	///   <item><c>relationship X</c> — in model blocks the form is <c>source .kind target</c></item>
-	/// </list>
+	/// appear inside <c>specification { }</c> blocks.
 	/// </summary>
-	static readonly Regex TagLinePattern = new Regex(
+	static readonly Regex TagLinePattern = new(
 		@"^\s*tag\s+([\w][\w-]*)",
 		RegexOptions.Multiline | RegexOptions.Compiled
 	);
 
-	static readonly Regex ElementKindLinePattern = new Regex(
+	static readonly Regex ElementKindLinePattern = new(
 		@"^\s*element\s+([\w][\w-]*)",
 		RegexOptions.Multiline | RegexOptions.Compiled
 	);
 
-	static readonly Regex RelationshipKindLinePattern = new Regex(
+	static readonly Regex RelationshipKindLinePattern = new(
 		@"^\s*relationship\s+([\w][\w-]*)",
 		RegexOptions.Multiline | RegexOptions.Compiled
 	);
@@ -74,62 +74,77 @@ public sealed class LikeC4StrictValidatorGenerator : IIncrementalGenerator
 	// --- Diagnostics ---
 
 	/// <summary>Emitted when a <c>.WithTag()</c> argument is not declared in the active definitions.</summary>
-	public static readonly DiagnosticDescriptor UndeclaredTag = new DiagnosticDescriptor(
+	public static readonly DiagnosticDescriptor UndeclaredTag = new(
 		id: "ASPIREC4001",
 		title: "Undeclared LikeC4 tag",
 		messageFormat: "Tag '{0}' is not declared. Add it to a 'specification {{ tag {0} }}' block in a .c4 additional file, "
-			+ "or as 'public const string' in the 'Tags' nested class of your [LikeC4Definitions] class.",
+			+ "or as 'public const string' in the 'Tags' nested class of your [LikeC4Registry] class.",
 		category: "AspireC4",
-		defaultSeverity: DiagnosticSeverity.Error,
+		defaultSeverity: DiagnosticSeverity.Warning,
 		isEnabledByDefault: true,
 		description: "All tags passed to WithTag() must be declared in the LikeC4 specification block of an additional "
 			+ ".c4 file (when AspireC4Strict=true), or as public const string fields in the Tags nested class "
-			+ "of a [LikeC4Definitions]-annotated class."
+			+ "of a [LikeC4Registry]-annotated class."
 	);
 
 	/// <summary>
 	/// Emitted when a <c>.WithKind()</c> argument is not declared in any active element-kind or
 	/// relationship-kind definition source.
 	/// </summary>
-	public static readonly DiagnosticDescriptor UndeclaredKind = new DiagnosticDescriptor(
+	public static readonly DiagnosticDescriptor UndeclaredKind = new(
 		id: "ASPIREC4002",
 		title: "Undeclared LikeC4 element or relationship kind",
 		messageFormat: "Kind '{0}' is not declared. Add it to a 'specification {{ element {0} }}' or "
 			+ "'specification {{ relationship {0} }}' block in a .c4 additional file, "
-			+ "or as 'public const string' in 'ElementKinds' or 'RelationshipKinds' nested class of your [LikeC4Definitions] class.",
+			+ "or as 'public const string' in 'ElementKinds' or 'RelationshipKinds' nested class of your [LikeC4Registry] class.",
 		category: "AspireC4",
-		defaultSeverity: DiagnosticSeverity.Error,
+		defaultSeverity: DiagnosticSeverity.Warning,
 		isEnabledByDefault: true,
 		description: "All kinds passed to WithKind() must be declared in the LikeC4 specification block of an additional "
 			+ ".c4 file (when AspireC4Strict=true), or as public const string fields in the ElementKinds or "
-			+ "RelationshipKinds nested class of a [LikeC4Definitions]-annotated class."
+			+ "RelationshipKinds nested class of a [LikeC4Registry]-annotated class."
 	);
 
-	/// <summary>Emitted when more than one class per assembly carries <c>[LikeC4Definitions]</c>.</summary>
-	public static readonly DiagnosticDescriptor MultipleDefinitionsClasses = new DiagnosticDescriptor(
+	/// <summary>Emitted when more than one class per assembly carries <c>[LikeC4Registry]</c>.</summary>
+	public static readonly DiagnosticDescriptor MultipleDefinitionsClasses = new(
 		id: "ASPIREC4003",
-		title: "Multiple [LikeC4Definitions] classes",
-		messageFormat: "Only one class per assembly may carry [LikeC4Definitions]. Duplicate found: '{0}'.",
+		title: "Multiple [LikeC4Registry] classes",
+		messageFormat: "Only one class per assembly may carry [LikeC4Registry]. Duplicate found: '{0}'.",
 		category: "AspireC4",
-		defaultSeverity: DiagnosticSeverity.Error,
+		defaultSeverity: DiagnosticSeverity.Warning,
 		isEnabledByDefault: true,
-		description: "Only one class per assembly may be annotated with [LikeC4Definitions]. "
-			+ "Consolidate all tag, element-kind, and relationship-kind definitions into a single class."
+		description: "Only one class per assembly may be annotated with [LikeC4Registry]. "
+			+ "Consolidate all tag, element-kind, relationship-kind, group, and metadata-key definitions into a single class."
 	);
 
 	/// <summary>Emitted when a <c>.WithLikeC4Group()</c> argument is not declared in the active definitions.</summary>
-	public static readonly DiagnosticDescriptor UndeclaredGroup = new DiagnosticDescriptor(
+	public static readonly DiagnosticDescriptor UndeclaredGroup = new(
 		id: "ASPIREC4004",
 		title: "Undeclared LikeC4 group",
-		messageFormat: "Group '{0}' is not declared. Add it as 'public const string' in the 'Groups' nested class of your [LikeC4Definitions] class.",
+		messageFormat: "Group '{0}' is not declared. Add it as 'public const string' in the 'Groups' nested class of your [LikeC4Registry] class.",
 		category: "AspireC4",
-		defaultSeverity: DiagnosticSeverity.Error,
+		defaultSeverity: DiagnosticSeverity.Warning,
 		isEnabledByDefault: true,
 		description: "All group names passed to WithLikeC4Group() must be declared as public const string fields "
-			+ "in the Groups nested class of a [LikeC4Definitions]-annotated class."
+			+ "in the Groups nested class of a [LikeC4Registry]-annotated class."
 	);
 
-	// --- Injected attribute ---
+	/// <summary>
+	/// Emitted when a registry type is declared both via a named nested class <em>and</em>
+	/// via individual <c>[KnownType]</c> attributes on constants.
+	/// </summary>
+	public static readonly DiagnosticDescriptor DuplicateTypeDeclaration = new(
+		id: "ASPIREC4005",
+		title: "Duplicate LikeC4 registry type declaration",
+		messageFormat: "Registry type '{0}' is declared both as a nested class and via [KnownType] attributes. Use only one declaration approach per type.",
+		category: "AspireC4",
+		defaultSeverity: DiagnosticSeverity.Warning,
+		isEnabledByDefault: true,
+		description: "A registry type (e.g. Tag, Group) must be declared either as a nested static class "
+			+ "(e.g. 'public static class Tags { ... }') OR via [KnownType] attributes on individual constants, not both."
+	);
+
+	// --- Injected attributes/enums source ---
 
 	const string AttributeSource =
 		"// <auto-generated />\n"
@@ -139,27 +154,68 @@ public sealed class LikeC4StrictValidatorGenerator : IIncrementalGenerator
 		+ "namespace Aspire.Hosting.AspireC4\n"
 		+ "{\n"
 		+ "    /// <summary>\n"
-		+ "    /// Marks a class as the single source of truth for LikeC4 definitions\n"
-		+ "    /// (tags, element kinds, relationship kinds). Only one class per assembly\n"
-		+ "    /// may carry this attribute.\n"
+		+ "    /// Marks a static class as the single source of truth for LikeC4 registry values\n"
+		+ "    /// (tags, element kinds, relationship kinds, groups, metadata keys).\n"
+		+ "    /// Only one class per assembly may carry this attribute.\n"
 		+ "    /// </summary>\n"
 		+ "    /// <remarks>\n"
-		+ "    /// Declare allowed values as <c>public const string</c> fields inside\n"
-		+ "    /// nested static classes named <c>Tags</c>, <c>ElementKinds</c>, and\n"
-		+ "    /// <c>RelationshipKinds</c> within the annotated class.\n"
-		+ "    /// The source generator will emit errors for any <c>.WithTag()</c> or\n"
-		+ "    /// <c>.WithKind()</c> call-site value not present as a constant.\n"
+		+ "    /// Declare values as <c>public const string</c> fields inside nested static classes\n"
+		+ "    /// named <c>Tags</c>, <c>ElementKinds</c>, <c>RelationshipKinds</c>, <c>Groups</c>,\n"
+		+ "    /// or <c>MetadataKeys</c>, OR directly on the class with a <c>[KnownType]</c> attribute.\n"
 		+ "    /// </remarks>\n"
 		+ "    [System.AttributeUsage(System.AttributeTargets.Class, Inherited = false, AllowMultiple = false)]\n"
-		+ "    internal sealed class LikeC4DefinitionsAttribute : System.Attribute { }\n"
+		+ "    internal sealed class LikeC4RegistryAttribute : System.Attribute\n"
+		+ "    {\n"
+		+ "        /// <summary>Registry-level strict mode override. Default is <see cref=\"LikeC4StrictMode.Inherit\"/>.</summary>\n"
+		+ "        public LikeC4StrictMode Strict { get; init; } = LikeC4StrictMode.Inherit;\n"
+		+ "    }\n"
+		+ "\n"
+		+ "    /// <summary>Identifies which LikeC4 registry type a constant belongs to.</summary>\n"
+		+ "    internal enum LikeC4RegistryType\n"
+		+ "    {\n"
+		+ "        /// <summary>The constant is a LikeC4 tag (used with <c>.WithTag()</c>).</summary>\n"
+		+ "        Tag = 0,\n"
+		+ "        /// <summary>The constant is a LikeC4 element kind (used with <c>.WithKind()</c>).</summary>\n"
+		+ "        ElementKind = 1,\n"
+		+ "        /// <summary>The constant is a LikeC4 relationship kind (used with <c>.WithKind()</c>).</summary>\n"
+		+ "        RelationshipKind = 2,\n"
+		+ "        /// <summary>The constant is a LikeC4 group name (used with <c>.WithLikeC4Group()</c>).</summary>\n"
+		+ "        Group = 3,\n"
+		+ "        /// <summary>The constant is a LikeC4 metadata key (used with <c>.WithMetadata()</c>).</summary>\n"
+		+ "        MetadataKey = 4,\n"
+		+ "    }\n"
+		+ "\n"
+		+ "    /// <summary>Controls strict validation behaviour for a registry class or type.</summary>\n"
+		+ "    internal enum LikeC4StrictMode\n"
+		+ "    {\n"
+		+ "        /// <summary>Inherits strict mode from the parent scope (registry attribute or global MSBuild property).</summary>\n"
+		+ "        Inherit = 0,\n"
+		+ "        /// <summary>Enables strict validation regardless of the parent scope setting.</summary>\n"
+		+ "        Enable = 1,\n"
+		+ "        /// <summary>Disables strict validation regardless of the parent scope setting.</summary>\n"
+		+ "        Disable = 2,\n"
+		+ "    }\n"
+		+ "\n"
+		+ "    /// <summary>\n"
+		+ "    /// Marks a <c>public const string</c> field as a known LikeC4 registry value of a specific type.\n"
+		+ "    /// </summary>\n"
+		+ "    [System.AttributeUsage(System.AttributeTargets.Field, Inherited = false, AllowMultiple = false)]\n"
+		+ "    internal sealed class KnownTypeAttribute : System.Attribute\n"
+		+ "    {\n"
+		+ "        public KnownTypeAttribute(LikeC4RegistryType type) { Type = type; }\n"
+		+ "        /// <summary>The registry type this constant belongs to.</summary>\n"
+		+ "        public LikeC4RegistryType Type { get; }\n"
+		+ "        /// <summary>Per-type strict mode override. Default is <see cref=\"LikeC4StrictMode.Inherit\"/>.</summary>\n"
+		+ "        public LikeC4StrictMode Strict { get; init; } = LikeC4StrictMode.Inherit;\n"
+		+ "    }\n"
 		+ "}\n";
 
 	/// <inheritdoc />
 	public void Initialize(IncrementalGeneratorInitializationContext context)
 	{
-		// Inject [LikeC4Definitions] into the user's compilation.
+		// Inject [LikeC4Registry], LikeC4RegistryType, LikeC4StrictMode, and [KnownType] into the compilation.
 		context.RegisterPostInitializationOutput(static ctx =>
-			ctx.AddSource("LikeC4DefinitionsAttribute.g.cs", SourceText.From(AttributeSource, Encoding.UTF8))
+			ctx.AddSource("LikeC4RegistryAttributes.g.cs", SourceText.From(AttributeSource, Encoding.UTF8))
 		);
 
 		// Mode 1: DSL additional file definitions — opt-in via <AspireC4Strict>true</AspireC4Strict>.
@@ -177,7 +233,7 @@ public sealed class LikeC4StrictValidatorGenerator : IIncrementalGenerator
 			.Collect()
 			.Select(static (parsed, _) => MergeDslDefinitions(parsed));
 
-		// Mode 2: [LikeC4Definitions] class-based definitions.
+		// Mode 2: [LikeC4Registry] class-based definitions.
 		var classDefinitions = context
 			.SyntaxProvider.ForAttributeWithMetadataName(
 				AttributeFullName,
@@ -218,8 +274,6 @@ public sealed class LikeC4StrictValidatorGenerator : IIncrementalGenerator
 
 	/// <summary>
 	/// Extracts declared tags, element kinds, and relationship kinds from a LikeC4 DSL file.
-	/// Uses line-level regex patterns that are safe to apply globally across the file content
-	/// because the matched token sequences only appear inside <c>specification { }</c> blocks.
 	/// Exposed as <see langword="internal"/> for direct unit-testing.
 	/// </summary>
 	internal static DslDefinitions ExtractSpecificationItems(string text)
@@ -272,29 +326,39 @@ public sealed class LikeC4StrictValidatorGenerator : IIncrementalGenerator
 		var elementKinds = new List<string>();
 		var relationshipKinds = new List<string>();
 		var groups = new List<string>();
+		var metadataKeys = new List<string>();
 
+		// Track which registry types are declared via named nested classes vs [KnownType] fields.
+		var nestedClassTypes = new HashSet<int>();
+		var knownTypeFieldsByType = new Dictionary<int, List<(string Value, int StrictMode, Location? Loc)>>();
+
+		// Step 1: scan named nested classes (Tags, ElementKinds, RelationshipKinds, Groups, MetadataKeys).
 		foreach (var nested in classSymbol.GetTypeMembers())
 		{
 			ct.ThrowIfCancellationRequested();
 
-			List<string>? target;
-			switch (nested.Name)
+			int? registryType = nested.Name switch
 			{
-				case "Tags":
-					target = tags;
-					break;
-				case "ElementKinds":
-					target = elementKinds;
-					break;
-				case "RelationshipKinds":
-					target = relationshipKinds;
-					break;
-				case "Groups":
-					target = groups;
-					break;
-				default:
-					continue;
-			}
+				"Tags" => RegistryTypeTag,
+				"ElementKinds" => RegistryTypeElementKind,
+				"RelationshipKinds" => RegistryTypeRelationshipKind,
+				"Groups" => RegistryTypeGroup,
+				"MetadataKeys" => RegistryTypeMetadataKey,
+				_ => (int?)null,
+			};
+
+			if (registryType is null)
+				continue;
+
+			nestedClassTypes.Add(registryType.Value);
+			var target = GetTargetList(
+				registryType.Value,
+				tags,
+				elementKinds,
+				relationshipKinds,
+				groups,
+				metadataKeys
+			)!;
 
 			foreach (var member in nested.GetMembers())
 			{
@@ -311,15 +375,120 @@ public sealed class LikeC4StrictValidatorGenerator : IIncrementalGenerator
 			}
 		}
 
+		// Step 2: scan top-level fields with [KnownType] attributes.
+		foreach (var member in classSymbol.GetMembers())
+		{
+			ct.ThrowIfCancellationRequested();
+
+			if (
+				member is not IFieldSymbol field
+				|| !field.IsConst
+				|| field.Type.SpecialType != SpecialType.System_String
+				|| field.ConstantValue is not string value
+			)
+				continue;
+
+			var knownTypeAttr = field
+				.GetAttributes()
+				.FirstOrDefault(static a => a.AttributeClass?.Name == "KnownTypeAttribute");
+
+			if (knownTypeAttr is null)
+				continue;
+
+			if (knownTypeAttr.ConstructorArguments.Length == 0)
+				continue;
+
+			var typeArg = knownTypeAttr.ConstructorArguments[0];
+			if (typeArg.Kind != TypedConstantKind.Enum || typeArg.Value is not int registryTypeInt)
+				continue;
+
+			var strictArg = knownTypeAttr.NamedArguments.FirstOrDefault(static a => a.Key == "Strict");
+			var fieldStrictMode =
+				strictArg.Value.Kind == TypedConstantKind.Enum && strictArg.Value.Value is int strictInt
+					? strictInt
+					: ClassDefinitions.StrictInherit;
+
+			var fieldLocation = field.Locations.Length > 0 ? field.Locations[0] : null;
+
+			if (!knownTypeFieldsByType.TryGetValue(registryTypeInt, out var fieldList))
+				knownTypeFieldsByType[registryTypeInt] = fieldList = [];
+
+			fieldList.Add((value, fieldStrictMode, fieldLocation));
+
+			GetTargetList(registryTypeInt, tags, elementKinds, relationshipKinds, groups, metadataKeys)?.Add(value);
+		}
+
+		// Step 3: compute per-type strict modes from [KnownType] fields (most permissive / max wins).
+		int ComputeTypeStrictMode(int registryType) =>
+			knownTypeFieldsByType.TryGetValue(registryType, out var fields)
+				? fields.Aggregate(ClassDefinitions.StrictInherit, static (acc, f) => Math.Max(acc, f.StrictMode))
+				: ClassDefinitions.StrictInherit;
+
+		// Step 4: read registry-level strict from [LikeC4Registry(Strict = ...)] (ctx.Attributes[0]).
+		var registryAttr = ctx.Attributes.Length > 0 ? ctx.Attributes[0] : null;
+		var registryStrictMode = ClassDefinitions.StrictInherit;
+		if (registryAttr is not null)
+		{
+			var strictArg = registryAttr.NamedArguments.FirstOrDefault(static a => a.Key == "Strict");
+			if (strictArg.Value.Kind == TypedConstantKind.Enum && strictArg.Value.Value is int strictInt)
+				registryStrictMode = strictInt;
+		}
+
+		// Step 5: detect duplicate type declarations (nested class + [KnownType] for same type).
+		var duplicates = new List<(string TypeName, Location? Location)>();
+		foreach (var kvp in knownTypeFieldsByType)
+		{
+			if (!nestedClassTypes.Contains(kvp.Key))
+				continue;
+
+			var typeName = kvp.Key switch
+			{
+				RegistryTypeTag => "Tag",
+				RegistryTypeElementKind => "ElementKind",
+				RegistryTypeRelationshipKind => "RelationshipKind",
+				RegistryTypeGroup => "Group",
+				RegistryTypeMetadataKey => "MetadataKey",
+				_ => kvp.Key.ToString(CultureInfo.InvariantCulture),
+			};
+
+			duplicates.Add((typeName, kvp.Value.Count > 0 ? kvp.Value[0].Loc : null));
+		}
+
 		return new ClassDefinitions(
 			displayName,
 			location,
-			tags.ToImmutableArray(),
-			elementKinds.ToImmutableArray(),
-			relationshipKinds.ToImmutableArray(),
-			groups.ToImmutableArray()
+			ImmutableArray.CreateRange(tags),
+			ImmutableArray.CreateRange(elementKinds),
+			ImmutableArray.CreateRange(relationshipKinds),
+			ImmutableArray.CreateRange(groups),
+			ImmutableArray.CreateRange(metadataKeys),
+			registryStrictMode,
+			ComputeTypeStrictMode(RegistryTypeTag),
+			ComputeTypeStrictMode(RegistryTypeElementKind),
+			ComputeTypeStrictMode(RegistryTypeRelationshipKind),
+			ComputeTypeStrictMode(RegistryTypeGroup),
+			ComputeTypeStrictMode(RegistryTypeMetadataKey),
+			ImmutableArray.CreateRange(duplicates)
 		);
 	}
+
+	static List<string>? GetTargetList(
+		int registryType,
+		List<string> tags,
+		List<string> elementKinds,
+		List<string> relationshipKinds,
+		List<string> groups,
+		List<string> metadataKeys
+	) =>
+		registryType switch
+		{
+			RegistryTypeTag => tags,
+			RegistryTypeElementKind => elementKinds,
+			RegistryTypeRelationshipKind => relationshipKinds,
+			RegistryTypeGroup => groups,
+			RegistryTypeMetadataKey => metadataKeys,
+			_ => null,
+		};
 
 	// --- Call-site collection ---
 
@@ -352,10 +521,9 @@ public sealed class LikeC4StrictValidatorGenerator : IIncrementalGenerator
 		var firstArg = invocation.ArgumentList.Arguments[0].Expression;
 		var constant = ctx.SemanticModel.GetConstantValue(firstArg, ct);
 
-		if (!constant.HasValue || constant.Value is not string value)
-			return null;
-
-		return new CallSiteInfo(value, firstArg.GetLocation());
+		return constant.HasValue && constant.Value is string value
+			? new CallSiteInfo(value, firstArg.GetLocation())
+			: null;
 	}
 
 	// --- Validation ---
@@ -370,7 +538,7 @@ public sealed class LikeC4StrictValidatorGenerator : IIncrementalGenerator
 		ImmutableArray<CallSiteInfo> groupCallSites
 	)
 	{
-		// Enforce single definitions class per assembly (report all duplicates beyond the first).
+		// Enforce single registry class per assembly (report all duplicates beyond the first).
 		if (classDefs.Length > 1)
 		{
 			for (int i = 1; i < classDefs.Length; i++)
@@ -381,38 +549,75 @@ public sealed class LikeC4StrictValidatorGenerator : IIncrementalGenerator
 			}
 		}
 
+		// Emit ASPIREC4005 for any type declared both via nested class and [KnownType].
+		foreach (var def in classDefs)
+		{
+			foreach (var (typeName, dupLocation) in def.DuplicateTypeDeclarations)
+				ctx.ReportDiagnostic(Diagnostic.Create(DuplicateTypeDeclaration, dupLocation, typeName));
+		}
+
 		bool hasDslValidation = isStrictMode && dslDefs.HasAny;
 		bool hasClassValidation = classDefs.Length > 0;
 
 		if (!hasDslValidation && !hasClassValidation)
 			return;
 
+		var primaryDef = hasClassValidation ? classDefs[0] : null;
+		int registryStrictMode = primaryDef?.RegistryStrictMode ?? ClassDefinitions.StrictInherit;
+
+		// Resolve the effective registry-level strict (registry override → global MSBuild strict).
+		bool effectiveRegistryStrict =
+			registryStrictMode == ClassDefinitions.StrictEnable
+			|| (registryStrictMode == ClassDefinitions.StrictInherit && isStrictMode);
+
+		// Determine whether to validate a type based on its allowed set size and strict overrides.
+		bool ShouldValidate(HashSet<string> allowedSet, int typeStrictMode)
+		{
+			if (typeStrictMode == ClassDefinitions.StrictDisable)
+				return false;
+			if (typeStrictMode == ClassDefinitions.StrictEnable)
+				return true;
+			if (effectiveRegistryStrict)
+				return true;
+			return allowedSet.Count > 0;
+		}
+
 		// Build allowed sets from all active definition sources.
 		var allowedTags = BuildAllowedSet(
-			hasDslValidation ? dslDefs.Tags.AsEnumerable() : Enumerable.Empty<string>(),
-			hasClassValidation ? classDefs.SelectMany(static d => d.Tags) : Enumerable.Empty<string>()
+			hasDslValidation ? dslDefs.Tags.AsEnumerable() : [],
+			hasClassValidation ? classDefs.SelectMany(static d => d.Tags) : []
 		);
 
 		var allowedKinds = BuildAllowedSet(
-			hasDslValidation ? dslDefs.ElementKinds.Concat(dslDefs.RelationshipKinds) : Enumerable.Empty<string>(),
-			hasClassValidation
-				? classDefs.SelectMany(static d => d.ElementKinds.Concat(d.RelationshipKinds))
-				: Enumerable.Empty<string>()
+			hasDslValidation ? dslDefs.ElementKinds.Concat(dslDefs.RelationshipKinds) : [],
+			hasClassValidation ? classDefs.SelectMany(static d => d.ElementKinds.Concat(d.RelationshipKinds)) : []
 		);
 
 		// Groups are class-based only (LikeC4 specification blocks have no group keyword).
+#pragma warning disable IDE0028
 		var allowedGroups = hasClassValidation
-			? BuildAllowedSet(Enumerable.Empty<string>(), classDefs.SelectMany(static d => d.Groups))
+			? BuildAllowedSet([], classDefs.SelectMany(static d => d.Groups))
 			: new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+#pragma warning restore IDE0028
 
-		foreach (var site in tagCallSites)
+		int tagsTypeStrict = primaryDef?.TagsTypeStrictMode ?? ClassDefinitions.StrictInherit;
+		// For kinds: most permissive (max) of ElementKinds and RelationshipKinds strict modes.
+		int kindsTypeStrict = Math.Max(
+			primaryDef?.ElementKindsTypeStrictMode ?? ClassDefinitions.StrictInherit,
+			primaryDef?.RelationshipKindsTypeStrictMode ?? ClassDefinitions.StrictInherit
+		);
+		int groupsTypeStrict = primaryDef?.GroupsTypeStrictMode ?? ClassDefinitions.StrictInherit;
+
+		if (ShouldValidate(allowedTags, tagsTypeStrict))
 		{
-			if (!allowedTags.Contains(site.Value))
-				ctx.ReportDiagnostic(Diagnostic.Create(UndeclaredTag, site.Location, site.Value));
+			foreach (var site in tagCallSites)
+			{
+				if (!allowedTags.Contains(site.Value))
+					ctx.ReportDiagnostic(Diagnostic.Create(UndeclaredTag, site.Location, site.Value));
+			}
 		}
 
-		// WithKind() is used for both element kinds and relationship kinds; validate against the union.
-		if (allowedKinds.Count > 0)
+		if (ShouldValidate(allowedKinds, kindsTypeStrict))
 		{
 			foreach (var site in kindCallSites)
 			{
@@ -421,8 +626,7 @@ public sealed class LikeC4StrictValidatorGenerator : IIncrementalGenerator
 			}
 		}
 
-		// Validate group names only when the [LikeC4Definitions] class declares a Groups nested class.
-		if (allowedGroups.Count > 0)
+		if (ShouldValidate(allowedGroups, groupsTypeStrict))
 		{
 			foreach (var site in groupCallSites)
 			{
@@ -440,149 +644,5 @@ public sealed class LikeC4StrictValidatorGenerator : IIncrementalGenerator
 		foreach (var v in secondary)
 			set.Add(v);
 		return set;
-	}
-}
-
-// ---------------------------------------------------------------------------
-// Supporting types
-// ---------------------------------------------------------------------------
-
-/// <summary>Definitions extracted from one or more LikeC4 DSL additional files.</summary>
-readonly struct DslDefinitions : IEquatable<DslDefinitions>
-{
-	public static readonly DslDefinitions Empty = new DslDefinitions(
-		ImmutableArray<string>.Empty,
-		ImmutableArray<string>.Empty,
-		ImmutableArray<string>.Empty
-	);
-
-	public DslDefinitions(
-		ImmutableArray<string> tags,
-		ImmutableArray<string> elementKinds,
-		ImmutableArray<string> relationshipKinds
-	)
-	{
-		Tags = tags;
-		ElementKinds = elementKinds;
-		RelationshipKinds = relationshipKinds;
-	}
-
-	public ImmutableArray<string> Tags { get; }
-	public ImmutableArray<string> ElementKinds { get; }
-	public ImmutableArray<string> RelationshipKinds { get; }
-	public bool HasAny => !Tags.IsEmpty || !ElementKinds.IsEmpty || !RelationshipKinds.IsEmpty;
-
-	public bool Equals(DslDefinitions other) =>
-		Tags.SequenceEqual(other.Tags, StringComparer.Ordinal)
-		&& ElementKinds.SequenceEqual(other.ElementKinds, StringComparer.Ordinal)
-		&& RelationshipKinds.SequenceEqual(other.RelationshipKinds, StringComparer.Ordinal);
-
-	public override bool Equals(object obj) => obj is DslDefinitions d && Equals(d);
-
-	public override int GetHashCode()
-	{
-		unchecked
-		{
-			int h = Tags.Length;
-			h = (h * 397) ^ ElementKinds.Length;
-			h = (h * 397) ^ RelationshipKinds.Length;
-			return h;
-		}
-	}
-}
-
-/// <summary>Definitions extracted from a <c>[LikeC4Definitions]</c>-annotated class.</summary>
-sealed class ClassDefinitions : IEquatable<ClassDefinitions>
-{
-	public static readonly ClassDefinitions Empty = new ClassDefinitions(
-		string.Empty,
-		null,
-		ImmutableArray<string>.Empty,
-		ImmutableArray<string>.Empty,
-		ImmutableArray<string>.Empty,
-		ImmutableArray<string>.Empty
-	);
-
-	public ClassDefinitions(
-		string displayName,
-		Location? location,
-		ImmutableArray<string> tags,
-		ImmutableArray<string> elementKinds,
-		ImmutableArray<string> relationshipKinds,
-		ImmutableArray<string> groups
-	)
-	{
-		DisplayName = displayName;
-		Location = location;
-		Tags = tags;
-		ElementKinds = elementKinds;
-		RelationshipKinds = relationshipKinds;
-		Groups = groups;
-	}
-
-	public string DisplayName { get; }
-
-	/// <summary>Location of the class declaration, used for <c>ASPIREC4003</c> diagnostics.</summary>
-	public Location? Location { get; }
-
-	public ImmutableArray<string> Tags { get; }
-	public ImmutableArray<string> ElementKinds { get; }
-	public ImmutableArray<string> RelationshipKinds { get; }
-	public ImmutableArray<string> Groups { get; }
-
-	public bool Equals(ClassDefinitions other)
-	{
-		if (other is null)
-			return false;
-
-		return DisplayName == other.DisplayName
-			&& Tags.SequenceEqual(other.Tags, StringComparer.Ordinal)
-			&& ElementKinds.SequenceEqual(other.ElementKinds, StringComparer.Ordinal)
-			&& RelationshipKinds.SequenceEqual(other.RelationshipKinds, StringComparer.Ordinal)
-			&& Groups.SequenceEqual(other.Groups, StringComparer.Ordinal);
-	}
-
-	public override bool Equals(object obj) => Equals(obj as ClassDefinitions);
-
-	public override int GetHashCode()
-	{
-		unchecked
-		{
-			int h = DisplayName?.GetHashCode() ?? 0;
-			h = (h * 397) ^ Tags.Length;
-			h = (h * 397) ^ ElementKinds.Length;
-			h = (h * 397) ^ RelationshipKinds.Length;
-			h = (h * 397) ^ Groups.Length;
-			return h;
-		}
-	}
-}
-
-/// <summary>A resolved constant string value from a call-site argument, with its source location.</summary>
-readonly struct CallSiteInfo : IEquatable<CallSiteInfo>
-{
-	public CallSiteInfo(string value, Location location)
-	{
-		Value = value;
-		Location = location;
-	}
-
-	public string Value { get; }
-
-	/// <summary>The location of the argument expression, for diagnostic reporting.</summary>
-	public Location Location { get; }
-
-	public bool Equals(CallSiteInfo other) => Value == other.Value && Location.Equals(other.Location);
-
-	public override bool Equals(object obj) => obj is CallSiteInfo c && Equals(c);
-
-	public override int GetHashCode()
-	{
-		unchecked
-		{
-			int h = Value?.GetHashCode() ?? 0;
-			h = (h * 397) ^ (Location?.GetHashCode() ?? 0);
-			return h;
-		}
 	}
 }

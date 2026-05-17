@@ -1,4 +1,6 @@
 using System.Collections.Immutable;
+using System.Diagnostics.CodeAnalysis;
+using System.Globalization;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.Diagnostics;
@@ -168,11 +170,7 @@ public sealed class LikeC4StrictValidatorGeneratorTests
 	public async Task DslDefinitions_WithTags_HasAnyIsTrue()
 	{
 		// Arrange / Act
-		var defs = new DslDefinitions(
-			ImmutableArray.Create("my-tag"),
-			ImmutableArray<string>.Empty,
-			ImmutableArray<string>.Empty
-		);
+		var defs = new DslDefinitions(["my-tag"], [], []);
 
 		// Assert
 		await Assert.That(defs.HasAny).IsTrue();
@@ -183,19 +181,20 @@ public sealed class LikeC4StrictValidatorGeneratorTests
 	// -----------------------------------------------------------------------
 
 	[Test]
-	public async Task RunGenerator_Always_InjectsLikeC4DefinitionsAttribute(CancellationToken cancellationToken)
+	public async Task RunGenerator_Always_InjectsLikeC4RegistryAttributes(CancellationToken cancellationToken)
 	{
 		// Arrange
 		const string source = "namespace TestApp;";
 
 		// Act
 		var result = RunGenerator(source, cancellationToken: cancellationToken);
-		var attributeSource = GetGeneratedSource(result, "LikeC4DefinitionsAttribute.g.cs");
+		var attributeSource = GetGeneratedSource(result, "LikeC4RegistryAttributes.g.cs");
 
 		// Assert
 		await Assert.That(attributeSource).IsNotNull();
-		await Assert.That(attributeSource!).Contains("LikeC4DefinitionsAttribute");
-		await Assert.That(attributeSource).Contains("namespace Aspire.Hosting.AspireC4");
+		await Assert.That(attributeSource!).Contains("LikeC4RegistryAttribute");
+		await Assert.That(attributeSource).Contains("LikeC4RegistryType");
+		await Assert.That(attributeSource).Contains("KnownTypeAttribute");
 	}
 
 	// -----------------------------------------------------------------------
@@ -249,7 +248,7 @@ public sealed class LikeC4StrictValidatorGeneratorTests
 		// Assert
 		var diagnostics = GetDiagnostics(result, "ASPIREC4001");
 		await Assert.That(diagnostics.Count).IsGreaterThan(0);
-		await Assert.That(diagnostics[0].GetMessage()).Contains("unknown-tag");
+		await Assert.That(diagnostics[0].GetMessage(CultureInfo.InvariantCulture)).Contains("unknown-tag");
 	}
 
 	[Test]
@@ -329,7 +328,7 @@ public sealed class LikeC4StrictValidatorGeneratorTests
 		// Assert
 		var diagnostics = GetDiagnostics(result, "ASPIREC4002");
 		await Assert.That(diagnostics.Count).IsGreaterThan(0);
-		await Assert.That(diagnostics[0].GetMessage()).Contains("unknown-kind");
+		await Assert.That(diagnostics[0].GetMessage(CultureInfo.InvariantCulture)).Contains("unknown-kind");
 	}
 
 	[Test]
@@ -427,7 +426,7 @@ public sealed class LikeC4StrictValidatorGeneratorTests
 		// Assert
 		var diagnostics = GetDiagnostics(result, "ASPIREC4001");
 		await Assert.That(diagnostics.Count).IsGreaterThan(0);
-		await Assert.That(diagnostics[0].GetMessage()).Contains("unknown");
+		await Assert.That(diagnostics[0].GetMessage(CultureInfo.InvariantCulture)).Contains("unknown");
 	}
 
 	[Test]
@@ -483,7 +482,7 @@ public sealed class LikeC4StrictValidatorGeneratorTests
 		// Assert
 		var diagnostics = GetDiagnostics(result, "ASPIREC4002");
 		await Assert.That(diagnostics.Count).IsGreaterThan(0);
-		await Assert.That(diagnostics[0].GetMessage()).Contains("unknown-kind");
+		await Assert.That(diagnostics[0].GetMessage(CultureInfo.InvariantCulture)).Contains("unknown-kind");
 	}
 
 	[Test]
@@ -491,7 +490,7 @@ public sealed class LikeC4StrictValidatorGeneratorTests
 		CancellationToken cancellationToken
 	)
 	{
-		// Arrange — [LikeC4Definitions] class can be private and/or nested
+		// Arrange — [LikeC4Registry] class can be private and/or nested
 		var source = BuildSourceWithDefinitionsClass(
 			tagsConstants: [("MyTag", "my-tag")],
 			callSites: [".WithTag(\"my-tag\")"],
@@ -506,7 +505,7 @@ public sealed class LikeC4StrictValidatorGeneratorTests
 	}
 
 	// -----------------------------------------------------------------------
-	// Full generator pipeline — multiple [LikeC4Definitions] classes (ASPIREC4003)
+	// Full generator pipeline — multiple [LikeC4Registry] classes (ASPIREC4003)
 	// -----------------------------------------------------------------------
 
 	[Test]
@@ -514,18 +513,18 @@ public sealed class LikeC4StrictValidatorGeneratorTests
 		CancellationToken cancellationToken
 	)
 	{
-		// Arrange — two [LikeC4Definitions] classes in the same assembly
+		// Arrange — two [LikeC4Registry] classes in the same assembly
 		var source = """
 			using Aspire.Hosting.AspireC4;
 			namespace TestApp;
 
-			[LikeC4Definitions]
+			[LikeC4Registry]
 			class FirstDefinitions
 			{
 			    public static class Tags { public const string External = "external"; }
 			}
 
-			[LikeC4Definitions]
+			[LikeC4Registry]
 			class SecondDefinitions
 			{
 			    public static class Tags { public const string Internal = "internal"; }
@@ -595,7 +594,7 @@ public sealed class LikeC4StrictValidatorGeneratorTests
 		// Assert
 		var diagnostics = GetDiagnostics(result, "ASPIREC4004");
 		await Assert.That(diagnostics.Count).IsGreaterThan(0);
-		await Assert.That(diagnostics[0].GetMessage()).Contains("Backend");
+		await Assert.That(diagnostics[0].GetMessage(CultureInfo.InvariantCulture)).Contains("Backend");
 	}
 
 	[Test]
@@ -621,7 +620,7 @@ public sealed class LikeC4StrictValidatorGeneratorTests
 		CancellationToken cancellationToken
 	)
 	{
-		// Arrange — [LikeC4Definitions] exists but has no Groups nested class → no group validation
+		// Arrange — [LikeC4Registry] exists but has no Groups nested class → no group validation
 		var source = BuildSourceWithDefinitionsClass(
 			tagsConstants: [("External", "external")],
 			callSites: [".WithLikeC4Group(\"anything\")"]
@@ -639,7 +638,7 @@ public sealed class LikeC4StrictValidatorGeneratorTests
 		CancellationToken cancellationToken
 	)
 	{
-		// Arrange — no [LikeC4Definitions] at all
+		// Arrange — no [LikeC4Registry] at all
 		var source = BuildSourceWithCallSites(".WithLikeC4Group(\"Frontend\")");
 
 		// Act
@@ -650,10 +649,244 @@ public sealed class LikeC4StrictValidatorGeneratorTests
 	}
 
 	// -----------------------------------------------------------------------
+	// Full generator pipeline — [KnownType] attribute on individual constants
+	// -----------------------------------------------------------------------
+
+	[Test]
+	public async Task RunGenerator_WithKnownTypeAttributeOnTopLevelField_ValidatesCallSite(
+		CancellationToken cancellationToken
+	)
+	{
+		// Arrange
+		const string source = """
+			using Aspire.Hosting.AspireC4;
+			namespace TestApp;
+
+			[LikeC4Registry]
+			static class MyRegistry
+			{
+			    [KnownType(LikeC4RegistryType.Tag)]
+			    public const string External = "external";
+			}
+
+			class Setup
+			{
+			    static void Configure()
+			    {
+			        var a = new object();
+			        a.WithTag("unknown-tag");
+			    }
+			}
+			""";
+
+		// Act
+		var result = RunGenerator(source, cancellationToken: cancellationToken);
+
+		// Assert
+		var diagnostics = GetDiagnostics(result, "ASPIREC4001");
+		await Assert.That(diagnostics.Count).IsGreaterThan(0);
+		await Assert.That(diagnostics[0].GetMessage(CultureInfo.InvariantCulture)).Contains("unknown-tag");
+	}
+
+	[Test]
+	public async Task RunGenerator_WithKnownTypeAttributeOnTopLevelField_AllowsDeclaredValue(
+		CancellationToken cancellationToken
+	)
+	{
+		// Arrange
+		const string source = """
+			using Aspire.Hosting.AspireC4;
+			namespace TestApp;
+
+			[LikeC4Registry]
+			static class MyRegistry
+			{
+			    [KnownType(LikeC4RegistryType.Tag)]
+			    public const string External = "external";
+			}
+
+			class Setup
+			{
+			    static void Configure()
+			    {
+			        var a = new object();
+			        a.WithTag("external");
+			    }
+			}
+			""";
+
+		// Act
+		var result = RunGenerator(source, cancellationToken: cancellationToken);
+
+		// Assert
+		await Assert.That(GetDiagnostics(result, "ASPIREC4001")).IsEmpty();
+	}
+
+	[Test]
+	public async Task RunGenerator_WithDuplicateTypeDeclaration_EmitsDuplicateTypeDeclarationDiagnostic(
+		CancellationToken cancellationToken
+	)
+	{
+		// Arrange — Tags declared both as nested class AND via [KnownType] on a field
+		const string source = """
+			using Aspire.Hosting.AspireC4;
+			namespace TestApp;
+
+			[LikeC4Registry]
+			static class MyRegistry
+			{
+			    [KnownType(LikeC4RegistryType.Tag)]
+			    public const string InlineTag = "inline-tag";
+
+			    public static class Tags
+			    {
+			        public const string External = "external";
+			    }
+			}
+
+			class Setup
+			{
+			    static void Configure() { }
+			}
+			""";
+
+		// Act
+		var result = RunGenerator(source, cancellationToken: cancellationToken);
+
+		// Assert
+		var diagnostics = GetDiagnostics(result, "ASPIREC4005");
+		await Assert.That(diagnostics.Count).IsGreaterThan(0);
+	}
+
+	[Test]
+	public async Task RunGenerator_WithKnownTypeGroupField_ValidatesGroupCallSite(CancellationToken cancellationToken)
+	{
+		// Arrange
+		const string source = """
+			using Aspire.Hosting.AspireC4;
+			namespace TestApp;
+
+			[LikeC4Registry]
+			static class MyRegistry
+			{
+			    [KnownType(LikeC4RegistryType.Group)]
+			    public const string Frontend = "Frontend";
+			}
+
+			class Setup
+			{
+			    static void Configure()
+			    {
+			        var a = new object();
+			        a.WithLikeC4Group("Backend");
+			    }
+			}
+			""";
+
+		// Act
+		var result = RunGenerator(source, cancellationToken: cancellationToken);
+
+		// Assert
+		var diagnostics = GetDiagnostics(result, "ASPIREC4004");
+		await Assert.That(diagnostics.Count).IsGreaterThan(0);
+		await Assert.That(diagnostics[0].GetMessage(CultureInfo.InvariantCulture)).Contains("Backend");
+	}
+
+	[Test]
+	public async Task RunGenerator_WithKnownTypeStrictDisable_DoesNotValidateTypeEvenWithDeclaredValues(
+		CancellationToken cancellationToken
+	)
+	{
+		// Arrange — Tag has Strict = Disable, so no validation fires
+		const string source = """
+			using Aspire.Hosting.AspireC4;
+			namespace TestApp;
+
+			[LikeC4Registry]
+			static class MyRegistry
+			{
+			    [KnownType(LikeC4RegistryType.Tag, Strict = LikeC4StrictMode.Disable)]
+			    public const string External = "external";
+			}
+
+			class Setup
+			{
+			    static void Configure()
+			    {
+			        var a = new object();
+			        a.WithTag("anything-undeclared");
+			    }
+			}
+			""";
+
+		// Act
+		var result = RunGenerator(source, cancellationToken: cancellationToken);
+
+		// Assert — strict disabled for tags, so no diagnostic
+		await Assert.That(GetDiagnostics(result, "ASPIREC4001")).IsEmpty();
+	}
+
+	[Test]
+	public async Task RunGenerator_WithRegistryStrictEnable_ValidatesEvenWithEmptyAllowedSet(
+		CancellationToken cancellationToken
+	)
+	{
+		// Arrange — [LikeC4Registry(Strict = Enable)] with no Tags declared → all tags are undeclared
+		const string source = """
+			using Aspire.Hosting.AspireC4;
+			namespace TestApp;
+
+			[LikeC4Registry(Strict = LikeC4StrictMode.Enable)]
+			static class MyRegistry
+			{
+			    public static class Groups { public const string Frontend = "Frontend"; }
+			}
+
+			class Setup
+			{
+			    static void Configure()
+			    {
+			        var a = new object();
+			        a.WithTag("any-tag");
+			    }
+			}
+			""";
+
+		// Act
+		var result = RunGenerator(source, cancellationToken: cancellationToken);
+
+		// Assert — strict enabled at registry level, no tags declared → fires
+		var diagnostics = GetDiagnostics(result, "ASPIREC4001");
+		await Assert.That(diagnostics.Count).IsGreaterThan(0);
+	}
+
+	// -----------------------------------------------------------------------
+	// Full generator pipeline — MetadataKeys nested class
+	// -----------------------------------------------------------------------
+
+	[Test]
+	public async Task RunGenerator_WithMetadataKeysNestedClass_ExtractsWithoutError(CancellationToken cancellationToken)
+	{
+		// Arrange — MetadataKeys is just declared; no call-site validation yet
+		var source = BuildSourceWithDefinitionsClass(
+			metadataKeyConstants: [("AzureSku", "Azure SKU"), ("UseCase", "Use Case")],
+			callSites: []
+		);
+
+		// Act
+		var result = RunGenerator(source, cancellationToken: cancellationToken);
+
+		// Assert — no diagnostics from having a MetadataKeys nested class
+		await Assert
+			.That(result.Diagnostics.Where(d => d.Id.StartsWith("ASPIREC4", StringComparison.Ordinal)))
+			.IsEmpty();
+	}
+
+	// -----------------------------------------------------------------------
 	// Helpers
 	// -----------------------------------------------------------------------
 
-	static LikeC4StrictValidatorGenerator CreateSut() => new LikeC4StrictValidatorGenerator();
+	static LikeC4StrictValidatorGenerator CreateSut() => new();
 
 	static GeneratorDriverRunResult RunGenerator(
 		string source,
@@ -678,7 +911,7 @@ public sealed class LikeC4StrictValidatorGeneratorTests
 
 		GeneratorDriver driver = CSharpGeneratorDriver.Create(
 			generators: [generator.AsSourceGenerator()],
-			additionalTexts: additionalTexts.ToImmutableArray(),
+			additionalTexts: [.. additionalTexts],
 			parseOptions: CSharpParseOptions.Default,
 			optionsProvider: optionsProvider
 		);
@@ -701,7 +934,7 @@ public sealed class LikeC4StrictValidatorGeneratorTests
 			.SingleOrDefault();
 
 	static IReadOnlyList<Diagnostic> GetDiagnostics(GeneratorDriverRunResult result, string diagnosticId) =>
-		result.Diagnostics.Where(d => d.Id == diagnosticId).ToList();
+		[.. result.Diagnostics.Where(d => d.Id == diagnosticId)];
 
 	static string BuildSourceWithCallSites(params string[] invocations)
 	{
@@ -727,6 +960,7 @@ public sealed class LikeC4StrictValidatorGeneratorTests
 		(string Name, string Value)[]? elementKindConstants = null,
 		(string Name, string Value)[]? relationshipKindConstants = null,
 		(string Name, string Value)[]? groupConstants = null,
+		(string Name, string Value)[]? metadataKeyConstants = null,
 		string[]? callSites = null,
 		string classAccessibility = "internal"
 	)
@@ -741,17 +975,18 @@ public sealed class LikeC4StrictValidatorGeneratorTests
 				constants.Select(static c => $"public const string {c.Name} = \"{c.Value}\";")
 			);
 			return @$"""
-			    public static class {className}
-			        {{
-			            {fields}
-			        }}
-			""";
+		public static class {className}
+			{{
+				{fields}
+			}}
+""";
 		}
 
 		var tagsClass = BuildNestedClass("Tags", tagsConstants);
 		var elementKindsClass = BuildNestedClass("ElementKinds", elementKindConstants);
 		var relationshipKindsClass = BuildNestedClass("RelationshipKinds", relationshipKindConstants);
 		var groupsClass = BuildNestedClass("Groups", groupConstants);
+		var metadataKeysClass = BuildNestedClass("MetadataKeys", metadataKeyConstants);
 
 		var body = callSites is null
 			? string.Empty
@@ -761,13 +996,14 @@ public sealed class LikeC4StrictValidatorGeneratorTests
 			using Aspire.Hosting.AspireC4;
 			namespace TestApp;
 
-			[LikeC4Definitions]
+			[LikeC4Registry]
 			{{classAccessibility}} class MyDiagramDefinitions
 			{
 			{{tagsClass}}
 			{{elementKindsClass}}
 			{{relationshipKindsClass}}
 			{{groupsClass}}
+			{{metadataKeysClass}}
 			}
 
 			class Setup
@@ -791,14 +1027,9 @@ public sealed class LikeC4StrictValidatorGeneratorTests
 		public override SourceText? GetText(CancellationToken cancellationToken = default) => SourceText.From(content);
 	}
 
-	sealed class TestAnalyzerConfigOptionsProvider : AnalyzerConfigOptionsProvider
+	sealed class TestAnalyzerConfigOptionsProvider(string key, string value) : AnalyzerConfigOptionsProvider
 	{
-		readonly TestAnalyzerConfigOptions _options;
-
-		public TestAnalyzerConfigOptionsProvider(string key, string value)
-		{
-			_options = new TestAnalyzerConfigOptions(key, value);
-		}
+		readonly TestAnalyzerConfigOptions _options = new(key, value);
 
 		public override AnalyzerConfigOptions GlobalOptions => _options;
 
@@ -809,7 +1040,7 @@ public sealed class LikeC4StrictValidatorGeneratorTests
 
 	sealed class TestAnalyzerConfigOptions(string key, string value) : AnalyzerConfigOptions
 	{
-		public override bool TryGetValue(string requestedKey, out string? optionValue)
+		public override bool TryGetValue(string requestedKey, [NotNullWhen(true)] out string? optionValue)
 		{
 			if (string.Equals(requestedKey, key, StringComparison.OrdinalIgnoreCase))
 			{
