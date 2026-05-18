@@ -125,6 +125,16 @@ public sealed class AspireC4DiagramOptions
 	public bool ValidateBeforeStart { get; set; }
 
 	/// <summary>
+	/// Maximum number of seconds to wait for an external process (<c>npx likec4 format</c> or
+	/// <c>docker run … validate</c>) to complete before killing it and moving on.
+	/// This caps how long <see cref="FormatGeneratedFile"/> and <see cref="ValidateBeforeStart"/>
+	/// can block application startup — the process is killed when the timeout elapses, and the
+	/// existing best-effort error handling continues normally.
+	/// Defaults to <c>30</c> seconds.
+	/// </summary>
+	public int ExternalProcessTimeoutSeconds { get; set; } = 30;
+
+	/// <summary>
 	/// Custom element kind specifications emitted in the <c>specification { }</c> block.
 	/// Each entry may include optional style tokens (shape, color, icon, border, opacity),
 	/// a notation string, and a default technology label.

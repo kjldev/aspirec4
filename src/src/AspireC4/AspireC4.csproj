@@ -1,6 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 	<PropertyGroup>
 		<IsPackable>true</IsPackable>
+		<AssemblyName>AspireC4.Hosting</AssemblyName>
 		<AssemblyTitle>AspireC4 Hosting</AssemblyTitle>
 		<Description>Aspire hosting extension for the AspireC4 plugin, generating a dynamic LikeC4 architecture diagram for your Aspire application.</Description>
 		<COPYRIGHT_YEAR>2026</COPYRIGHT_YEAR>
@@ -10,6 +11,7 @@
 		<Company>KJL Solutions Ltd.</Company>
 		<Copyright>KJL Solutions Ltd., $(COPYRIGHT_YEAR) | All rights reserved.</Copyright>
 		<PackageIcon>likec4-logo.png</PackageIcon>
+		<RepositoryUrl>https://github.com/kjldev/aspirec4/</RepositoryUrl>
 		<PackageLicenseFile>LICENSE.md</PackageLicenseFile>
 		<PackageReadmeFile>README.md</PackageReadmeFile>
 		<PackageProjectUrl>https://kjl.dev/projects/aspirec4/</PackageProjectUrl>

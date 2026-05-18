@@ -1,5 +1,15 @@
 # aspirec4
 
+## 13.3.0-prerelease.8
+
+### Patch Changes
+
+- ### Bug Fixes
+
+  - resolve nuget assembly name mismatch and beforestart hang
+
+  ### Changes
+
 ## 13.3.0-prerelease.7
 
 ### Minor Changes

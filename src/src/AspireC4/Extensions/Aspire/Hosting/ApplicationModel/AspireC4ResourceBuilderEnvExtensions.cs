@@ -18,13 +18,14 @@ public static class AspireC4ResourceBuilderEnvExtensions
 	/// </summary>
 	[AspireExport(
 		"withLikeC4ReferenceWithEnvironment",
-		MethodName = "withLikeC4Reference",
-		Description = "Create a new reference, while also allowing customization of how a resource appears in the generated LikeC4 diagram."
+		MethodName = "withLikeC4ReferenceWithEnvironment",
+		Description = "Create a new reference, while also allowing customization of how a resource appears in the generated LikeC4 diagram.",
+		RunSyncOnBackgroundThread = true
 	)]
 	public static IResourceBuilder<T> WithLikeC4Reference<T>(
 		[NotNull] this IResourceBuilder<T> builder,
 		IResourceBuilder<IResourceWithConnectionString> source,
-		Action<LikeC4RelationshipDetailsAnnotation>? configure,
+		Action<LikeC4RelationshipDetailsAnnotation>? configure = null,
 		string? connectionName = null,
 		bool optional = false,
 		bool skipAspireReference = false
