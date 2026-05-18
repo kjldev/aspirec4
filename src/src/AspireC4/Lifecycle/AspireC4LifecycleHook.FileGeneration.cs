@@ -235,8 +235,25 @@ sealed partial class AspireC4LifecycleHook
 			if (process is null)
 				return;
 
-			var stdout = await process.StandardOutput.ReadToEndAsync(cancellationToken);
-			await process.WaitForExitAsync(cancellationToken);
+			using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+			cts.CancelAfter(TimeSpan.FromSeconds(options.Value.ExternalProcessTimeoutSeconds));
+
+			string stdout;
+			try
+			{
+				stdout = await process.StandardOutput.ReadToEndAsync(cts.Token);
+				await process.WaitForExitAsync(cts.Token);
+			}
+			catch (OperationCanceledException)
+			{
+				try
+				{
+					process.Kill(entireProcessTree: true);
+				}
+				catch { }
+
+				throw;
+			}
 
 			if (string.IsNullOrWhiteSpace(stdout))
 				return;
@@ -274,6 +291,7 @@ sealed partial class AspireC4LifecycleHook
 	{
 		try
 		{
+			var opts = options.Value;
 			var (command, prefix) = BuildCliPrefix();
 			var startInfo = new ProcessStartInfo
 			{
@@ -297,7 +315,23 @@ sealed partial class AspireC4LifecycleHook
 			if (process is null)
 				return;
 
-			await process.WaitForExitAsync(cancellationToken);
+			using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+			cts.CancelAfter(TimeSpan.FromSeconds(opts.ExternalProcessTimeoutSeconds));
+
+			try
+			{
+				await process.WaitForExitAsync(cts.Token);
+			}
+			catch (OperationCanceledException)
+			{
+				try
+				{
+					process.Kill(entireProcessTree: true);
+				}
+				catch { }
+
+				throw;
+			}
 
 			if (process.ExitCode == 0)
 				telemetry.LikeC4FormatApplied();

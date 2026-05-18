@@ -6,7 +6,10 @@ const builder = await createBuilder();
 await builder.addAspireC4({
 	configure: async (opts) => {
 		// Validate the C4 model before starting the application to catch any issues early.
-		await opts.validateBeforeStart.set(true);
+		// NOTE: Disabled here as validation (docker run) can be slow on first run.
+		// await opts.validateBeforeStart.set(true);
+		// Disable host-side npx formatting — not needed in Docker mode, and npx is slow on a cold cache.
+		await opts.formatGeneratedFile.set(false);
 		await opts.title.set("AspireC4 Test App");
 		await opts.viewTitle.set("AspireC4 Architecture");
 		await opts.viewDescription.set(
@@ -23,7 +26,6 @@ For more details on all of these tools and components, see:
 	},
 });
 
-// Azure managed resources (containers when local).
 const azureManagerRedis = await builder
 	.addAzureManagedRedis("azure-redis")
 	// Run as container when local
@@ -148,7 +150,7 @@ const nodeApp = await builder
 		url.url = "/health";
 	})
 	// These references will be used to generate the connections in the C4 model and also ensure that the application waits for these dependencies to be ready before starting.
-	.withLikeC4Reference(azureManagerRedis, {
+	.withLikeC4ReferenceWithEnvironment(azureManagerRedis, {
 		configure: async (opts) => {
 			await opts
 				.withLabel("Caches sessions")
@@ -157,7 +159,7 @@ const nodeApp = await builder
 		},
 	})
 	.waitFor(azureManagerRedis)
-	.withLikeC4Reference(localRedis, {
+	.withLikeC4ReferenceWithEnvironment(localRedis, {
 		configure: async (opts) => {
 			await opts
 				.withLabel("Caches  sessions (local)")
@@ -166,7 +168,7 @@ const nodeApp = await builder
 		},
 	})
 	.waitFor(localRedis)
-	.withLikeC4Reference(azurePostgres, {
+	.withLikeC4ReferenceWithEnvironment(azurePostgres, {
 		configure: async (opts) => {
 			await opts
 				.withLabel("Persists data")
@@ -175,7 +177,7 @@ const nodeApp = await builder
 		},
 	})
 	.waitFor(azurePostgres)
-	.withLikeC4Reference(localPostgres, {
+	.withLikeC4ReferenceWithEnvironment(localPostgres, {
 		configure: async (opts) => {
 			await opts
 				.withLabel("Persists data (local)")
@@ -185,7 +187,7 @@ const nodeApp = await builder
 	})
 	.waitFor(localPostgres);
 
-await localPostgres.withLikeC4Reference(azurePostgres, {
+await localPostgres.withLikeC4ReferenceWithEnvironment(azurePostgres, {
 	configure: async (opts) => {
 		await opts
 			.withLabel("syncs with")
@@ -193,7 +195,7 @@ await localPostgres.withLikeC4Reference(azurePostgres, {
 			.withKind("tcp-ip");
 	},
 });
-await localRedis.withLikeC4Reference(azureManagerRedis, {
+await localRedis.withLikeC4ReferenceWithEnvironment(azureManagerRedis, {
 	configure: async (opts) => {
 		await opts
 			.withLabel("syncs with")
@@ -202,4 +204,5 @@ await localRedis.withLikeC4Reference(azureManagerRedis, {
 	},
 });
 
-await builder.build().run();
+const app = await builder.build();
+await app.run();

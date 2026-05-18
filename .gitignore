@@ -569,6 +569,7 @@ dist
 *.o
 [Dd]ebug*/
 [Rr]elease*/
+!.github/skills/
 *.mode*
 *.app/
 .svn/

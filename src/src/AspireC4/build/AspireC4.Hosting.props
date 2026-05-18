@@ -5,3 +5,4 @@
 		<CompilerVisibleProperty Include="DisableAspireC4SourceGenerator" />
 	</ItemGroup>
 </Project>
+

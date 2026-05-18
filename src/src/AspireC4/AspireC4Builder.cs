@@ -93,6 +93,17 @@ static class AspireC4Builder
 			);
 
 			process?.WaitForExit(5_000);
+			if (process is not null && !process.HasExited)
+			{
+				try
+				{
+					process.Kill(entireProcessTree: true);
+				}
+				catch { }
+
+				return LikeC4.Runtime.ContainerRuntime.DockerDesktop;
+			}
+
 			var os = process?.StandardOutput.ReadToEnd().Trim() ?? "";
 
 			if (os.Contains("Rancher Desktop", StringComparison.OrdinalIgnoreCase))
