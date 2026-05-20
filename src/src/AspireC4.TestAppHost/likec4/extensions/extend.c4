@@ -2,29 +2,32 @@
 // It is intentionally hand-authored.
 
 specification {
+	color custom-team-color #FF5733
+	color custom-system-color #33C1FF
+
 	element team {
     style {
       shape person
-      color #FF5733
+      color custom-team-color
     }
   }
 
   element system {
     style {
       shape browser 
-      color #33C1FF
+      color custom-system-color
       icon @/likec4/likec4-wordmark.svg
     }
   }
 }
 
 model {
-	likec4_team = team 'LikeC4 Contributors' {
-		summary 'The team of contributors who created the LikeC4 model and documentation.'
+  likec4_team = team 'LikeC4 Contributors' {
+    summary 'The team of contributors who created the LikeC4 model and documentation.'
     link https://github.com/likec4/likec4/graphs/contributors 'GitHub Contributors'
 
-		-> likec4 'Created with 🩷 by'
-	}
+     -> likec4 'Created with 🩷 by'
+  }
 
   likec4 = system 'LikeC4' {
     summary 'Describe your system architecture with code. Visualize, validate and share — all from a single source of truth.'
