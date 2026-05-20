@@ -1,9 +1,14 @@
 pre-commit:
   jobs:
     - name: csharpier format check
-      run: dotnet csharpier check .
+      run: just lintcheck
 
 commit-msg:
   jobs:
     - name: conventional commits
       run: npx commitlint --edit {1}
+
+pre-push:
+  jobs:
+    - name: csharpier format check
+      run: just lintcheck

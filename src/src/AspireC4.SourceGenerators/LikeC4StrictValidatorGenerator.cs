@@ -556,10 +556,10 @@ public sealed class LikeC4StrictValidatorGenerator : IIncrementalGenerator
 	static bool IsTargetInvocation(SyntaxNode node, string methodName) =>
 		node
 			is InvocationExpressionSyntax
-		{
-			ArgumentList.Arguments.Count: > 0,
-			Expression: MemberAccessExpressionSyntax { Name.Identifier.Text: var name },
-		}
+			{
+				ArgumentList.Arguments.Count: > 0,
+				Expression: MemberAccessExpressionSyntax { Name.Identifier.Text: var name },
+			}
 		&& name == methodName;
 
 	static CallSiteInfo? ExtractCallSiteInfo(GeneratorSyntaxContext ctx, CancellationToken ct)
@@ -675,7 +675,10 @@ public sealed class LikeC4StrictValidatorGenerator : IIncrementalGenerator
 				_ => registrySeverity,
 			};
 
-		int CombineRaw(int a, int b) => a == ClassDefinitions.SeverityOff || b == ClassDefinitions.SeverityOff ? ClassDefinitions.SeverityOff : Math.Max(a, b);
+		int CombineRaw(int a, int b) =>
+			a == ClassDefinitions.SeverityOff || b == ClassDefinitions.SeverityOff
+				? ClassDefinitions.SeverityOff
+				: Math.Max(a, b);
 
 		bool ShouldValidate(HashSet<string> allowedSet, DiagnosticSeverity? severity) =>
 			severity is not null && (allowedSet.Count > 0 || isExplicitlyEnabled);
