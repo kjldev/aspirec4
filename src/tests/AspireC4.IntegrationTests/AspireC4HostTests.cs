@@ -27,10 +27,29 @@ public sealed partial class AspireC4HostTests
 	static DistributedApplication? s_app;
 	static string? s_outputDir;
 	static string? s_modelPath;
+	static string? s_skipReason;
+
+	/// <summary>
+	/// Skips the current test when no container runtime is available so the suite
+	/// shows "Skipped" rather than "Failed" on developer machines without Docker.
+	/// </summary>
+	[Before(Test)]
+	public void SkipWhenNoContainerRuntime()
+	{
+		if (s_skipReason is not null)
+			Skip.Test(s_skipReason);
+	}
 
 	[Before(Class)]
 	public static async Task ClassSetUpAsync(CancellationToken cancellationToken)
 	{
+		if (!await IsContainerRuntimeAvailableAsync(cancellationToken))
+		{
+			var runtime = Environment.GetEnvironmentVariable("ASPIRE_CONTAINER_RUNTIME") ?? "docker";
+			s_skipReason = $"Container runtime '{runtime}' is not available on this machine.";
+			return;
+		}
+
 		// Use a directory alongside the TestAppHost output so all relevant paths
 		// (extensions, image aliases, output) share the same drive — required by the
 		// single-bind-mount architecture that computes a common ancestor.
@@ -356,5 +375,36 @@ public sealed partial class AspireC4HostTests
 		var stats = doc.RootElement.GetProperty("stats");
 		var totalErrors = stats.GetProperty("totalErrors").GetInt32();
 		return (totalErrors, rawOutput);
+	}
+
+	static async Task<bool> IsContainerRuntimeAvailableAsync(CancellationToken cancellationToken)
+	{
+		var runtime = Environment.GetEnvironmentVariable("ASPIRE_CONTAINER_RUNTIME") ?? "docker";
+		try
+		{
+			using var proc = Process.Start(
+				new ProcessStartInfo
+				{
+					FileName = runtime,
+					Arguments = "info",
+					RedirectStandardOutput = true,
+					RedirectStandardError = true,
+					UseShellExecute = false,
+					CreateNoWindow = true,
+				}
+			);
+			if (proc is null)
+				return false;
+
+			await proc.WaitForExitAsync(cancellationToken);
+			return proc.ExitCode == 0;
+		}
+		// Intentionally swallow all exceptions — this method probes availability.
+#pragma warning disable CA1031
+		catch
+		{
+			return false;
+		}
+#pragma warning restore CA1031
 	}
 }
