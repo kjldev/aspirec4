@@ -1,5 +1,20 @@
 # aspirec4
 
+## 13.3.0-prerelease.9
+
+### Minor Changes
+
+- ### Features
+
+  - updated the source gen to have its own validation, rather than double loading
+  - normalise metadata keys for case/punctuation-insensitive validation
+
+  ### Bug Fixes
+
+  - yarn dlx peer deps and deno node-modules-dir for e2e cli tests
+
+  ### Changes
+
 ## 13.3.0-prerelease.8
 
 ### Patch Changes
