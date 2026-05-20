@@ -11,6 +11,12 @@ config_default := "Release"
 [private]
 default:
     just --list
+
+# Initialise the repo: restore packages, install tools, and wire up git hooks.
+# Safe to run multiple times.
+init: restore
+    npm install
+    lefthook install
 # ── .NET ──────────────────────────────────────────────────────────────────────
 
 # Open the solution in the default IDE (e.g., Visual Studio or VS Code)
