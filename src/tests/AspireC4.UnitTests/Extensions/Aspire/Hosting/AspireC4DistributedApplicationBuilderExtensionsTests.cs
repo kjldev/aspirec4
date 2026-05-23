@@ -12,8 +12,8 @@ public sealed class AspireC4DistributedApplicationBuilderExtensionsTests
 	{
 		// Arrange
 		var appBuilder = CreateAppBuilder();
-		// "latest" tag resolves to a recent version (>= 1.57) at startup and uses --hmr-port,
-		// so Docker allocates a random host port (null) — no fixed port needed, no conflicts.
+		// "latest" tag resolves to a recent version (>= 1.57) at startup and uses --hmr-port.
+		// Host and container use the same port so the browser's HMR WebSocket connection works.
 
 		// Act
 		var visualization = appBuilder.AddAspireC4();
@@ -29,11 +29,11 @@ public sealed class AspireC4DistributedApplicationBuilderExtensionsTests
 		await Assert.That(endpoints[0].TargetPort).IsEqualTo(LikeC4ServerResource.DefaultContainerServePort);
 		await Assert.That(endpoints[1].Name).IsEqualTo(LikeC4ServerResource.HMREndpointName);
 		await Assert.That(endpoints[1].TargetPort).IsEqualTo(LikeC4ServerResource.DefaultContainerHMRPort);
-		await Assert.That(endpoints[1].Port).IsNull();
+		await Assert.That(endpoints[1].Port).IsEqualTo(LikeC4ServerResource.DefaultContainerHMRPort);
 	}
 
 	[Test]
-	public async Task AddAspireC4_HmrEndpoint_UsesDynamicPortForConfigurableVersions()
+	public async Task AddAspireC4_HmrEndpoint_UsesSymmetricPortForConfigurableVersions()
 	{
 		// Arrange
 		var appBuilder = CreateAppBuilder();
@@ -45,8 +45,8 @@ public sealed class AspireC4DistributedApplicationBuilderExtensionsTests
 			.Annotations.OfType<EndpointAnnotation>()
 			.Single(e => e.Name == LikeC4ServerResource.HMREndpointName);
 
-		// Assert — no fixed host port; Docker allocates freely
-		await Assert.That(hmrEndpoint.Port).IsNull();
+		// Assert — host and container use the same port so the browser's HMR WebSocket connects
+		await Assert.That(hmrEndpoint.Port).IsEqualTo(LikeC4ServerResource.DefaultContainerHMRPort);
 	}
 
 	[Test]

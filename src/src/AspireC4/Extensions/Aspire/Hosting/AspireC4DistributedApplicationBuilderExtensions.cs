@@ -69,21 +69,15 @@ public static class AspireC4DistributedApplicationBuilderExtensions
 		var resolvedHmrPort = diagramOpts.HMRPort ?? LikeC4ServerResource.DefaultContainerHMRPort;
 		var defaultViewId = string.IsNullOrWhiteSpace(diagramOpts.DefaultViewId) ? null : diagramOpts.DefaultViewId;
 
-		// Use a dynamic host port (null) unless we know for certain we are dealing with an old
-		// (pre-1.57) image where Vite hardcodes port 24678 in the JS it sends to the browser.
-		// "latest" also gets null — at runtime it resolves to a recent version (>= 1.57) that
-		// honours --hmr-port, so Docker can allocate freely and multiple containers never clash.
-		// Only a pinned, parseable old tag (FixedPort mode) requires the well-known port.
-		var isLatestTag = string.Equals(imageTag, LikeC4ServerResource.DefaultTag, StringComparison.OrdinalIgnoreCase);
-		// If the user pinned an explicit port, respect it on all images; otherwise go dynamic
-		// for Configurable images (and for "latest" which will resolve to Configurable at startup).
-		int? hmrHostPort =
-			diagramOpts.HMRPort
-			?? (
-				hmrPortMode == HMRPortMode.FixedPort && !isLatestTag
-					? LikeC4ServerResource.DefaultContainerHMRPort
-					: null
-			);
+		// Always use the same port on both the host and inside the container for HMR.
+		// In LikeC4 v1.57+, --hmr-port sets server.hmr.port — the port Vite BINDS to inside
+		// the container. Vite also advertises this same port to browsers as the HMR WebSocket
+		// target (no separate clientPort option exists). Docker must therefore map the SAME port
+		// on the host so the browser's connection to host:PORT reaches container:PORT correctly.
+		// Dynamic (null) host ports cannot work here: if Docker maps host:DYNAMIC → container:24678
+		// but Vite is told --hmr-port DYNAMIC it binds to container:DYNAMIC, which Docker doesn't
+		// forward, breaking the HMR WebSocket connection entirely.
+		int? hmrHostPort = diagramOpts.HMRPort ?? resolvedHmrPort;
 
 		builder
 			.Services.AddOptions<ContainerWorkspaceOptions>()
@@ -113,6 +107,7 @@ public static class AspireC4DistributedApplicationBuilderExtensions
 			.WithImage(LikeC4ServerResource.DefaultImage)
 			.WithImageTag(imageTag)
 			.WithImageRegistry(LikeC4ServerResource.DefaultRegistry)
+			.WithImagePullPolicy(ImagePullPolicy.Always)
 			.WithHttpEndpoint(
 				port: port,
 				targetPort: LikeC4ServerResource.DefaultContainerServePort,
@@ -128,6 +123,7 @@ public static class AspireC4DistributedApplicationBuilderExtensions
 					opts.Url = defaultViewId != null ? $"/view/{defaultViewId}" : "/";
 				}
 			)
+			.WithHttpHealthCheck("/", statusCode: 200, endpointName: LikeC4LocalServerResource.HttpEndpointName)
 			// Register container args as a callback so they are evaluated at container-start
 			// time (after BeforeStartEvent has set ContainerServePath). DisableHMR is read
 			// from AspireC4DiagramOptions so it respects configuration overrides at runtime.
@@ -159,16 +155,10 @@ public static class AspireC4DistributedApplicationBuilderExtensions
 
 				if (!diagOpts.Value.DisableHMR && wsOpts.Value.HMRPortMode == HMRPortMode.Configurable)
 				{
-					// For dynamic host-port allocation, read the port Docker actually assigned
-					// so Vite advertises the right address to the browser.
-					// Falls back to ResolvedHMRPort (the user-configured value) in unit-test
-					// scenarios where DCP has not allocated an endpoint.
-					var hmrAnnotation = serverResource
-						.Annotations.OfType<EndpointAnnotation>()
-						.FirstOrDefault(a => a.Name == LikeC4ServerResource.HMREndpointName);
-					var effectiveHmrPort = hmrAnnotation?.AllocatedEndpoint?.Port ?? wsOpts.Value.ResolvedHMRPort;
+					// Pass the container-internal HMR port. Because host and container use the
+					// same port (symmetric mapping), this value is also what the browser connects to.
 					context.Args.Add("--hmr-port");
-					context.Args.Add(effectiveHmrPort);
+					context.Args.Add(wsOpts.Value.ResolvedHMRPort);
 				}
 
 				if (diagOpts.Value.DisableHMR)

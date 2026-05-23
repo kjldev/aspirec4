@@ -94,7 +94,8 @@ public static class AspireC4ResourceExtensions
 				name: LikeC4LocalServerResource.HMREndpointName,
 				targetPort: LikeC4LocalServerResource.DefaultHMRPort
 			)
-			.WithExternalHttpEndpoints()
+			.WithHttpHealthCheck("/", statusCode: 200, endpointName: LikeC4LocalServerResource.HttpEndpointName)
+			//.WithExternalHttpEndpoints()
 			.ExcludeFromLikeC4()
 			.ExcludeFromManifest()
 			.WithInitialState(
