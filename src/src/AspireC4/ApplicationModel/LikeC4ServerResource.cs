@@ -33,7 +33,7 @@ public sealed class LikeC4ServerResource : ContainerResource
 	internal const int DefaultContainerServePort = 5173;
 
 	/// <summary>The container port used by LikeC4's Vite HMR channel.</summary>
-	internal const int DefaultContainerUpdatePort = 24678;
+	internal const int DefaultContainerHMRPort = 24678;
 
 	/// <summary>
 	/// Root path inside the container where the host directory tree is bind-mounted.

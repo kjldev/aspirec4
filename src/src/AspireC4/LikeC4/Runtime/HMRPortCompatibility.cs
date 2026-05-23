@@ -2,9 +2,8 @@ namespace Aspire.Hosting.AspireC4.LikeC4.Runtime;
 
 static class HMRPortCompatibility
 {
-	// Hopefully the PR will be in for 1.57.0, but I can't tell so I've set the number really
-	// high for now to avoid accidentally enabling it before it's actually available.
-	static Version? ConfigurableHmrPortMinimumVersion => new(100, 57, 0);
+	// The minimum version of LikeC4 that supports configurable HMR ports is v1.57.
+	static Version ConfigurableHmrPortMinimumVersion => new(1, 57, 0);
 
 	internal static HMRPortMode Resolve(string? loadedVersionTag) =>
 		Resolve(loadedVersionTag, ConfigurableHmrPortMinimumVersion);

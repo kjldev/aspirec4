@@ -159,13 +159,16 @@ public static class AspireC4DistributedApplicationBuilderExtensions
 
 		if (!diagramOpts.DisableHMR)
 		{
+			// When using the relay, omit a fixed host port so Docker allocates a dynamic one.
+			// The relay owns port 24678 on the host and bridges connections to the dynamic port.
+			// Direct fixed-port mapping is only safe on non-Windows Configurable-mode images.
+			int? hmrPort = useHmrRelay
+				? null
+				: diagramOpts.HMRPort.GetValueOrDefault(LikeC4ServerResource.DefaultContainerHMRPort);
 			serverBuilder
 				.WithHttpEndpoint(
-					// When using the relay, omit a fixed host port so Docker allocates a dynamic one.
-					// The relay owns port 24678 on the host and bridges connections to the dynamic port.
-					// Direct fixed-port mapping is only safe on non-Windows Configurable-mode images.
-					port: useHmrRelay ? null : LikeC4ServerResource.DefaultContainerUpdatePort,
-					targetPort: LikeC4ServerResource.DefaultContainerUpdatePort,
+					port: hmrPort,
+					targetPort: LikeC4ServerResource.DefaultContainerHMRPort,
 					name: LikeC4ServerResource.HMREndpointName
 				)
 				.WithUrlForEndpoint(

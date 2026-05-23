@@ -25,7 +25,7 @@ public sealed class AspireC4DistributedApplicationBuilderExtensionsTests
 		await Assert.That(endpoints[0].Name).IsEqualTo(LikeC4ServerResource.HttpEndpointName);
 		await Assert.That(endpoints[0].TargetPort).IsEqualTo(LikeC4ServerResource.DefaultContainerServePort);
 		await Assert.That(endpoints[1].Name).IsEqualTo(LikeC4ServerResource.HMREndpointName);
-		await Assert.That(endpoints[1].TargetPort).IsEqualTo(LikeC4ServerResource.DefaultContainerUpdatePort);
+		await Assert.That(endpoints[1].TargetPort).IsEqualTo(LikeC4ServerResource.DefaultContainerHMRPort);
 		await Assert.That(endpoints[1].Port).IsNull();
 	}
 

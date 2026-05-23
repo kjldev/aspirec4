@@ -8,7 +8,7 @@ sealed class ContainerWorkspaceOptions
 	public HMRPortMode HMRPortMode { get; set; } = HMRPortMode.FixedPort;
 
 	/// <summary>
-	/// When true, the host-side TCP relay listens on port <see cref="LikeC4ServerResource.DefaultContainerUpdatePort"/>
+	/// When true, the host-side TCP relay listens on port <see cref="LikeC4ServerResource.DefaultContainerHMRPort"/>
 	/// and bridges incoming HMR connections to the dynamically-allocated Docker host port.
 	/// Always true for FixedPort images; also true on Windows to avoid Hyper-V port reservation issues.
 	/// </summary>

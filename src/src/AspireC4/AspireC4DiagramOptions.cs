@@ -68,9 +68,16 @@ public sealed class AspireC4DiagramOptions
 	public bool DisableHMR { get; set; }
 
 	/// <summary>
+	/// Specifies the HMR port to use when the LikeC4 server supports configurable HMR ports (LikeC4 v1.57+). This is ignored in older versions, which always use the fixed port 24678.
+	/// When set to <see langword="null"/> (default), the port is dynamically allocated by the server. Set this to a specific port number to use a fixed port instead, which may be necessary in certain environments (e.g. when using a firewall that blocks dynamic ports).
+	/// </summary>
+	/// <remarks>This is ignored if <see cref="DisableHMR"/> is <see langword="true"/>.</remarks>
+	public int? HMRPort { get; set; }
+
+	/// <summary>
 	/// The tag of the <c>ghcr.io/likec4/likec4</c> container image to use for the live server.
 	/// Defaults to <c>null</c>, which resolves to <c>"latest"</c>.
-	/// Set this to a specific version (e.g. <c>"1.56"</c>) to pin the LikeC4 server version.
+	/// Set this to a specific version (e.g. <c>"1.57"</c>) to pin the LikeC4 server version.
 	/// </summary>
 	/// <remarks>
 	/// Ignored when <see cref="AspireC4ResourceExtensions.WithLocalCLI"/> is used.

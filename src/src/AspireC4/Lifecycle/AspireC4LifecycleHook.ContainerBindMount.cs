@@ -101,7 +101,7 @@ sealed partial class AspireC4LifecycleHook
 			try
 			{
 				socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
-				socket.Bind(new IPEndPoint(IPAddress.Loopback, LikeC4ServerResource.DefaultContainerUpdatePort));
+				socket.Bind(new IPEndPoint(IPAddress.Loopback, LikeC4ServerResource.DefaultContainerHMRPort));
 				return;
 			}
 			catch (SocketException) when (attempt < 14)
@@ -110,9 +110,9 @@ sealed partial class AspireC4LifecycleHook
 			}
 			catch (SocketException ex)
 			{
-				telemetry.HMRPortUnavailable(LikeC4ServerResource.DefaultContainerUpdatePort, ex.Message);
+				telemetry.HMRPortUnavailable(LikeC4ServerResource.DefaultContainerHMRPort, ex.Message);
 				throw new DistributedApplicationException(
-					$"LikeC4 live updates require host port {LikeC4ServerResource.DefaultContainerUpdatePort} to be free so the Vite HMR endpoint can be published. Stop the process using that port, or remove the LikeC4 visualization sidecar before starting the app."
+					$"LikeC4 live updates require host port {LikeC4ServerResource.DefaultContainerHMRPort} to be free so the Vite HMR endpoint can be published. Stop the process using that port, or remove the LikeC4 visualization sidecar before starting the app."
 				);
 			}
 			finally
@@ -140,7 +140,7 @@ sealed partial class AspireC4LifecycleHook
 			// On Windows, bind to all IPv4 interfaces (0.0.0.0) so the relay accepts
 			// connections regardless of how the OS resolves "localhost" in the browser.
 			var listenerAddress = OperatingSystem.IsWindows() ? IPAddress.Any : IPAddress.Loopback;
-			_hmrRelayListener = new TcpListener(listenerAddress, LikeC4ServerResource.DefaultContainerUpdatePort);
+			_hmrRelayListener = new TcpListener(listenerAddress, LikeC4ServerResource.DefaultContainerHMRPort);
 			_hmrRelayListener.Start();
 
 			_ = RunHmrRelayAsync(appModel, _hmrRelayListener, _hmrRelayCts.Token);
@@ -262,7 +262,7 @@ sealed partial class AspireC4LifecycleHook
 				if (
 					!(
 						address == IPAddress.Loopback.ToString()
-						&& endpoint.Port == LikeC4ServerResource.DefaultContainerUpdatePort
+						&& endpoint.Port == LikeC4ServerResource.DefaultContainerHMRPort
 					)
 				)
 				{
