@@ -85,4 +85,19 @@ public sealed class LatestVersionResolverTests
 		await Assert.That(found).IsTrue();
 		await Assert.That(versionToken).IsEqualTo("1.57.0");
 	}
+
+	[Test]
+	public async Task TryExtractVersion_MultiLineOutput_ExtractsVersionFromFirstMatchingLine()
+	{
+		// Arrange
+		// pnpm and other runtimes may emit multiple lines; the version line is somewhere in the output.
+		const string cliOutput = "some preamble\n@likec4/cli/1.60.2 linux-x64 node-v22.14.0\n";
+
+		// Act
+		var found = LatestVersionResolver.TryExtractVersion(cliOutput.Split('\n')[1].Trim(), out var versionToken);
+
+		// Assert
+		await Assert.That(found).IsTrue();
+		await Assert.That(versionToken).IsEqualTo("1.60.2");
+	}
 }

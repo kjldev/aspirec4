@@ -101,4 +101,76 @@ static class LatestVersionResolver
 		versionToken = string.Empty;
 		return false;
 	}
+
+	/// <summary>
+	/// Runs <c>&lt;command&gt; [prefixArgs…] --version</c> via the local JavaScript package
+	/// manager and extracts the version token from the output.
+	/// This is used when <c>WithLocalCLI()</c> is in use to determine the installed LikeC4 version.
+	/// Returns <see langword="null"/> if the process fails, times out, or the output cannot be parsed.
+	/// </summary>
+	[System.Diagnostics.CodeAnalysis.SuppressMessage(
+		"Design",
+		"CA1031:Do not catch general exception types",
+		Justification = "Version detection is best-effort; failures are reported via telemetry and the caller falls back gracefully"
+	)]
+	internal static async Task<string?> TryResolveFromLocalCLIAsync(
+		string command,
+		IReadOnlyList<string> prefixArgs,
+		int timeoutSeconds,
+		CancellationToken cancellationToken
+	)
+	{
+		try
+		{
+			var startInfo = new ProcessStartInfo
+			{
+				FileName = command,
+				RedirectStandardOutput = true,
+				RedirectStandardError = true,
+				UseShellExecute = false,
+				CreateNoWindow = true,
+			};
+
+			foreach (var arg in prefixArgs)
+				startInfo.ArgumentList.Add(arg);
+
+			startInfo.ArgumentList.Add("--version");
+
+			using var process = Process.Start(startInfo);
+			if (process is null)
+				return null;
+
+			using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+			cts.CancelAfter(TimeSpan.FromSeconds(timeoutSeconds));
+
+			string output;
+			try
+			{
+				output = await process.StandardOutput.ReadToEndAsync(cts.Token);
+				await process.WaitForExitAsync(cts.Token);
+			}
+			catch (OperationCanceledException)
+			{
+				try
+				{
+					process.Kill(entireProcessTree: true);
+				}
+				catch
+				{
+					// Best-effort kill.
+				}
+
+				return null;
+			}
+
+			if (process.ExitCode != 0 || string.IsNullOrWhiteSpace(output))
+				return null;
+
+			return TryExtractVersion(output.Trim(), out var version) ? version : null;
+		}
+		catch
+		{
+			return null;
+		}
+	}
 }

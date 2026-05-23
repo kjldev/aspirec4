@@ -77,12 +77,18 @@ sealed partial class AspireC4LifecycleHook(
 			{
 				var aspirec4Resource = evt.Model.Resources.OfType<AspireC4Resource>().FirstOrDefault();
 				var serverResource = aspirec4Resource?.InnerResource as LikeC4ServerResource;
+				var localServerResource = aspirec4Resource?.InnerResource as LikeC4LocalServerResource;
 
 				if (executionContext.IsPublishMode)
 				{
 					await WriteC4FileAsync(evt.Model, ct);
 					telemetry.PublishMode();
 					return;
+				}
+
+				if (localServerResource is not null)
+				{
+					await TryResolveLocalCLIVersionAsync(ct);
 				}
 
 				if (serverResource is not null)
