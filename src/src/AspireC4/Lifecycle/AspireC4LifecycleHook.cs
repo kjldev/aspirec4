@@ -142,7 +142,11 @@ sealed partial class AspireC4LifecycleHook(
 					{
 						await resourceNotificationService.PublishUpdateAsync(
 							aspirec4Resource,
-							s => s with { Properties = [new ResourcePropertySnapshot("Version", resolvedVersion)] }
+							s =>
+								s with
+								{
+									Properties = [new ResourcePropertySnapshot("LikeC4 Version", resolvedVersion)],
+								}
 						);
 					}
 

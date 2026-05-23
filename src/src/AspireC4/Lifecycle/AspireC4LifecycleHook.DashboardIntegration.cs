@@ -240,7 +240,7 @@ sealed partial class AspireC4LifecycleHook
 				var properties = ImmutableArray<ResourcePropertySnapshot>.Empty;
 				if (_resolvedLikeC4Version is { } version)
 				{
-					properties = properties.Add(new ResourcePropertySnapshot("Version", version));
+					properties = properties.Add(new ResourcePropertySnapshot("LikeC4 Version", version));
 				}
 
 				await resourceNotificationService.PublishUpdateAsync(
