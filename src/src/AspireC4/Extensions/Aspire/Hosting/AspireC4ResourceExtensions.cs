@@ -1,5 +1,4 @@
 using System.ComponentModel;
-using Aspire.Hosting.AspireC4;
 using Aspire.Hosting.AspireC4.ApplicationModel;
 using Aspire.Hosting.AspireC4.LikeC4.Runtime;
 using Microsoft.Extensions.DependencyInjection;

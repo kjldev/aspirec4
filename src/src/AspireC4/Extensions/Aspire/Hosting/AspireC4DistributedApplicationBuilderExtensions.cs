@@ -155,7 +155,7 @@ public static class AspireC4DistributedApplicationBuilderExtensions
 					context.Args.Add("--use-dot");
 
 				context.Args.Add("--port");
-				context.Args.Add($"{LikeC4ServerResource.DefaultContainerServePort}");
+				context.Args.Add(LikeC4ServerResource.DefaultContainerServePort);
 
 				if (!diagOpts.Value.DisableHMR && wsOpts.Value.HMRPortMode == HMRPortMode.Configurable)
 				{
@@ -168,7 +168,7 @@ public static class AspireC4DistributedApplicationBuilderExtensions
 						.FirstOrDefault(a => a.Name == LikeC4ServerResource.HMREndpointName);
 					var effectiveHmrPort = hmrAnnotation?.AllocatedEndpoint?.Port ?? wsOpts.Value.ResolvedHMRPort;
 					context.Args.Add("--hmr-port");
-					context.Args.Add($"{effectiveHmrPort}");
+					context.Args.Add(effectiveHmrPort);
 				}
 
 				if (diagOpts.Value.DisableHMR)

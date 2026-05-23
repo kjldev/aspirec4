@@ -90,20 +90,12 @@ sealed partial class AspireC4LifecycleHook(
 				{
 					SetupContainerBindMount(evt.Model, serverResource);
 
-					// If the tag is pinned to a specific version, record it immediately.
-					// If "latest" is used, TryUpdateHmrPortModeFromLatestVersionAsync will
-					// resolve and overwrite this with the actual pulled version.
+					// Always record the effective tag immediately so the version property is
+					// visible in the dashboard even when using "latest" or when the docker run
+					// version check is disabled. TryUpdateHmrPortModeFromLatestVersionAsync will
+					// overwrite this with the actual resolved version when using "latest".
 					var effectiveTag = options.Value.ContainerImageTag ?? LikeC4ServerResource.DefaultTag;
-					if (
-						!string.Equals(
-							effectiveTag,
-							LikeC4ServerResource.DefaultTag,
-							StringComparison.OrdinalIgnoreCase
-						)
-					)
-					{
-						_resolvedLikeC4Version = effectiveTag;
-					}
+					_resolvedLikeC4Version = effectiveTag;
 
 					await TryUpdateHmrPortModeFromLatestVersionAsync(ct);
 				}
@@ -144,6 +136,16 @@ sealed partial class AspireC4LifecycleHook(
 				// Console tab in the dashboard.
 				if (aspirec4Resource is not null)
 				{
+					// Immediately surface the resolved version on the outer resource so the
+					// dashboard shows it before the inner container emits its first state notification.
+					if (_resolvedLikeC4Version is { } resolvedVersion)
+					{
+						await resourceNotificationService.PublishUpdateAsync(
+							aspirec4Resource,
+							s => s with { Properties = [new ResourcePropertySnapshot("Version", resolvedVersion)] }
+						);
+					}
+
 					_ = ForwardInnerResourceStateAsync(aspirec4Resource, ct);
 					_ = ForwardInnerResourceLogsAsync(aspirec4Resource, ct);
 				}

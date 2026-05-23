@@ -237,7 +237,7 @@ sealed partial class AspireC4LifecycleHook
 				if (notification.Resource.Name != innerResource.Name)
 					continue;
 
-				var properties = notification.Snapshot.Properties;
+				var properties = ImmutableArray<ResourcePropertySnapshot>.Empty;
 				if (_resolvedLikeC4Version is { } version)
 				{
 					properties = properties.Add(new ResourcePropertySnapshot("Version", version));
