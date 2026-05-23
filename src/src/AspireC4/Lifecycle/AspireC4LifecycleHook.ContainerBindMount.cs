@@ -1,5 +1,4 @@
 using Aspire.Hosting.AspireC4.ApplicationModel;
-using Aspire.Hosting.AspireC4.LikeC4.Runtime;
 
 namespace Aspire.Hosting.AspireC4.Lifecycle;
 
@@ -7,8 +6,7 @@ sealed partial class AspireC4LifecycleHook
 {
 	/// <summary>
 	/// Computes the single common-ancestor bind mount for the container, adds it to the
-	/// <see cref="LikeC4ServerResource"/>, populates <see cref="ContainerWorkspaceOptions.ContainerServePath"/>,
-	/// and appends the <c>likec4 start</c> command-line arguments.
+	/// <see cref="LikeC4ServerResource"/>, and appends the <c>likec4 start</c> command-line arguments.
 	/// </summary>
 	void SetupContainerBindMount(DistributedApplicationModel _, LikeC4ServerResource serverResource)
 	{
@@ -21,7 +19,7 @@ sealed partial class AspireC4LifecycleHook
 		allPaths.AddRange(opts.ImageAliases.Values.Select(Path.GetFullPath));
 
 		var commonAncestor = ComputeCommonAncestor(allPaths);
-		var normalizedSource = AspireC4Builder.NormalizeBindMountPath(commonAncestor);
+		var normalizedSource = commonAncestor;
 
 		serverResource.Annotations.Add(
 			new ContainerMountAnnotation(

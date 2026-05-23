@@ -4,6 +4,7 @@ using Aspire.Hosting.AspireC4.ApplicationModel;
 using Aspire.Hosting.AspireC4.LikeC4.Runtime;
 using Aspire.Hosting.Eventing;
 using Aspire.Hosting.Lifecycle;
+using Aspire.Hosting.Publishing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Options;
 
@@ -19,7 +20,8 @@ sealed partial class AspireC4LifecycleHook(
 	ResourceNotificationService resourceNotificationService,
 	ResourceLoggerService resourceLoggerService,
 	IAspireC4LifecycleHookTelemetry telemetry,
-	IConfiguration configuration
+	IConfiguration configuration,
+	IContainerRuntimeResolver containerRuntimeResolver
 ) : IDistributedApplicationEventingSubscriber, IDisposable
 {
 	// Well-known Aspire resource name for the dashboard process.

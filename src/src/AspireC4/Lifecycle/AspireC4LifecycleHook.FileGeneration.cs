@@ -141,13 +141,15 @@ sealed partial class AspireC4LifecycleHook
 
 	/// <summary>
 	/// Returns the container runtime executable name (<c>docker</c> or <c>podman</c>) by
-	/// reading the <c>ASPIRE_CONTAINER_RUNTIME</c> environment variable.
+	/// delegating to Aspire's <see cref="Aspire.Hosting.Publishing.IContainerRuntimeResolver"/>,
+	/// which probes the running container runtime and respects the
+	/// <c>ASPIRE_CONTAINER_RUNTIME</c> override.
 	/// </summary>
-	static string GetContainerRuntimeExecutable() =>
-		Environment.GetEnvironmentVariable("ASPIRE_CONTAINER_RUNTIME") is { } r
-		&& r.Equals("podman", StringComparison.OrdinalIgnoreCase)
-			? "podman"
-			: "docker";
+	async Task<string> GetContainerRuntimeExecutableAsync(CancellationToken cancellationToken)
+	{
+		var runtime = await containerRuntimeResolver.ResolveAsync(cancellationToken);
+		return string.Equals(runtime.Name, "Podman", StringComparison.OrdinalIgnoreCase) ? "podman" : "docker";
+	}
 
 	[System.Diagnostics.CodeAnalysis.SuppressMessage(
 		"Design",
@@ -175,7 +177,7 @@ sealed partial class AspireC4LifecycleHook
 					options.Value.ContainerImageTag ?? LikeC4ServerResource.DefaultTag
 				);
 				var containerPath = workspaceOptions.Value.ContainerServePath;
-				var containerExe = GetContainerRuntimeExecutable();
+				var containerExe = await GetContainerRuntimeExecutableAsync(cancellationToken);
 
 				startInfo = new ProcessStartInfo
 				{

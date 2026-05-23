@@ -30,7 +30,7 @@ sealed partial class AspireC4LifecycleHook
 			return;
 		}
 
-		var containerExe = GetContainerRuntimeExecutable();
+		var containerExe = await GetContainerRuntimeExecutableAsync(cancellationToken);
 		var imageRef = LikeC4ServerResource.GetImageReference(effectiveTag);
 
 		var resolvedVersion = await LatestVersionResolver.TryResolveAsync(
