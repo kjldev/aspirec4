@@ -145,15 +145,6 @@ public static class AspireC4DiagramOptionsExtensions
 			return options;
 		}
 
-		/// <summary>Enables or disables LikeC4 validation before startup.</summary>
-		/// <seealso cref="AspireC4DiagramOptions.ValidateBeforeStart"/>
-		public AspireC4DiagramOptions WithValidateBeforeStart(bool validate = true)
-		{
-			ArgumentNullException.ThrowIfNull(options);
-			options.ValidateBeforeStart = validate;
-			return options;
-		}
-
 		/// <summary>Adds a custom element kind specification to the <c>specification { }</c> block.</summary>
 		/// <seealso cref="AspireC4DiagramOptions.ElementKindSpecs"/>
 		public AspireC4DiagramOptions WithElementKindSpec(LikeC4ElementKindSpec spec)

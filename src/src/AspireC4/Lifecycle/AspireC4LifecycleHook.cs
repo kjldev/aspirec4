@@ -4,7 +4,6 @@ using Aspire.Hosting.AspireC4.ApplicationModel;
 using Aspire.Hosting.AspireC4.LikeC4.Runtime;
 using Aspire.Hosting.Eventing;
 using Aspire.Hosting.Lifecycle;
-using Aspire.Hosting.Publishing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Options;
 
@@ -21,7 +20,7 @@ sealed partial class AspireC4LifecycleHook(
 	ResourceLoggerService resourceLoggerService,
 	IAspireC4LifecycleHookTelemetry telemetry,
 	IConfiguration configuration,
-	IContainerRuntimeResolver containerRuntimeResolver
+	TaskCompletionSource<HMRPortMode> hmrPortModeTcs
 ) : IDistributedApplicationEventingSubscriber, IDisposable
 {
 	// Well-known Aspire resource name for the dashboard process.
@@ -94,12 +93,12 @@ sealed partial class AspireC4LifecycleHook(
 
 					// Always record the effective tag immediately so the version property is
 					// visible in the dashboard even when using "latest" or when the docker run
-					// version check is disabled. TryUpdateHmrPortModeFromLatestVersionAsync will
+					// version check is disabled. WatchProbeLogsAndCompleteAsync will
 					// overwrite this with the actual resolved version when using "latest".
 					var effectiveTag = options.Value.ContainerImageTag ?? LikeC4ServerResource.DefaultTag;
 					_resolvedLikeC4Version = effectiveTag;
 
-					await TryUpdateHmrPortModeFromLatestVersionAsync(ct);
+					TryUpdateHmrPortModeFromLatestVersionAsync(evt.Model, ct);
 				}
 
 				await WriteC4FileAsync(evt.Model, ct);

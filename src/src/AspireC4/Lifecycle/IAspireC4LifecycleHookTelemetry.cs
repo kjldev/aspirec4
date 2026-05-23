@@ -26,15 +26,6 @@ interface IAspireC4LifecycleHookTelemetry
 	[Warning]
 	void StateWatcherFailed(string error);
 
-	[Info]
-	void StartingLikeC4Validation();
-
-	[Error]
-	void LikeC4ValidationFailed(int filteredErrors, int totalErrors);
-
-	[Info]
-	void LikeC4ValidatedSuccessfully();
-
 	[Debug]
 	void LikeC4FormatApplied();
 

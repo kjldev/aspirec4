@@ -69,6 +69,19 @@ public static class AspireC4DistributedApplicationBuilderExtensions
 		var resolvedHmrPort = diagramOpts.HMRPort ?? LikeC4ServerResource.DefaultContainerHMRPort;
 		var defaultViewId = string.IsNullOrWhiteSpace(diagramOpts.DefaultViewId) ? null : diagramOpts.DefaultViewId;
 
+		// Only create a version probe when using "latest" with version checking enabled.
+		// A pinned tag always has a known HMR mode; "latest" requires a probe to discover it.
+		var needsVersionProbe =
+			string.Equals(imageTag, LikeC4ServerResource.DefaultTag, StringComparison.OrdinalIgnoreCase)
+			&& diagramOpts.CheckLatestImageVersion;
+
+		// Pre-complete the TCS when no probe is needed so WithArgs can proceed without waiting.
+		var hmrPortModeTcs = new TaskCompletionSource<HMRPortMode>(TaskCreationOptions.RunContinuationsAsynchronously);
+		if (!needsVersionProbe)
+			hmrPortModeTcs.TrySetResult(hmrPortMode);
+
+		builder.Services.AddSingleton(hmrPortModeTcs);
+
 		// Always use the same port on both the host and inside the container for HMR.
 		// In LikeC4 v1.57+, --hmr-port sets server.hmr.port — the port Vite BINDS to inside
 		// the container. Vite also advertises this same port to browsers as the HMR WebSocket
@@ -135,6 +148,9 @@ public static class AspireC4DistributedApplicationBuilderExtensions
 				var diagOpts = context.ExecutionContext.ServiceProvider.GetRequiredService<
 					IOptions<AspireC4DiagramOptions>
 				>();
+				var hmrTcs = context.ExecutionContext.ServiceProvider.GetRequiredService<
+					TaskCompletionSource<HMRPortMode>
+				>();
 
 				context.Args.Add("start");
 				context.Args.Add(wsOpts.Value.ContainerServePath);
@@ -153,7 +169,8 @@ public static class AspireC4DistributedApplicationBuilderExtensions
 				context.Args.Add("--port");
 				context.Args.Add(LikeC4ServerResource.DefaultContainerServePort);
 
-				if (!diagOpts.Value.DisableHMR && wsOpts.Value.HMRPortMode == HMRPortMode.Configurable)
+				var hmrMode = await hmrTcs.Task.WaitAsync(context.CancellationToken);
+				if (!diagOpts.Value.DisableHMR && hmrMode == HMRPortMode.Configurable)
 				{
 					// Pass the container-internal HMR port. Because host and container use the
 					// same port (symmetric mapping), this value is also what the browser connects to.
@@ -197,7 +214,36 @@ public static class AspireC4DistributedApplicationBuilderExtensions
 			}
 		}
 
-		AspireC4Resource aspirec4Resource = new(name, outputDir) { InnerResource = serverResource };
+		AspireC4Resource aspirec4Resource = new(name, outputDir)
+		{
+			InnerResource = serverResource,
+			HMRPortModeTcs = hmrPortModeTcs,
+		};
+
+		if (needsVersionProbe)
+		{
+			LikeC4VersionProbeResource probeResource = new(name + "-version-probe");
+			var probeBuilder = builder
+				.AddResource(probeResource)
+				.WithImage(LikeC4ServerResource.DefaultImage)
+				.WithImageTag(imageTag)
+				.WithImageRegistry(LikeC4ServerResource.DefaultRegistry)
+				.WithImagePullPolicy(ImagePullPolicy.Always)
+				.WithArgs("--version")
+				.ExcludeFromLikeC4()
+				.ExcludeFromManifest()
+				.WithInitialState(
+					new CustomResourceSnapshot
+					{
+						ResourceType = "Container",
+						IsHidden = true,
+						Properties = [],
+					}
+				);
+
+			serverBuilder.WaitForCompletion(probeBuilder);
+			aspirec4Resource.VersionProbeResource = probeResource;
+		}
 
 		return builder
 			.AddResource(aspirec4Resource)

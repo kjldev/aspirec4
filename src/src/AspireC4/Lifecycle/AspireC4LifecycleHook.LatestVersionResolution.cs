@@ -1,54 +1,70 @@
 using Aspire.Hosting.AspireC4.ApplicationModel;
 using Aspire.Hosting.AspireC4.LikeC4.Runtime;
+using Microsoft.Extensions.Logging;
 
 namespace Aspire.Hosting.AspireC4.Lifecycle;
 
 sealed partial class AspireC4LifecycleHook
 {
 	/// <summary>
-	/// When the configured image tag is <c>"latest"</c> and
-	/// <see cref="AspireC4DiagramOptions.CheckLatestImageVersion"/> is enabled, runs a throwaway
-	/// container (<c>docker run --rm &lt;image&gt;:latest likec4 --version</c>) to discover the
-	/// actual version pulled by the container runtime, then updates
-	/// <see cref="ContainerWorkspaceOptions.HMRPortMode"/> accordingly.
-	/// <para>
-	/// This ensures version-gated features (such as configurable HMR port) work correctly even
-	/// when the user has not pinned to a specific image tag. The update must happen before the
-	/// <c>WithArgs</c> callback reads <c>HMRPortMode</c> at container start time.
-	/// </para>
+	/// When a <see cref="LikeC4VersionProbeResource"/> is present in the model, fires a
+	/// background task that watches its log output for a version line, then updates
+	/// <see cref="ContainerWorkspaceOptions.HMRPortMode"/> and completes the
+	/// <see cref="AspireC4Resource.HMRPortModeTcs"/> so the server container's <c>WithArgs</c> callback can
+	/// proceed. If no probe resource is present the TCS was already pre-completed at
+	/// registration time — nothing to do.
 	/// </summary>
-	async Task TryUpdateHmrPortModeFromLatestVersionAsync(CancellationToken cancellationToken)
+	void TryUpdateHmrPortModeFromLatestVersionAsync(
+		DistributedApplicationModel model,
+		CancellationToken cancellationToken
+	)
 	{
-		var opts = options.Value;
-		var effectiveTag = opts.ContainerImageTag ?? LikeC4ServerResource.DefaultTag;
-
-		if (
-			!opts.CheckLatestImageVersion
-			|| !string.Equals(effectiveTag, LikeC4ServerResource.DefaultTag, StringComparison.OrdinalIgnoreCase)
-		)
-		{
+		var probe = model.Resources.OfType<LikeC4VersionProbeResource>().FirstOrDefault();
+		if (probe is null)
 			return;
-		}
 
-		var containerExe = await GetContainerRuntimeExecutableAsync(cancellationToken);
-		var imageRef = LikeC4ServerResource.GetImageReference(effectiveTag);
+		_ = WatchProbeLogsAndCompleteAsync(probe, cancellationToken);
+	}
 
-		var resolvedVersion = await LatestVersionResolver.TryResolveAsync(
-			containerExe,
-			imageRef,
-			opts.ExternalProcessTimeoutSeconds,
-			cancellationToken
-		);
-
-		if (resolvedVersion is null)
+	[System.Diagnostics.CodeAnalysis.SuppressMessage(
+		"Design",
+		"CA1031:Do not catch general exception types",
+		Justification = "Version probe log watching is best-effort; any failure falls back to FixedPort mode gracefully"
+	)]
+	async Task WatchProbeLogsAndCompleteAsync(LikeC4VersionProbeResource probe, CancellationToken cancellationToken)
+	{
+		try
 		{
+			await foreach (var logBatch in resourceLoggerService.WatchAsync(probe).WithCancellation(cancellationToken))
+			{
+				foreach (var logLine in logBatch)
+				{
+					if (LatestVersionResolver.TryExtractVersion(logLine.Content, out var version))
+					{
+						telemetry.ResolvedLatestContainerVersion(version);
+						_resolvedLikeC4Version = version;
+						workspaceOptions.Value.HMRPortMode = HMRPortCompatibility.Resolve(version);
+						hmrPortModeTcs.TrySetResult(workspaceOptions.Value.HMRPortMode);
+						return;
+					}
+				}
+			}
+
+			// Probe exited without a recognisable version line — fall back to fixed port.
 			telemetry.FailedToResolveLatestContainerVersion();
-			return;
+			hmrPortModeTcs.TrySetResult(HMRPortMode.FixedPort);
 		}
-
-		telemetry.ResolvedLatestContainerVersion(resolvedVersion);
-		_resolvedLikeC4Version = resolvedVersion;
-		workspaceOptions.Value.HMRPortMode = HMRPortCompatibility.Resolve(resolvedVersion);
+		catch (OperationCanceledException)
+		{
+			hmrPortModeTcs.TrySetResult(HMRPortMode.FixedPort);
+		}
+		catch (Exception ex)
+		{
+			resourceLoggerService
+				.GetLogger(probe)
+				.LogWarning(ex, "Unexpected error while watching version probe logs; falling back to fixed HMR port.");
+			hmrPortModeTcs.TrySetResult(HMRPortMode.FixedPort);
+		}
 	}
 
 	/// <summary>

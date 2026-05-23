@@ -35,8 +35,6 @@ sealed partial class AspireC4LifecycleHook
 		var servePath = $"{LikeC4ServerResource.WorkspacePath}/{relOutputDir}";
 		// ContainerServePath is read by the WithArgs callback registered at configure time in AddAspireC4.
 		workspaceOptions.Value.ContainerServePath = servePath;
-		// ContainerBindMountSource is used by RunValidationAsync when running docker-mode validation.
-		workspaceOptions.Value.ContainerBindMountSource = normalizedSource;
 	}
 
 	/// <summary>

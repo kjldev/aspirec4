@@ -23,9 +23,6 @@
 			figure out some issues with the TypeScript exports.
 		-->
 		<EnableAspireIntegrationAnalyzers>true</EnableAspireIntegrationAnalyzers>
-		<!-- Intentionally using the experimental IContainerRuntimeResolver to delegate runtime
-		     detection to Aspire rather than reading ASPIRE_CONTAINER_RUNTIME ourselves. -->
-		<NoWarn>$(NoWarn);ASPIRECONTAINERRUNTIME001</NoWarn>
 	</PropertyGroup>
 
 	<ItemGroup>

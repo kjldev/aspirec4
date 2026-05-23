@@ -285,34 +285,6 @@ public sealed partial class AspireC4DiagramOptionsExtensionsTests
 	}
 
 	[Test]
-	public async Task WithValidateBeforeStart_SetsTrueByDefault()
-	{
-		// Arrange
-		var sut = CreateSut();
-
-		// Act
-		var result = sut.WithValidateBeforeStart();
-
-		// Assert
-		await Assert.That(sut.ValidateBeforeStart).IsTrue();
-		await Assert.That(result).IsSameReferenceAs(sut);
-	}
-
-	[Test]
-	public async Task WithValidateBeforeStart_FalseDisablesValidation()
-	{
-		// Arrange
-		var sut = CreateSut();
-		sut.ValidateBeforeStart = true;
-
-		// Act
-		sut.WithValidateBeforeStart(false);
-
-		// Assert
-		await Assert.That(sut.ValidateBeforeStart).IsFalse();
-	}
-
-	[Test]
 	public async Task WithAutoIncludeAspireMetadata_SetsProperty_AndReturnsThis()
 	{
 		// Arrange

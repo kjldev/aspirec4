@@ -71,13 +71,11 @@ public sealed partial class AspireC4HostTests
 			}
 		);
 
-		// PostConfigure wins over all Configure callbacks, including the TestAppHost's
-		// configure callback that sets ValidateBeforeStart=true and the default FormatGeneratedFile=true.
-		// Both invoke `npx likec4 …` which traverses up the directory tree and scans the entire
+		// PostConfigure wins over all Configure callbacks, including the default FormatGeneratedFile=true.
+		// The format step invokes `npx likec4 …` which traverses up the directory tree and scans the entire
 		// repository workspace when run from within the repo — hanging the BeforeStartEvent handler.
 		appBuilder.Services.PostConfigure<AspireC4DiagramOptions>(static opts =>
 		{
-			opts.ValidateBeforeStart = false;
 			opts.FormatGeneratedFile = false;
 		});
 

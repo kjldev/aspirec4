@@ -28,12 +28,4 @@ sealed class ContainerWorkspaceOptions
 	/// and is set by <see cref="AspireC4LifecycleHook"/> during <c>BeforeStartEvent</c>.
 	/// </summary>
 	public string ContainerServePath { get; set; } = LikeC4ServerResource.WorkspacePath;
-
-	/// <summary>
-	/// The bind-mount source path (host side) used when running Docker-mode validation
-	/// via <c>docker run --rm</c>. Set by <see cref="AspireC4LifecycleHook"/> during
-	/// <c>BeforeStartEvent</c> only when a container server resource is in use.
-	/// <see langword="null"/> in local CLI mode.
-	/// </summary>
-	public string? ContainerBindMountSource { get; set; }
 }

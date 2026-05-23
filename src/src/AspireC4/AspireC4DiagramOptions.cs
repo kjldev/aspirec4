@@ -143,19 +143,11 @@ public sealed class AspireC4DiagramOptions
 	public bool FormatGeneratedFile { get; set; } = true;
 
 	/// <summary>
-	/// When <see langword="true"/>, runs <c>npx likec4 validate --json --no-layout</c> against the output
-	/// directory after generating the <c>.c4</c> file. Any validation errors are logged as warnings;
-	/// the application continues to start regardless of the result.
-	/// Defaults to <see langword="false"/>.
-	/// </summary>
-	public bool ValidateBeforeStart { get; set; }
-
-	/// <summary>
-	/// Maximum number of seconds to wait for an external process (<c>npx likec4 format</c> or
-	/// <c>docker run … validate</c>) to complete before killing it and moving on.
-	/// This caps how long <see cref="FormatGeneratedFile"/> and <see cref="ValidateBeforeStart"/>
-	/// can block application startup — the process is killed when the timeout elapses, and the
-	/// existing best-effort error handling continues normally.
+	/// Maximum number of seconds to wait for an external process (<c>npx likec4 format</c>)
+	/// to complete before killing it and moving on.
+	/// This caps how long <see cref="FormatGeneratedFile"/> can block application startup —
+	/// the process is killed when the timeout elapses, and the existing best-effort error
+	/// handling continues normally.
 	/// Defaults to <c>30</c> seconds.
 	/// </summary>
 	public int ExternalProcessTimeoutSeconds { get; set; } = 30;

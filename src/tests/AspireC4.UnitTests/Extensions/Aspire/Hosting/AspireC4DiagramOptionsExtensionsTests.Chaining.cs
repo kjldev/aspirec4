@@ -22,7 +22,6 @@ public sealed partial class AspireC4DiagramOptionsExtensionsTests
 			.WithAutoIcons(false)
 			.WithRelationshipKindSyntax(LikeC4RelationshipKindSyntax.Bracket)
 			.WithFormatGeneratedFile(false)
-			.WithValidateBeforeStart()
 			.WithAutoIncludeAspireMetadata(AspireMetadataInclusion.None)
 			.WithNormaliseMetadataBehaviour(NormaliseMetadataBehaviour.Throw)
 			.WithoutConfigFileGeneration()
@@ -48,7 +47,6 @@ public sealed partial class AspireC4DiagramOptionsExtensionsTests
 		await Assert.That(sut.AutoIconsEnabled).IsFalse();
 		await Assert.That(sut.RelationshipKindSyntax).IsEqualTo(LikeC4RelationshipKindSyntax.Bracket);
 		await Assert.That(sut.FormatGeneratedFile).IsFalse();
-		await Assert.That(sut.ValidateBeforeStart).IsTrue();
 		await Assert.That(sut.AutoIncludeAspireMetadata).IsEqualTo(AspireMetadataInclusion.None);
 		await Assert.That(sut.NormaliseMetadataBehaviour).IsEqualTo(NormaliseMetadataBehaviour.Throw);
 		await Assert.That(sut.GenerateConfigFile).IsFalse();
