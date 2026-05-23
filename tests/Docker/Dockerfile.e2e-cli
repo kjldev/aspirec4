@@ -104,6 +104,11 @@ ENV ASPIREC4_CLI_RUNTIME=Pnpm
 FROM base AS yarn
 RUN corepack enable && corepack prepare yarn@stable --activate
 ENV ASPIREC4_CLI_RUNTIME=Yarn
+# Force node-modules linker so the entrypoint pre-install cache is reused by the
+# serve command at test time. Without this, Berry uses PnP by default and ignores
+# the node-modules cache populated during the pre-install step, causing a full
+# package re-download on every test run.
+ENV YARN_NODE_LINKER=node-modules
 
 # ── bun ───────────────────────────────────────────────────────────────────────
 
