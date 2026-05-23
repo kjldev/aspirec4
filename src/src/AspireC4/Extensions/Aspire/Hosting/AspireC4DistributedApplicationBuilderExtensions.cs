@@ -66,6 +66,7 @@ public static class AspireC4DistributedApplicationBuilderExtensions
 		Directory.CreateDirectory(outputDir);
 		var imageTag = diagramOpts.ContainerImageTag ?? LikeC4ServerResource.DefaultTag;
 		var hmrPortMode = HMRPortCompatibility.Resolve(imageTag);
+		var resolvedHmrPort = diagramOpts.HMRPort ?? LikeC4ServerResource.DefaultContainerHMRPort;
 		// Use the relay on Windows even in Configurable mode: Docker Desktop may fail to publish
 		// the well-known port (24678) reliably due to Hyper-V port reservations or port-cleanup
 		// races between container restarts. The relay owns port 24678 on the host side and
@@ -79,6 +80,7 @@ public static class AspireC4DistributedApplicationBuilderExtensions
 			{
 				runtime.HMRPortMode = hmrPortMode;
 				runtime.UseHMRRelay = useHmrRelay;
+				runtime.ResolvedHMRPort = resolvedHmrPort;
 			});
 
 		builder.Services.AddEventingSubscriber<AspireC4LifecycleHook>();
@@ -144,6 +146,13 @@ public static class AspireC4DistributedApplicationBuilderExtensions
 
 				context.Args.Add("--port");
 				context.Args.Add($"{LikeC4ServerResource.DefaultContainerServePort}");
+
+				if (!diagOpts.Value.DisableHMR && wsOpts.Value.HMRPortMode == HMRPortMode.Configurable)
+				{
+					context.Args.Add("--hmr-port");
+					context.Args.Add($"{wsOpts.Value.ResolvedHMRPort}");
+				}
+
 				if (diagOpts.Value.DisableHMR)
 					context.Args.Add("--no-react-hmr");
 			})
@@ -162,13 +171,13 @@ public static class AspireC4DistributedApplicationBuilderExtensions
 			// When using the relay, omit a fixed host port so Docker allocates a dynamic one.
 			// The relay owns port 24678 on the host and bridges connections to the dynamic port.
 			// Direct fixed-port mapping is only safe on non-Windows Configurable-mode images.
-			int? hmrPort = useHmrRelay
+			int? hmrHostPort = useHmrRelay
 				? null
 				: diagramOpts.HMRPort.GetValueOrDefault(LikeC4ServerResource.DefaultContainerHMRPort);
 			serverBuilder
 				.WithHttpEndpoint(
-					port: hmrPort,
-					targetPort: LikeC4ServerResource.DefaultContainerHMRPort,
+					port: hmrHostPort,
+					targetPort: resolvedHmrPort,
 					name: LikeC4ServerResource.HMREndpointName
 				)
 				.WithUrlForEndpoint(

@@ -205,16 +205,18 @@ static class AspireC4Builder
 	public static (string Command, string[] Args) BuildLocalCLICommand(
 		LocalCLIRuntime runtime,
 		string outputDirectory,
-		int port
+		int port,
+		int? hmrPort = null
 	)
 	{
 		var portStr = $"{port}";
+		string[] HmrArgs() => hmrPort is int p ? ["--hmr-port", $"{p}"] : [];
 		return runtime switch
 		{
-			LocalCLIRuntime.Npx => ("npx", ["likec4", "serve", outputDirectory, "--port", portStr]),
+			LocalCLIRuntime.Npx => ("npx", ["likec4", "serve", outputDirectory, "--port", portStr, .. HmrArgs()]),
 			LocalCLIRuntime.Pnpm => (
 				"pnpm",
-				["dlx", "--ignore-workspace", "likec4", "serve", outputDirectory, "--port", portStr]
+				["dlx", "--ignore-workspace", "likec4", "serve", outputDirectory, "--port", portStr, .. HmrArgs()]
 			),
 			// Explicitly include react and react-dom so yarn dlx adds them to the isolated
 			// environment alongside likec4 (peer deps are not installed automatically in Berry).
@@ -233,9 +235,13 @@ static class AspireC4Builder
 					outputDirectory,
 					"--port",
 					portStr,
+					.. HmrArgs(),
 				]
 			),
-			LocalCLIRuntime.Bun => ("bunx", ["--bun", "likec4", "serve", outputDirectory, "--port", portStr]),
+			LocalCLIRuntime.Bun => (
+				"bunx",
+				["--bun", "likec4", "serve", outputDirectory, "--port", portStr, .. HmrArgs()]
+			),
 			// --node-modules-dir=none tells deno to use its virtual module cache rather than
 			// creating a physical node_modules tree in the working directory (slow for 130+ pkgs).
 			LocalCLIRuntime.Deno => (
@@ -249,6 +255,7 @@ static class AspireC4Builder
 					outputDirectory,
 					"--port",
 					portStr,
+					.. HmrArgs(),
 				]
 			),
 			_ => throw new ArgumentOutOfRangeException(nameof(runtime), runtime, $"Unsupported runtime: {runtime}"),

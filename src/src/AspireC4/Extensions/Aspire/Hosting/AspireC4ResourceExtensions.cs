@@ -1,7 +1,9 @@
 using System.ComponentModel;
+using Aspire.Hosting.AspireC4;
 using Aspire.Hosting.AspireC4.ApplicationModel;
 using Aspire.Hosting.AspireC4.LikeC4.Runtime;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 
 namespace Aspire.Hosting;
 
@@ -45,7 +47,9 @@ public static class AspireC4ResourceExtensions
 
 		var resolvedRuntime = runtime == LocalCLIRuntime.Auto ? AspireC4Builder.DetectRuntime() : runtime;
 
-		var (command, args) = AspireC4Builder.BuildLocalCLICommand(
+		// Build the base args without the HMR port — the async WithArgs callback below appends
+		// --hmr-port at startup time once IOptions<AspireC4DiagramOptions> is resolvable.
+		var (command, baseArgs) = AspireC4Builder.BuildLocalCLICommand(
 			resolvedRuntime,
 			aspirec4.OutputDirectory,
 			LikeC4LocalServerResource.DefaultPort
@@ -65,10 +69,31 @@ public static class AspireC4ResourceExtensions
 
 		var localBuilder = builder
 			.ApplicationBuilder.AddResource(localResource)
-			.WithArgs(args)
+			.WithArgs(context =>
+			{
+				var diagOpts = context.ExecutionContext.ServiceProvider.GetRequiredService<
+					IOptions<AspireC4DiagramOptions>
+				>();
+
+				foreach (var arg in baseArgs)
+					context.Args.Add(arg);
+
+				if (!diagOpts.Value.DisableHMR)
+				{
+					var hmrPort = diagOpts.Value.HMRPort ?? LikeC4LocalServerResource.DefaultHMRPort;
+					context.Args.Add("--hmr-port");
+					context.Args.Add($"{hmrPort}");
+				}
+
+				return Task.CompletedTask;
+			})
 			.WithHttpEndpoint(
 				name: LikeC4LocalServerResource.HttpEndpointName,
 				targetPort: LikeC4LocalServerResource.DefaultPort
+			)
+			.WithHttpEndpoint(
+				name: LikeC4LocalServerResource.HMREndpointName,
+				targetPort: LikeC4LocalServerResource.DefaultHMRPort
 			)
 			.WithExternalHttpEndpoints()
 			.ExcludeFromLikeC4()

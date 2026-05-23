@@ -15,7 +15,13 @@ public sealed class LikeC4LocalServerResource : ExecutableResource
 	/// <summary>The name of the HTTP endpoint exposed by the LikeC4 server.</summary>
 	public const string HttpEndpointName = "http";
 
+	/// <summary>The name of the HTTP endpoint used by LikeC4's Vite Hot Module Replacement (HMR) channel.</summary>
+	public const string HMREndpointName = "http-hmr-channel";
+
 	internal const int DefaultPort = 5173;
+
+	/// <summary>The default host port used by LikeC4's Vite HMR channel when running via the local CLI.</summary>
+	internal const int DefaultHMRPort = 24678;
 
 	internal LikeC4LocalServerResource(string name, string command, string workingDirectory)
 		: base(name, command, workingDirectory) { }

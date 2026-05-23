@@ -8,6 +8,14 @@ sealed class ContainerWorkspaceOptions
 	public HMRPortMode HMRPortMode { get; set; } = HMRPortMode.FixedPort;
 
 	/// <summary>
+	/// The resolved HMR port to use for the LikeC4 server, both as the container target port
+	/// and as the value passed via <c>--hmr-port</c> in Configurable mode.
+	/// Defaults to <see cref="LikeC4ServerResource.DefaultContainerHMRPort"/> (24678).
+	/// Set during <c>AddAspireC4</c> from <c>AspireC4DiagramOptions.HMRPort</c> if configured.
+	/// </summary>
+	public int ResolvedHMRPort { get; set; } = LikeC4ServerResource.DefaultContainerHMRPort;
+
+	/// <summary>
 	/// When true, the host-side TCP relay listens on port <see cref="LikeC4ServerResource.DefaultContainerHMRPort"/>
 	/// and bridges incoming HMR connections to the dynamically-allocated Docker host port.
 	/// Always true for FixedPort images; also true on Windows to avoid Hyper-V port reservation issues.

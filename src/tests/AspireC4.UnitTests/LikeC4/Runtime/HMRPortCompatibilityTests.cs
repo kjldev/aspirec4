@@ -32,16 +32,12 @@ public sealed class HMRPortCompatibilityTests
 	[Test]
 	[MatrixDataSource]
 	public async Task LikeC4HMRPortCompatibility_UsesConfigurableModeForSupportedVersion(
-		[MatrixMethod<HMRPortCompatibilityTests>(nameof(VersionPrefixes))]
-		string versionPrefix,
-		[MatrixMethod<HMRPortCompatibilityTests>(nameof(Majors))]
-		string major,
-		[MatrixMethod<HMRPortCompatibilityTests>(nameof(Minors))]
-		string minor,
-		[MatrixMethod<HMRPortCompatibilityTests>(nameof(Builds))]
-		string build,
-		[MatrixMethod<HMRPortCompatibilityTests>(nameof(PrereleaseSuffixes))]
-		string prereleaseSuffix)
+		[MatrixMethod<HMRPortCompatibilityTests>(nameof(VersionPrefixes))] string versionPrefix,
+		[MatrixMethod<HMRPortCompatibilityTests>(nameof(Majors))] string major,
+		[MatrixMethod<HMRPortCompatibilityTests>(nameof(Minors))] string minor,
+		[MatrixMethod<HMRPortCompatibilityTests>(nameof(Builds))] string build,
+		[MatrixMethod<HMRPortCompatibilityTests>(nameof(PrereleaseSuffixes))] string prereleaseSuffix
+	)
 	{
 		// Arrange
 		var version = $"{versionPrefix}{major}.{minor}.{build}{prereleaseSuffix}";
@@ -52,7 +48,6 @@ public sealed class HMRPortCompatibilityTests
 
 		// Assert
 		await Assert.That(mode).IsEqualTo(HMRPortMode.Configurable);
-
 	}
 
 	IEnumerable<string> VersionPrefixes()
