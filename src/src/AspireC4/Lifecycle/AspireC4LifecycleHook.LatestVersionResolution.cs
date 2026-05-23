@@ -47,6 +47,7 @@ sealed partial class AspireC4LifecycleHook
 		}
 
 		telemetry.ResolvedLatestContainerVersion(resolvedVersion);
+		_resolvedLikeC4Version = resolvedVersion;
 		workspaceOptions.Value.HMRPortMode = HMRPortCompatibility.Resolve(resolvedVersion);
 	}
 }

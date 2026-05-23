@@ -53,6 +53,11 @@ sealed partial class AspireC4LifecycleHook(
 	// file-system churn (and git noise) from state-change events.
 	volatile string? _lastRawBody;
 
+	// The resolved or configured exact version of the LikeC4 image (e.g. "1.57.0").
+	// Set either from a pinned ContainerImageTag or by the latest-version check at startup.
+	// When non-null, it is injected as a "Version" metadata property on the AspireC4Resource.
+	volatile string? _resolvedLikeC4Version;
+
 #if NET9_0_OR_GREATER
 	readonly Lock _debounceLock = new();
 	readonly Lock _hmrRelayLock = new();
@@ -83,6 +88,22 @@ sealed partial class AspireC4LifecycleHook(
 				if (serverResource is not null)
 				{
 					SetupContainerBindMount(evt.Model, serverResource);
+
+					// If the tag is pinned to a specific version, record it immediately.
+					// If "latest" is used, TryUpdateHmrPortModeFromLatestVersionAsync will
+					// resolve and overwrite this with the actual pulled version.
+					var effectiveTag = options.Value.ContainerImageTag ?? LikeC4ServerResource.DefaultTag;
+					if (
+						!string.Equals(
+							effectiveTag,
+							LikeC4ServerResource.DefaultTag,
+							StringComparison.OrdinalIgnoreCase
+						)
+					)
+					{
+						_resolvedLikeC4Version = effectiveTag;
+					}
+
 					await TryUpdateHmrPortModeFromLatestVersionAsync(ct);
 
 					if (!options.Value.DisableHMR)

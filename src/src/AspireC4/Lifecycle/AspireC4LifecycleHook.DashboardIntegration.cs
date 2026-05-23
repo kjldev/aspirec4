@@ -237,6 +237,12 @@ sealed partial class AspireC4LifecycleHook
 				if (notification.Resource.Name != innerResource.Name)
 					continue;
 
+				var properties = notification.Snapshot.Properties;
+				if (_resolvedLikeC4Version is { } version)
+				{
+					properties = properties.Add(new ResourcePropertySnapshot("Version", version));
+				}
+
 				await resourceNotificationService.PublishUpdateAsync(
 					outerResource,
 					s =>
@@ -244,7 +250,7 @@ sealed partial class AspireC4LifecycleHook
 						{
 							State = notification.Snapshot.State,
 							Urls = notification.Snapshot.Urls,
-							Properties = notification.Snapshot.Properties,
+							Properties = properties,
 						}
 				);
 			}
