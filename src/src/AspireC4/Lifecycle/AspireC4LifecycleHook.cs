@@ -114,7 +114,11 @@ sealed partial class AspireC4LifecycleHook(
 
 				// Fire-and-forget: watch for resource state changes and regenerate the file.
 				// The ct is the application lifetime token; it is cancelled on shutdown.
-				_ = WatchResourceStatesAsync(evt.Model, ct);
+				_ = WatchResourceStatesAsync(
+					evt.Model,
+					options.Value.ExcludedResourceTypes.Count > 0 ? options.Value.ExcludedResourceTypes : null,
+					ct
+				);
 
 				// Forward inner resource state, URLs, and properties to AspireC4Resource so
 				// it is the single useful dashboard entry and consumers watching by the outer

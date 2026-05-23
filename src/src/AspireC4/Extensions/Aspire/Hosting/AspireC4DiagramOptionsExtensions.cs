@@ -1,3 +1,4 @@
+using Aspire.Hosting.ApplicationModel;
 using Aspire.Hosting.AspireC4.LikeC4;
 using Aspire.Hosting.AspireC4.LikeC4.Models;
 
@@ -274,6 +275,39 @@ public static class AspireC4DiagramOptionsExtensions
 			ArgumentNullException.ThrowIfNull(options);
 			ArgumentNullException.ThrowIfNull(resolver);
 			options.IconResolvers.Add(resolver);
+			return options;
+		}
+
+		/// <summary>
+		/// Adds <typeparamref name="T"/> (and any subclass) to the set of resource types that are
+		/// automatically excluded from the generated LikeC4 diagram.
+		/// </summary>
+		/// <typeparam name="T">
+		/// The resource type to exclude. Any resource whose runtime type is <typeparamref name="T"/>
+		/// or a subclass of <typeparamref name="T"/> will be omitted from the diagram.
+		/// </typeparam>
+		/// <returns>The same <see cref="AspireC4DiagramOptions"/> for further configuration.</returns>
+		/// <seealso cref="AspireC4DiagramOptions.ExcludedResourceTypes"/>
+		public AspireC4DiagramOptions WithExcludedResourceType<T>()
+			where T : IResource
+		{
+			ArgumentNullException.ThrowIfNull(options);
+			options.ExcludedResourceTypes.Add(typeof(T));
+			return options;
+		}
+
+		/// <summary>
+		/// Removes <typeparamref name="T"/> from the set of resource types that are automatically
+		/// excluded from the generated LikeC4 diagram, allowing resources of that type to appear.
+		/// </summary>
+		/// <typeparam name="T">The resource type to re-include in the diagram.</typeparam>
+		/// <returns>The same <see cref="AspireC4DiagramOptions"/> for further configuration.</returns>
+		/// <seealso cref="AspireC4DiagramOptions.ExcludedResourceTypes"/>
+		public AspireC4DiagramOptions WithoutExcludedResourceType<T>()
+			where T : IResource
+		{
+			ArgumentNullException.ThrowIfNull(options);
+			options.ExcludedResourceTypes.Remove(typeof(T));
 			return options;
 		}
 	}

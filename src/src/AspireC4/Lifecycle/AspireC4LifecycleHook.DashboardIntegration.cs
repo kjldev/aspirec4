@@ -261,11 +261,15 @@ sealed partial class AspireC4LifecycleHook
 #pragma warning restore CA1031
 	}
 
-	async Task WatchResourceStatesAsync(DistributedApplicationModel appModel, CancellationToken cancellationToken)
+	async Task WatchResourceStatesAsync(
+		DistributedApplicationModel appModel,
+		IReadOnlySet<Type>? excludedResourceTypes,
+		CancellationToken cancellationToken
+	)
 	{
 		try
 		{
-			var visibleNames = ModelBuilder.GetVisibleResourceNames([.. appModel.Resources]);
+			var visibleNames = ModelBuilder.GetVisibleResourceNames([.. appModel.Resources], excludedResourceTypes);
 
 			await foreach (var notification in resourceNotificationService.WatchAsync(cancellationToken))
 			{

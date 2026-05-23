@@ -1,3 +1,4 @@
+using Aspire.Hosting.ApplicationModel;
 using Aspire.Hosting.AspireC4.LikeC4.Models;
 
 namespace Aspire.Hosting;
@@ -30,7 +31,9 @@ public sealed partial class AspireC4DiagramOptionsExtensionsTests
 			.WithDefaultStateStyles(false)
 			.WithStateTag(KnownResourceStates.Running, "live")
 			.WithIconResolver(_ => "tech:dotnet")
-			.WithElementKindSpec(new LikeC4ElementKindSpec("cache"));
+			.WithElementKindSpec(new LikeC4ElementKindSpec("cache"))
+			.WithExcludedResourceType<ContainerResource>()
+			.WithoutExcludedResourceType<ParameterResource>();
 
 		// Assert
 		await Assert.That(result).IsSameReferenceAs(sut);
@@ -54,5 +57,7 @@ public sealed partial class AspireC4DiagramOptionsExtensionsTests
 		await Assert.That(sut.StateTagMap[KnownResourceStates.Running]).IsEqualTo("live");
 		await Assert.That(sut.IconResolvers.Count).IsEqualTo(1);
 		await Assert.That(sut.ElementKindSpecs.Count).IsEqualTo(1);
+		await Assert.That(sut.ExcludedResourceTypes).Contains(typeof(ContainerResource));
+		await Assert.That(sut.ExcludedResourceTypes).DoesNotContain(typeof(ParameterResource));
 	}
 }

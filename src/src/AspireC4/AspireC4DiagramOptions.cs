@@ -1,3 +1,4 @@
+using Aspire.Hosting.ApplicationModel;
 using Aspire.Hosting.AspireC4.LikeC4;
 using Aspire.Hosting.AspireC4.LikeC4.Models;
 
@@ -297,6 +298,26 @@ public sealed class AspireC4DiagramOptions
 	/// Defaults to <see langword="true"/>.
 	/// </summary>
 	public bool IncludeDefaultStateStyles { get; set; } = true;
+
+	/// <summary>
+	/// Resource types that are automatically excluded from the generated LikeC4 diagram.
+	/// Exclusion is based on the runtime type of each Aspire resource: a resource is excluded
+	/// when its type is the same as, or a subclass of, any type in this set.
+	/// <para>
+	/// Defaults to <c>{ typeof(<see cref="ParameterResource"/>) }</c>, which suppresses password
+	/// and secret parameters added via <c>.AddParameter()</c> or <c>.WithParameter()</c>.
+	/// </para>
+	/// <para>
+	/// Use <c>opts.WithExcludedResourceType&lt;T&gt;()</c> to add a type and
+	/// <c>opts.WithoutExcludedResourceType&lt;T&gt;()</c> to remove one (including the default).
+	/// </para>
+	/// </summary>
+	[System.Diagnostics.CodeAnalysis.SuppressMessage(
+		"Usage",
+		"CA2227:Collection properties should be read only",
+		Justification = "Settable for configuration binding and direct assignment in user code"
+	)]
+	public HashSet<Type> ExcludedResourceTypes { get; set; } = [typeof(ParameterResource)];
 
 	/// <summary>
 	/// Custom icon resolvers that are evaluated before the built-in auto-icon inference.
