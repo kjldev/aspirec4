@@ -1,4 +1,3 @@
-using Aspire.Hosting.ApplicationModel;
 using Aspire.Hosting.AspireC4.LikeC4;
 using Aspire.Hosting.AspireC4.LikeC4.Models;
 
@@ -308,6 +307,24 @@ public static class AspireC4DiagramOptionsExtensions
 		{
 			ArgumentNullException.ThrowIfNull(options);
 			options.ExcludedResourceTypes.Remove(typeof(T));
+			return options;
+		}
+
+		/// <summary>
+		/// Enables or disables the startup version check that runs when the <c>"latest"</c>
+		/// container image tag is in use.
+		/// </summary>
+		/// <param name="check">
+		/// <see langword="true"/> (default) to run <c>likec4 --version</c> in a throwaway
+		/// container at startup and use the resolved version to configure version-gated features;
+		/// <see langword="false"/> to skip the check for faster startup.
+		/// </param>
+		/// <returns>The same <see cref="AspireC4DiagramOptions"/> for further configuration.</returns>
+		/// <seealso cref="AspireC4DiagramOptions.CheckLatestImageVersion"/>
+		public AspireC4DiagramOptions WithCheckLatestImageVersion(bool check = true)
+		{
+			ArgumentNullException.ThrowIfNull(options);
+			options.CheckLatestImageVersion = check;
 			return options;
 		}
 	}

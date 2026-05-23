@@ -83,6 +83,7 @@ sealed partial class AspireC4LifecycleHook(
 				if (serverResource is not null)
 				{
 					SetupContainerBindMount(evt.Model, serverResource);
+					await TryUpdateHmrPortModeFromLatestVersionAsync(ct);
 
 					if (!options.Value.DisableHMR)
 					{

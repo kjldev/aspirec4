@@ -40,5 +40,17 @@ public sealed class AspireC4DiagramOptionsTests
 		await Assert.That(options.ExcludedResourceTypes.Count).IsEqualTo(1);
 	}
 
+	[Test]
+	public async Task Constructor_DefaultOptions_CheckLatestImageVersionIsTrue()
+	{
+		// Arrange
+
+		// Act
+		var options = CreateSut();
+
+		// Assert
+		await Assert.That(options.CheckLatestImageVersion).IsTrue();
+	}
+
 	static AspireC4DiagramOptions CreateSut() => new();
 }

@@ -86,6 +86,24 @@ public sealed class AspireC4DiagramOptions
 	public string? ContainerImageTag { get; set; }
 
 	/// <summary>
+	/// When <see langword="true"/> (default) and the container image tag resolves to
+	/// <c>"latest"</c>, AspireC4 runs a throwaway container at startup to call
+	/// <c>likec4 --version</c> and detect the actual version pulled by Docker.
+	/// The resolved version is then used to configure version-gated container features
+	/// (such as configurable HMR port mode) correctly even when a specific tag is not pinned.
+	/// <para>
+	/// Set to <see langword="false"/> to skip the check for faster startup, at the cost of
+	/// potentially misconfiguring features that depend on knowing the exact version.
+	/// The default may change to <see langword="false"/> in a future release once
+	/// <c>latest</c> consistently refers to a version that supports all configurable features.
+	/// </para>
+	/// </summary>
+	/// <remarks>
+	/// Has no effect when <see cref="ContainerImageTag"/> is set to a specific version tag.
+	/// </remarks>
+	public bool CheckLatestImageVersion { get; set; } = true;
+
+	/// <summary>
 	/// Enables automatic icon inference for known resource types and technologies.
 	/// Defaults to <see langword="true" />.
 	/// </summary>

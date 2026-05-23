@@ -46,4 +46,10 @@ interface IAspireC4LifecycleHookTelemetry
 
 	[Warning]
 	void FailedToRunFormatter(Exception ex);
+
+	[Info]
+	void ResolvedLatestContainerVersion(string version);
+
+	[Warning]
+	void FailedToResolveLatestContainerVersion();
 }

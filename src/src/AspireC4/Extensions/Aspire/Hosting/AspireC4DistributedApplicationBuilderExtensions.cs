@@ -164,12 +164,6 @@ public static class AspireC4DistributedApplicationBuilderExtensions
 			// Exclude the sidecar from the architecture diagram — it is tooling, not a system element.
 			.ExcludeFromLikeC4()
 			.ExcludeFromManifest();
-		//			.WithInitialState(new CustomResourceSnapshot
-		//			{
-		//				ResourceType = nameof(LikeC4ServerResource),
-		////				IsHidden = true,
-		//				Properties = []
-		//			});
 
 		if (!diagramOpts.DisableHMR)
 		{

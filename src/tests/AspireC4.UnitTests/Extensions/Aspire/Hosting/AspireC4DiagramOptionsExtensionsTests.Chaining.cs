@@ -33,7 +33,8 @@ public sealed partial class AspireC4DiagramOptionsExtensionsTests
 			.WithIconResolver(_ => "tech:dotnet")
 			.WithElementKindSpec(new LikeC4ElementKindSpec("cache"))
 			.WithExcludedResourceType<ContainerResource>()
-			.WithoutExcludedResourceType<ParameterResource>();
+			.WithoutExcludedResourceType<ParameterResource>()
+			.WithCheckLatestImageVersion(false);
 
 		// Assert
 		await Assert.That(result).IsSameReferenceAs(sut);
@@ -59,5 +60,6 @@ public sealed partial class AspireC4DiagramOptionsExtensionsTests
 		await Assert.That(sut.ElementKindSpecs.Count).IsEqualTo(1);
 		await Assert.That(sut.ExcludedResourceTypes).Contains(typeof(ContainerResource));
 		await Assert.That(sut.ExcludedResourceTypes).DoesNotContain(typeof(ParameterResource));
+		await Assert.That(sut.CheckLatestImageVersion).IsFalse();
 	}
 }
