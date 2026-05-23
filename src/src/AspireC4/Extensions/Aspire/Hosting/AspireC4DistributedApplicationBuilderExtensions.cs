@@ -67,11 +67,16 @@ public static class AspireC4DistributedApplicationBuilderExtensions
 		var imageTag = diagramOpts.ContainerImageTag ?? LikeC4ServerResource.DefaultTag;
 		var hmrPortMode = HMRPortCompatibility.Resolve(imageTag);
 		var resolvedHmrPort = diagramOpts.HMRPort ?? LikeC4ServerResource.DefaultContainerHMRPort;
-		// Use the relay on Windows even in Configurable mode: Docker Desktop may fail to publish
-		// the well-known port (24678) reliably due to Hyper-V port reservations or port-cleanup
-		// races between container restarts. The relay owns port 24678 on the host side and
-		// bridges incoming HMR connections to whatever dynamic port Docker happened to allocate.
-		var useHmrRelay = hmrPortMode == HMRPortMode.FixedPort || OperatingSystem.IsWindows();
+		// The relay is only needed on Windows: Docker Desktop may fail to publish port 24678
+		// reliably due to Hyper-V port reservations or port-cleanup races between container
+		// restarts. On Windows the relay owns port 24678 on the host and bridges incoming HMR
+		// connections to whatever dynamic port Docker allocated.
+		//
+		// On non-Windows (macOS, Linux) there are no Hyper-V reservations, so publishing a
+		// fixed port (24678→24678) always succeeds. This is true for both pre-v1.57 images
+		// (where Vite hardcodes HMR to port 24678) and for v1.57+ images (where --hmr-port
+		// configures Vite to use 24678). The hmrPortMode / image version is irrelevant here.
+		var useHmrRelay = OperatingSystem.IsWindows();
 		var defaultViewId = string.IsNullOrWhiteSpace(diagramOpts.DefaultViewId) ? null : diagramOpts.DefaultViewId;
 
 		builder

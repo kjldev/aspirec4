@@ -18,6 +18,7 @@ sealed partial class AspireC4LifecycleHook(
 	IOptions<AspireC4DiagramOptions> options,
 	IOptions<ContainerWorkspaceOptions> workspaceOptions,
 	ResourceNotificationService resourceNotificationService,
+	ResourceLoggerService resourceLoggerService,
 	IAspireC4LifecycleHookTelemetry telemetry,
 	IConfiguration configuration
 ) : IDistributedApplicationEventingSubscriber, IDisposable
@@ -118,9 +119,12 @@ sealed partial class AspireC4LifecycleHook(
 				// Forward inner resource state, URLs, and properties to AspireC4Resource so
 				// it is the single useful dashboard entry and consumers watching by the outer
 				// resource name (e.g., integration tests) receive correct state updates.
+				// Also forward console logs so they are visible on the outer resource's
+				// Console tab in the dashboard.
 				if (aspirec4Resource is not null)
 				{
 					_ = ForwardInnerResourceStateAsync(aspirec4Resource, ct);
+					_ = ForwardInnerResourceLogsAsync(aspirec4Resource, ct);
 				}
 
 				if (options.Value.IncludeAspireDashboardLinks)

@@ -1,6 +1,7 @@
 using System.Collections.Immutable;
 using Aspire.Hosting.AspireC4.ApplicationModel;
 using Aspire.Hosting.AspireC4.LikeC4;
+using Microsoft.Extensions.Logging;
 
 namespace Aspire.Hosting.AspireC4.Lifecycle;
 
@@ -159,6 +160,48 @@ sealed partial class AspireC4LifecycleHook
 					continue;
 
 				await resourceNotificationService.PublishUpdateAsync(serverResource, s => s with { IsHidden = true });
+			}
+		}
+		catch (OperationCanceledException)
+		{
+			// Normal on shutdown.
+		}
+#pragma warning disable CA1031
+		catch (Exception ex)
+		{
+			telemetry.StateWatcherFailed(ex.Message);
+		}
+#pragma warning restore CA1031
+	}
+
+	/// <summary>
+	/// Watches the inner resource's log stream and relays every log line to the outer
+	/// <see cref="AspireC4Resource"/> so that the Console tab in the Aspire dashboard shows
+	/// the LikeC4 server output under the <c>aspirec4</c> entry rather than the hidden inner
+	/// resource.
+	/// </summary>
+	async Task ForwardInnerResourceLogsAsync(AspireC4Resource outerResource, CancellationToken cancellationToken)
+	{
+		var innerResource = outerResource.InnerResource;
+		if (innerResource is null)
+			return;
+
+		try
+		{
+			var outerLogger = resourceLoggerService.GetLogger(outerResource);
+
+			await foreach (
+				var logBatch in resourceLoggerService.WatchAsync(innerResource).WithCancellation(cancellationToken)
+			)
+			{
+				foreach (var logLine in logBatch)
+				{
+					var level = logLine.IsErrorMessage ? LogLevel.Error : LogLevel.Information;
+					if (outerLogger.IsEnabled(level))
+					{
+						outerLogger.Log(level, "{Content}", logLine.Content);
+					}
+				}
 			}
 		}
 		catch (OperationCanceledException)

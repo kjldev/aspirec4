@@ -18,7 +18,8 @@ sealed class ContainerWorkspaceOptions
 	/// <summary>
 	/// When true, the host-side TCP relay listens on port <see cref="LikeC4ServerResource.DefaultContainerHMRPort"/>
 	/// and bridges incoming HMR connections to the dynamically-allocated Docker host port.
-	/// Always true for FixedPort images; also true on Windows to avoid Hyper-V port reservation issues.
+	/// Only true on Windows, where Hyper-V port reservations can prevent Docker Desktop from
+	/// reliably publishing the well-known port 24678 directly.
 	/// </summary>
 	public bool UseHMRRelay { get; set; }
 

@@ -12,6 +12,11 @@ public sealed class AspireC4DistributedApplicationBuilderExtensionsTests
 	{
 		// Arrange
 		var appBuilder = CreateAppBuilder();
+		// On Windows the relay owns port 24678 so Docker gets a dynamic (null) host port.
+		// On non-Windows the relay is not used and Docker maps host:24678→container:24678 directly.
+		var expectedHmrHostPort = OperatingSystem.IsWindows()
+			? (int?)null
+			: LikeC4ServerResource.DefaultContainerHMRPort;
 
 		// Act
 		var visualization = appBuilder.AddAspireC4();
@@ -27,14 +32,17 @@ public sealed class AspireC4DistributedApplicationBuilderExtensionsTests
 		await Assert.That(endpoints[0].TargetPort).IsEqualTo(LikeC4ServerResource.DefaultContainerServePort);
 		await Assert.That(endpoints[1].Name).IsEqualTo(LikeC4ServerResource.HMREndpointName);
 		await Assert.That(endpoints[1].TargetPort).IsEqualTo(LikeC4ServerResource.DefaultContainerHMRPort);
-		await Assert.That(endpoints[1].Port).IsNull();
+		await Assert.That(endpoints[1].Port).IsEqualTo(expectedHmrHostPort);
 	}
 
 	[Test]
-	public async Task AddAspireC4_UsesHmrRelayForFixedPortMode()
+	public async Task AddAspireC4_UseHmrRelay_IsWindowsOnly_ForFixedPortMode()
 	{
 		// Arrange
 		var appBuilder = CreateAppBuilder();
+		// The relay is now Windows-only regardless of HMR port mode: on non-Windows, direct
+		// fixed-port Docker mapping (24678→24678) is always reliable (no Hyper-V interference).
+		var expectedUseRelay = OperatingSystem.IsWindows();
 
 		// Act
 		appBuilder.AddAspireC4(configure: opts => opts.ContainerImageTag = "1.55.0");
@@ -43,7 +51,7 @@ public sealed class AspireC4DistributedApplicationBuilderExtensionsTests
 			provider.GetRequiredService<Microsoft.Extensions.Options.IOptions<ContainerWorkspaceOptions>>();
 
 		// Assert
-		await Assert.That(workspaceOptions.Value.UseHMRRelay).IsTrue();
+		await Assert.That(workspaceOptions.Value.UseHMRRelay).IsEqualTo(expectedUseRelay);
 	}
 
 	[Test]
