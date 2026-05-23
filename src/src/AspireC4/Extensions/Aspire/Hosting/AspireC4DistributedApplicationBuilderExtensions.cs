@@ -67,16 +67,6 @@ public static class AspireC4DistributedApplicationBuilderExtensions
 		var imageTag = diagramOpts.ContainerImageTag ?? LikeC4ServerResource.DefaultTag;
 		var hmrPortMode = HMRPortCompatibility.Resolve(imageTag);
 		var resolvedHmrPort = diagramOpts.HMRPort ?? LikeC4ServerResource.DefaultContainerHMRPort;
-		// The relay is only needed on Windows: Docker Desktop may fail to publish port 24678
-		// reliably due to Hyper-V port reservations or port-cleanup races between container
-		// restarts. On Windows the relay owns port 24678 on the host and bridges incoming HMR
-		// connections to whatever dynamic port Docker allocated.
-		//
-		// On non-Windows (macOS, Linux) there are no Hyper-V reservations, so publishing a
-		// fixed port (24678→24678) always succeeds. This is true for both pre-v1.57 images
-		// (where Vite hardcodes HMR to port 24678) and for v1.57+ images (where --hmr-port
-		// configures Vite to use 24678). The hmrPortMode / image version is irrelevant here.
-		var useHmrRelay = OperatingSystem.IsWindows();
 		var defaultViewId = string.IsNullOrWhiteSpace(diagramOpts.DefaultViewId) ? null : diagramOpts.DefaultViewId;
 
 		builder
@@ -84,7 +74,6 @@ public static class AspireC4DistributedApplicationBuilderExtensions
 			.Configure(runtime =>
 			{
 				runtime.HMRPortMode = hmrPortMode;
-				runtime.UseHMRRelay = useHmrRelay;
 				runtime.ResolvedHMRPort = resolvedHmrPort;
 			});
 
@@ -167,12 +156,9 @@ public static class AspireC4DistributedApplicationBuilderExtensions
 
 		if (!diagramOpts.DisableHMR)
 		{
-			// When using the relay, omit a fixed host port so Docker allocates a dynamic one.
-			// The relay owns port 24678 on the host and bridges connections to the dynamic port.
-			// Direct fixed-port mapping is only safe on non-Windows Configurable-mode images.
-			int? hmrHostPort = useHmrRelay
-				? null
-				: diagramOpts.HMRPort.GetValueOrDefault(LikeC4ServerResource.DefaultContainerHMRPort);
+			// Publish a fixed host port so Docker maps host:24678 → container:24678 directly.
+			// This works on all platforms (Windows, macOS, Linux) with all container runtimes.
+			int? hmrHostPort = diagramOpts.HMRPort.GetValueOrDefault(LikeC4ServerResource.DefaultContainerHMRPort);
 			serverBuilder
 				.WithHttpEndpoint(
 					port: hmrHostPort,

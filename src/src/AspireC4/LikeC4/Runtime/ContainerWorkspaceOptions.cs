@@ -16,14 +16,6 @@ sealed class ContainerWorkspaceOptions
 	public int ResolvedHMRPort { get; set; } = LikeC4ServerResource.DefaultContainerHMRPort;
 
 	/// <summary>
-	/// When true, the host-side TCP relay listens on port <see cref="LikeC4ServerResource.DefaultContainerHMRPort"/>
-	/// and bridges incoming HMR connections to the dynamically-allocated Docker host port.
-	/// Only true on Windows, where Hyper-V port reservations can prevent Docker Desktop from
-	/// reliably publishing the well-known port 24678 directly.
-	/// </summary>
-	public bool UseHMRRelay { get; set; }
-
-	/// <summary>
 	/// The resolved local CLI runtime when <c>WithLocalCLI()</c> was called.
 	/// <see langword="null"/> means Docker container mode — host-side CLI invocations
 	/// (format, validate) fall back to <c>npx</c>.

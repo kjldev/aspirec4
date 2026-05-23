@@ -1,6 +1,5 @@
 using System.Collections.Concurrent;
 using System.Collections.Immutable;
-using System.Net.Sockets;
 using Aspire.Hosting.AspireC4.ApplicationModel;
 using Aspire.Hosting.AspireC4.LikeC4.Runtime;
 using Aspire.Hosting.Eventing;
@@ -45,8 +44,6 @@ sealed partial class AspireC4LifecycleHook(
 
 	// Debounce: cancels any pending delayed write when a new state change arrives.
 	CancellationTokenSource? _debounceCts;
-	CancellationTokenSource? _hmrRelayCts;
-	TcpListener? _hmrRelayListener;
 
 	// The header-stripped body of the last .c4 file written to disk.
 	// Used to skip writes when the generated content has not changed, preventing needless
@@ -60,10 +57,8 @@ sealed partial class AspireC4LifecycleHook(
 
 #if NET9_0_OR_GREATER
 	readonly Lock _debounceLock = new();
-	readonly Lock _hmrRelayLock = new();
 #else
 	readonly object _debounceLock = new();
-	readonly object _hmrRelayLock = new();
 #endif
 
 	public Task SubscribeAsync(
@@ -111,12 +106,6 @@ sealed partial class AspireC4LifecycleHook(
 					}
 
 					await TryUpdateHmrPortModeFromLatestVersionAsync(ct);
-
-					if (!options.Value.DisableHMR)
-					{
-						EnsureLegacyHostHmrPortAvailable();
-						StartLegacyHmrRelay(evt.Model, ct);
-					}
 				}
 
 				await WriteC4FileAsync(evt.Model, ct);

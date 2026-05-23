@@ -24,9 +24,6 @@ interface IAspireC4LifecycleHookTelemetry
 	void RegeneratingDiagramDueToStateChange();
 
 	[Warning]
-	void HMRPortUnavailable(int port, string error);
-
-	[Warning]
 	void StateWatcherFailed(string error);
 
 	[Info]
