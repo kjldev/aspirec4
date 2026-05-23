@@ -61,6 +61,12 @@ if ! docker info >/dev/null 2>&1; then
     exit 1
 fi
 
+# Pre-pull the LikeC4 Docker image so it's cached in the DinD daemon before
+# tests start. Without this, Container tests pull the image at test-start time
+# and risk hitting the 2-minute per-test timeout.
+echo "Pre-pulling ghcr.io/likec4/likec4..."
+docker pull ghcr.io/likec4/likec4 || echo "WARNING: likec4 image pre-pull failed (non-fatal, tests will pull on demand)"
+
 # Pre-install likec4 from /tmp to avoid writing lock files into /workspace.
 echo "Pre-installing likec4 (runtime: ${ASPIREC4_CLI_RUNTIME})..."
 cd /tmp
