@@ -12,8 +12,8 @@ public sealed class AspireC4DistributedApplicationBuilderExtensionsTests
 	{
 		// Arrange
 		var appBuilder = CreateAppBuilder();
-		// HMR host port is always a fixed direct mapping: host:24678 → container:24678.
-		var expectedHmrHostPort = LikeC4ServerResource.DefaultContainerHMRPort;
+		// "latest" tag resolves to a recent version (>= 1.57) at startup and uses --hmr-port,
+		// so Docker allocates a random host port (null) — no fixed port needed, no conflicts.
 
 		// Act
 		var visualization = appBuilder.AddAspireC4();
@@ -29,7 +29,41 @@ public sealed class AspireC4DistributedApplicationBuilderExtensionsTests
 		await Assert.That(endpoints[0].TargetPort).IsEqualTo(LikeC4ServerResource.DefaultContainerServePort);
 		await Assert.That(endpoints[1].Name).IsEqualTo(LikeC4ServerResource.HMREndpointName);
 		await Assert.That(endpoints[1].TargetPort).IsEqualTo(LikeC4ServerResource.DefaultContainerHMRPort);
-		await Assert.That(endpoints[1].Port).IsEqualTo(expectedHmrHostPort);
+		await Assert.That(endpoints[1].Port).IsNull();
+	}
+
+	[Test]
+	public async Task AddAspireC4_HmrEndpoint_UsesDynamicPortForConfigurableVersions()
+	{
+		// Arrange
+		var appBuilder = CreateAppBuilder();
+
+		// Act
+		var visualization = appBuilder.AddAspireC4(configure: opts => opts.ContainerImageTag = "100.57.0");
+		var serverResource = (LikeC4ServerResource)visualization.Resource.InnerResource!;
+		var hmrEndpoint = serverResource
+			.Annotations.OfType<EndpointAnnotation>()
+			.Single(e => e.Name == LikeC4ServerResource.HMREndpointName);
+
+		// Assert — no fixed host port; Docker allocates freely
+		await Assert.That(hmrEndpoint.Port).IsNull();
+	}
+
+	[Test]
+	public async Task AddAspireC4_HmrEndpoint_UsesFixedPortForLegacyPinnedVersion()
+	{
+		// Arrange
+		var appBuilder = CreateAppBuilder();
+
+		// Act
+		var visualization = appBuilder.AddAspireC4(configure: opts => opts.ContainerImageTag = "1.55.0");
+		var serverResource = (LikeC4ServerResource)visualization.Resource.InnerResource!;
+		var hmrEndpoint = serverResource
+			.Annotations.OfType<EndpointAnnotation>()
+			.Single(e => e.Name == LikeC4ServerResource.HMREndpointName);
+
+		// Assert — must be fixed so the browser-side Vite JS (hardcoded port 24678) connects correctly
+		await Assert.That(hmrEndpoint.Port).IsEqualTo(LikeC4ServerResource.DefaultContainerHMRPort);
 	}
 
 	[Test]

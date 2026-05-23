@@ -69,6 +69,22 @@ public static class AspireC4DistributedApplicationBuilderExtensions
 		var resolvedHmrPort = diagramOpts.HMRPort ?? LikeC4ServerResource.DefaultContainerHMRPort;
 		var defaultViewId = string.IsNullOrWhiteSpace(diagramOpts.DefaultViewId) ? null : diagramOpts.DefaultViewId;
 
+		// Use a dynamic host port (null) unless we know for certain we are dealing with an old
+		// (pre-1.57) image where Vite hardcodes port 24678 in the JS it sends to the browser.
+		// "latest" also gets null — at runtime it resolves to a recent version (>= 1.57) that
+		// honours --hmr-port, so Docker can allocate freely and multiple containers never clash.
+		// Only a pinned, parseable old tag (FixedPort mode) requires the well-known port.
+		var isLatestTag = string.Equals(imageTag, LikeC4ServerResource.DefaultTag, StringComparison.OrdinalIgnoreCase);
+		// If the user pinned an explicit port, respect it on all images; otherwise go dynamic
+		// for Configurable images (and for "latest" which will resolve to Configurable at startup).
+		int? hmrHostPort =
+			diagramOpts.HMRPort
+			?? (
+				hmrPortMode == HMRPortMode.FixedPort && !isLatestTag
+					? LikeC4ServerResource.DefaultContainerHMRPort
+					: null
+			);
+
 		builder
 			.Services.AddOptions<ContainerWorkspaceOptions>()
 			.Configure(runtime =>
@@ -143,8 +159,16 @@ public static class AspireC4DistributedApplicationBuilderExtensions
 
 				if (!diagOpts.Value.DisableHMR && wsOpts.Value.HMRPortMode == HMRPortMode.Configurable)
 				{
+					// For dynamic host-port allocation, read the port Docker actually assigned
+					// so Vite advertises the right address to the browser.
+					// Falls back to ResolvedHMRPort (the user-configured value) in unit-test
+					// scenarios where DCP has not allocated an endpoint.
+					var hmrAnnotation = serverResource
+						.Annotations.OfType<EndpointAnnotation>()
+						.FirstOrDefault(a => a.Name == LikeC4ServerResource.HMREndpointName);
+					var effectiveHmrPort = hmrAnnotation?.AllocatedEndpoint?.Port ?? wsOpts.Value.ResolvedHMRPort;
 					context.Args.Add("--hmr-port");
-					context.Args.Add($"{wsOpts.Value.ResolvedHMRPort}");
+					context.Args.Add($"{effectiveHmrPort}");
 				}
 
 				if (diagOpts.Value.DisableHMR)
@@ -156,9 +180,6 @@ public static class AspireC4DistributedApplicationBuilderExtensions
 
 		if (!diagramOpts.DisableHMR)
 		{
-			// Publish a fixed host port so Docker maps host:24678 → container:24678 directly.
-			// This works on all platforms (Windows, macOS, Linux) with all container runtimes.
-			int? hmrHostPort = diagramOpts.HMRPort.GetValueOrDefault(LikeC4ServerResource.DefaultContainerHMRPort);
 			serverBuilder
 				.WithHttpEndpoint(
 					port: hmrHostPort,
