@@ -97,7 +97,7 @@ Two distinct brands exist in this repository. Use them consistently:
 | Recipe | Description |
 |---|---|
 | `just test-e2e-docker` | Integration tests against the host Docker daemon |
-| `just test-e2e` | Same as `just test-e2e-docker` |
+| `just test-e2e` | Docker + all local CLI runtimes (npm, pnpm, yarn, bun, deno) |
 
 ### Diagrams
 

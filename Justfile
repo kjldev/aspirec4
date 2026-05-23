@@ -4,6 +4,8 @@ set quiet
 _root := "./"
 [private]
 _solution := "src/AspireC4.slnx"
+[private]
+_typescriptAppHost := "samples/typescript-app-host/"
 
 config_default := "Release"
 
@@ -23,7 +25,7 @@ init: restore
 vs:
     open {{ _solution }}
 # Run all tests (unit + integration + e2e )
-test-all: test test-integration test-e2e test-e2e-cli
+test-all: test test-integration test-e2e
 
 # Restore NuGet packages and local tools
 [group('dotnet')]
@@ -62,6 +64,19 @@ lintfix:
 [group('dotnet')]
 pack configuration=config_default: (build configuration)
     dotnet pack {{ _solution }} --no-build --no-restore --configuration {{ configuration }} --output artifacts/nuget "/p:Version=$(node -p "require('./package.json').version")"
+
+# ── TypeScript AppHost --------------------------------------------------------
+
+# Restore dependencies for the TypeScript AppHost sample
+[group('typescript')]
+ts-restore:
+    aspire restore --apphost {{ _typescriptAppHost }}
+
+# Run the TypeScript AppHost sample with Aspire
+[group('typescript')]
+ts-run:
+    aspire run --apphost {{ _typescriptAppHost }}
+
 # ── Release ───────────────────────────────────────────────────────────────────
 
 # Add a changeset description for the current changes (interactive)
@@ -125,9 +140,9 @@ test-e2e-bun configuration=config_default: (_e2e-cli-image "aspirec4-e2e-bun" "b
 [group('container-tests')]
 test-e2e-deno configuration=config_default: (_e2e-cli-image "aspirec4-e2e-deno" "deno")
     just _e2e-cli-run aspirec4-e2e-deno {{ configuration }}
-# Build and run integration tests for the Docker container runtime
+# Build and run all e2e integration tests: Docker container runtime + all local CLI runtimes
 [group('container-tests')]
-test-e2e configuration=config_default: (test-e2e-docker configuration)
+test-e2e configuration=config_default: (test-e2e-docker configuration) (test-e2e-cli configuration)
 # Build and run integration tests for all local CLI runtimes (npm, pnpm, yarn, bun, deno)
 [group('container-tests')]
 test-e2e-cli configuration=config_default: (test-e2e-npm configuration) (test-e2e-pnpm configuration) (test-e2e-yarn configuration) (test-e2e-bun configuration) (test-e2e-deno configuration)
