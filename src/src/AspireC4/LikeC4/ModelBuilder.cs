@@ -95,6 +95,16 @@ static class ModelBuilder
 			.GroupBy(r => r.Name, StringComparer.OrdinalIgnoreCase)
 			.ToDictionary(g => g.Key, g => g.First(), StringComparer.OrdinalIgnoreCase);
 
+		// Build a name → DSL-identifier map. A LikeC4DslIdAnnotation lets any resource emit
+		// under a different identifier than its Aspire resource name (used, for example, to
+		// normalise the AspireC4 sidecar to "aspirec4" regardless of whether the Docker
+		// container or the local-CLI executable is active).
+		Dictionary<string, string> dslIdByName = visibleResources.ToDictionary(
+			r => r.Name,
+			r => r.Annotations.OfType<LikeC4DslIdAnnotation>().LastOrDefault()?.DslId ?? r.Name,
+			StringComparer.OrdinalIgnoreCase
+		);
+
 #pragma warning disable IDE0028 // Simplify collection initialization
 		List<LikeC4Element> elements = new(visibleResources.Count);
 #pragma warning restore IDE0028 // Simplify collection initialization
@@ -108,6 +118,7 @@ static class ModelBuilder
 			elements.Add(
 				BuildElement(
 					resource,
+					dslIdByName[resource.Name],
 					state,
 					autoIconsEnabled,
 					aspireMetadataInclusion,
@@ -125,6 +136,7 @@ static class ModelBuilder
 				resource,
 				visibleResources,
 				visibleByName,
+				dslIdByName,
 				relationships,
 				visitedRelationships,
 				normaliseMetadataBehaviour
@@ -207,6 +219,7 @@ static class ModelBuilder
 
 	static LikeC4Element BuildElement(
 		IResource resource,
+		string dslId,
 		string? state,
 		bool autoIconsEnabled,
 		AspireMetadataInclusion aspireMetadataInclusion = AspireMetadataInclusion.All,
@@ -227,7 +240,9 @@ static class ModelBuilder
 		var technology = details?.Technology ?? inferredTechnology;
 		var icon = ResolveIcon(resource, details, inferredTechnology, autoIconsEnabled, hiddenOriginal, iconResolvers);
 		var kind = details?.Kind ?? InferKind(resource);
-		var parentName = (resource as IResourceWithParent)?.Parent?.Name;
+		var parentName = (resource as IResourceWithParent)?.Parent is { } parent
+			? (parent.Annotations.OfType<LikeC4DslIdAnnotation>().LastOrDefault()?.DslId ?? parent.Name)
+			: null;
 		var group = resource.Annotations.OfType<LikeC4GroupAnnotation>().LastOrDefault()?.GroupName;
 
 		var userMetadata = NormaliseMetadataKeys(details?.Metadata ?? [], normaliseMetadataBehaviour);
@@ -260,7 +275,7 @@ static class ModelBuilder
 
 		return new()
 		{
-			Name = resource.Name,
+			Name = dslId,
 			Label = label,
 			Kind = kind,
 			Technology = technology,
@@ -549,11 +564,13 @@ static class ModelBuilder
 		IResource resource,
 		HashSet<IResource> visibleResources,
 		Dictionary<string, IResource> visibleByName,
+		Dictionary<string, string> dslIdByName,
 		List<LikeC4Relationship> relationships,
 		HashSet<(string, string)> visited,
 		NormaliseMetadataBehaviour normaliseMetadataBehaviour
 	)
 	{
+		var sourceDslId = dslIdByName.GetValueOrDefault(resource.Name, resource.Name);
 		foreach (var annotation in resource.Annotations.OfType<ResourceRelationshipAnnotation>())
 		{
 			// Skip infrastructure-only wait-for dependencies.
@@ -576,7 +593,7 @@ static class ModelBuilder
 				continue;
 			}
 
-			var key = (resource.Name, effectiveTarget.Name);
+			var key = (sourceDslId, dslIdByName.GetValueOrDefault(effectiveTarget.Name, effectiveTarget.Name));
 			if (!visited.Add(key))
 			{
 				continue;
@@ -604,8 +621,8 @@ static class ModelBuilder
 			relationships.Add(
 				new LikeC4Relationship
 				{
-					SourceName = resource.Name,
-					TargetName = effectiveTarget.Name,
+					SourceName = sourceDslId,
+					TargetName = dslIdByName.GetValueOrDefault(effectiveTarget.Name, effectiveTarget.Name),
 					Label = details?.Label ?? inferredLabel,
 					Technology = details?.Technology,
 					Description = details?.Description,
@@ -629,8 +646,9 @@ static class ModelBuilder
 				continue;
 			}
 
-			var key = (resource.Name, effectiveTarget.Name);
-			if (!visited.Add(key))
+			var targetDslId = dslIdByName.GetValueOrDefault(effectiveTarget.Name, effectiveTarget.Name);
+			var key2 = (sourceDslId, targetDslId);
+			if (!visited.Add(key2))
 			{
 				continue;
 			}
@@ -640,8 +658,8 @@ static class ModelBuilder
 			relationships.Add(
 				new LikeC4Relationship
 				{
-					SourceName = resource.Name,
-					TargetName = effectiveTarget.Name,
+					SourceName = sourceDslId,
+					TargetName = targetDslId,
 					Label = details.Label,
 					Technology = details.Technology,
 					Description = details.Description,

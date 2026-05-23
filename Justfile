@@ -106,10 +106,10 @@ diagrams:
     just _run-likec4 .
 # ── Container runtime tests ───────────────────────────────────────────────────
 
-[private]
-_e2e_docker_image := "aspirec4-e2e-docker"
-[private]
-_e2e_dockerfile_docker := "tests/Docker/Dockerfile.e2e"
+# [private]
+# _e2e_docker_image := "aspirec4-e2e-docker"
+# [private]
+# _e2e_dockerfile_docker := "tests/Docker/Dockerfile.e2e"
 [private]
 _e2e_dockerfile_cli := "tests/Docker/Dockerfile.e2e-cli"
 
@@ -162,14 +162,14 @@ _e2e-cli-image image target:
 [private]
 _e2e-cli-run image configuration:
     docker run --rm --privileged \
-        -v "{{ justfile_directory() }}:/workspace" \
-        -v aspirec4-nuget-cache:/root/.nuget/packages \
-        -v aspirec4-testbin:/workspace/src/tests/AspireC4.IntegrationTests/bin \
-        -v aspirec4-testobj:/workspace/src/tests/AspireC4.IntegrationTests/obj \
-        -v aspirec4-testhost-bin:/workspace/src/src/AspireC4.TestAppHost/bin \
-        -v aspirec4-testhost-obj:/workspace/src/src/AspireC4.TestAppHost/obj \
-        -v aspirec4-nodeapp-modules:/workspace/samples/node-app/node_modules \
-        -w /workspace \
+        -v "{{ justfile_directory() }}://workspace" \
+        -v aspirec4-nuget-cache://root/.nuget/packages \
+        -v aspirec4-testbin://workspace/src/tests/AspireC4.IntegrationTests/bin \
+        -v aspirec4-testobj://workspace/src/tests/AspireC4.IntegrationTests/obj \
+        -v aspirec4-testhost-bin://workspace/src/src/AspireC4.TestAppHost/bin \
+        -v aspirec4-testhost-obj://workspace/src/src/AspireC4.TestAppHost/obj \
+        -v aspirec4-nodeapp-modules://workspace/samples/node-app/node_modules \
+        -w //workspace \
         {{ image }} \
         dotnet test \
             --project src/tests/AspireC4.IntegrationTests \

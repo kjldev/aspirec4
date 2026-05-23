@@ -36,7 +36,7 @@ model {
     link https://github.com/sponsors/likec4 'Sponsor LikeC4 🩷'
     link https://github.com/davydkov 'Connect with the author on GitHub'
 
-    -> aspirec4_server 'used by 🤖'
+    -> aspirec4 'used by 🤖'
   }
 
   extend azure_redis {

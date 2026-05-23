@@ -1171,4 +1171,69 @@ public sealed partial class ModelBuilderTests
 		// Assert
 		await Assert.That(model.Elements[0].Icon).IsEqualTo("tech:mongodb");
 	}
+
+	[Test]
+	public async Task Build_ResourceWithDslIdAnnotation_UsesAnnotationIdAsElementName()
+	{
+		// Arrange
+		var resource = CreateContainerResource("aspirec4-server");
+		resource.Annotations.Add(new LikeC4DslIdAnnotation("aspirec4"));
+
+		// Act
+		var model = ModelBuilder.Build([resource]);
+
+		// Assert
+		await Assert.That(model.Elements[0].Name).IsEqualTo("aspirec4");
+	}
+
+	[Test]
+	public async Task Build_ResourceWithDslIdAnnotation_UsesAnnotationIdInRelationshipSourceName()
+	{
+		// Arrange
+		var server = CreateContainerResource("aspirec4-server");
+		server.Annotations.Add(new LikeC4DslIdAnnotation("aspirec4"));
+
+		var api = CreateProjectResource("api");
+		api.Annotations.Add(new ResourceRelationshipAnnotation(server, "Reference"));
+
+		// Act
+		var model = ModelBuilder.Build([server, api]);
+
+		// Assert
+		var rel = model.Relationships.Single(r => r.TargetName == "aspirec4");
+		await Assert.That(rel.SourceName).IsEqualTo("api");
+		await Assert.That(rel.TargetName).IsEqualTo("aspirec4");
+	}
+
+	[Test]
+	public async Task Build_ResourceWithDslIdAnnotation_UsesAnnotationIdInRelationshipTargetName()
+	{
+		// Arrange
+		var server = CreateContainerResource("aspirec4-server");
+		server.Annotations.Add(new LikeC4DslIdAnnotation("aspirec4"));
+
+		var api = CreateProjectResource("api");
+		server.Annotations.Add(new ResourceRelationshipAnnotation(api, "Reference"));
+
+		// Act
+		var model = ModelBuilder.Build([server, api]);
+
+		// Assert
+		var rel = model.Relationships.Single(r => r.SourceName == "aspirec4");
+		await Assert.That(rel.SourceName).IsEqualTo("aspirec4");
+		await Assert.That(rel.TargetName).IsEqualTo("api");
+	}
+
+	[Test]
+	public async Task Build_ResourceWithoutDslIdAnnotation_UsesResourceNameAsElementName()
+	{
+		// Arrange
+		var resource = CreateContainerResource("myservice");
+
+		// Act
+		var model = ModelBuilder.Build([resource]);
+
+		// Assert
+		await Assert.That(model.Elements[0].Name).IsEqualTo("myservice");
+	}
 }

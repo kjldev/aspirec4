@@ -1,7 +1,9 @@
 using System.ComponentModel;
 using Aspire.Hosting.AspireC4.ApplicationModel;
+using Aspire.Hosting.AspireC4.LikeC4.Annotations;
 using Aspire.Hosting.AspireC4.LikeC4.Runtime;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Options;
 
 namespace Aspire.Hosting;
@@ -43,6 +45,21 @@ public static class AspireC4ResourceExtensions
 		// Remove the existing server resource (container by default) from the app model.
 		if (aspirec4.InnerResource is not null)
 			builder.ApplicationBuilder.Resources.Remove(aspirec4.InnerResource);
+
+		// The container server's WithHttpHealthCheck already registered a service-level health check.
+		// Removing the resource from the collection above does not un-register the DI service entry,
+		// so we must clean it up here to prevent a duplicate-name error when the local resource adds
+		// its own identically-named health check.
+		var containerHcName =
+			$"{aspirec4.Name}{AspireC4DistributedApplicationBuilderExtensions.AspireC4ServerResourceSuffix}_{LikeC4LocalServerResource.HttpEndpointName}_/_200_check";
+		builder.ApplicationBuilder.Services.PostConfigure<HealthCheckServiceOptions>(opts =>
+		{
+			var stale = opts.Registrations.FirstOrDefault(r =>
+				string.Equals(r.Name, containerHcName, StringComparison.OrdinalIgnoreCase)
+			);
+			if (stale is not null)
+				opts.Registrations.Remove(stale);
+		});
 
 		// Remove the version probe container (registered when using "latest" with version checking).
 		// It is only needed for the container server's HMR port detection; local CLI uses a fixed port.
@@ -108,13 +125,17 @@ public static class AspireC4ResourceExtensions
 			)
 			.WithHttpHealthCheck("/", statusCode: 200, endpointName: LikeC4LocalServerResource.HttpEndpointName)
 			//.WithExternalHttpEndpoints()
+			// Exclude from the diagram and manifest. Set a stable DSL identifier so that,
+			// if a consumer explicitly includes this resource (e.g. via ConfigureTestHost),
+			// it is emitted as "aspirec4" — the same name as the Docker-container variant.
 			.ExcludeFromLikeC4()
+			.WithAnnotation(new LikeC4DslIdAnnotation(aspirec4.Name))
 			.ExcludeFromManifest()
 			.WithInitialState(
 				new CustomResourceSnapshot
 				{
 					ResourceType = nameof(LikeC4LocalServerResource),
-					IsHidden = true,
+					IsHidden = false,
 					Properties = [],
 				}
 			);

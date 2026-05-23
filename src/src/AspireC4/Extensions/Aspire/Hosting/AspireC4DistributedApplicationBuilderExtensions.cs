@@ -1,6 +1,7 @@
 using System.ComponentModel;
 using Aspire.Hosting.AspireC4.ApplicationModel;
 using Aspire.Hosting.AspireC4.Lifecycle;
+using Aspire.Hosting.AspireC4.LikeC4.Annotations;
 using Aspire.Hosting.AspireC4.LikeC4.Runtime;
 using Aspire.Hosting.Lifecycle;
 using Microsoft.Extensions.DependencyInjection;
@@ -182,7 +183,11 @@ public static class AspireC4DistributedApplicationBuilderExtensions
 					context.Args.Add("--no-react-hmr");
 			})
 			// Exclude the sidecar from the architecture diagram — it is tooling, not a system element.
+			// Set a stable DSL identifier equal to the base name so that the element, when explicitly
+			// included by a consumer (e.g. via ConfigureTestHost), is always emitted as "aspirec4"
+			// regardless of the "-server" suffix on the Aspire resource name.
 			.ExcludeFromLikeC4()
+			.WithAnnotation(new LikeC4DslIdAnnotation(name))
 			.ExcludeFromManifest();
 
 		if (!diagramOpts.DisableHMR)
