@@ -185,6 +185,3 @@ Conventional commits are enforced (via `commitlint.config.mts`). Types: `build`,
 
 ### LikeC4 icon inference
 `LikeC4ModelBuilder` infers icons automatically from resource type names/annotations. Azure resources map to `azure:*` icons; generic tech (postgres, redis, node, docker, etc.) maps to `tech:*` icons. Override per-resource with `.WithLikeC4Details(icon: "tech:redis")`.
-
-### Container runtime override
-Set `ASPIRE_CONTAINER_RUNTIME` environment variable to use an alternative to `docker` (e.g., `podman`).

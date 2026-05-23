@@ -94,11 +94,7 @@ diagrams:
 [private]
 _e2e_docker_image := "aspirec4-e2e-docker"
 [private]
-_e2e_podman_image := "aspirec4-e2e-podman"
-[private]
 _e2e_dockerfile_docker := "tests/Docker/Dockerfile.e2e"
-[private]
-_e2e_dockerfile_podman := "tests/Docker/Dockerfile.e2e-podman"
 [private]
 _e2e_dockerfile_cli := "tests/Docker/Dockerfile.e2e-cli"
 
@@ -109,18 +105,6 @@ test-e2e-docker configuration=config_default:
     dotnet test \
         --project src/tests/AspireC4.IntegrationTests \
         --configuration {{ configuration }}
-# Build and run integration tests inside a Podman container (rootful Podman-in-Docker, requires --privileged)
-[group('container-tests')]
-test-e2e-podman configuration=config_default: (_e2e-image _e2e_podman_image _e2e_dockerfile_podman)
-    docker run --rm --privileged \
-        -v "{{ justfile_directory() }}:/workspace" \
-        -v aspirec4-nuget-cache:/root/.nuget/packages \
-        -w /workspace \
-        {{ _e2e_podman_image }} \
-        dotnet test \
-            --project src/tests/AspireC4.IntegrationTests \
-            --verbosity normal \
-            --configuration {{ configuration }}
 # Build and run integration tests with npx as the LikeC4 server (WithLocalCLI Npx)
 [group('container-tests')]
 test-e2e-npm configuration=config_default: (_e2e-cli-image "aspirec4-e2e-npm" "npm")
@@ -141,9 +125,9 @@ test-e2e-bun configuration=config_default: (_e2e-cli-image "aspirec4-e2e-bun" "b
 [group('container-tests')]
 test-e2e-deno configuration=config_default: (_e2e-cli-image "aspirec4-e2e-deno" "deno")
     just _e2e-cli-run aspirec4-e2e-deno {{ configuration }}
-# Build both e2e test images and run integration tests for Docker and Podman
+# Build and run integration tests for the Docker container runtime
 [group('container-tests')]
-test-e2e configuration=config_default: (test-e2e-docker configuration) (test-e2e-podman configuration)
+test-e2e configuration=config_default: (test-e2e-docker configuration)
 # Build and run integration tests for all local CLI runtimes (npm, pnpm, yarn, bun, deno)
 [group('container-tests')]
 test-e2e-cli configuration=config_default: (test-e2e-npm configuration) (test-e2e-pnpm configuration) (test-e2e-yarn configuration) (test-e2e-bun configuration) (test-e2e-deno configuration)

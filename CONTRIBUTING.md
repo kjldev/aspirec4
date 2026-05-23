@@ -97,8 +97,7 @@ Two distinct brands exist in this repository. Use them consistently:
 | Recipe | Description |
 |---|---|
 | `just test-e2e-docker` | Integration tests against the host Docker daemon |
-| `just test-e2e-podman` | Integration tests inside a Podman container (requires Docker) |
-| `just test-e2e` | Both of the above |
+| `just test-e2e` | Same as `just test-e2e-docker` |
 
 ### Diagrams
 
@@ -257,7 +256,7 @@ Integration tests require Docker to be running. They pull `ghcr.io/likec4/likec4
 
 ### CI behaviour
 
-- **Unit + integration tests run on every PR** against both Docker and Podman runtimes in parallel.
+- **Unit + integration tests run on every PR** against the Docker runtime.
 - The **CI Gate** is a required status check — all jobs must pass before a PR can merge.
 
 ---
