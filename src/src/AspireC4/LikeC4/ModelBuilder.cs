@@ -240,7 +240,7 @@ static class ModelBuilder
 		var technology = details?.Technology ?? inferredTechnology;
 		var icon = ResolveIcon(resource, details, inferredTechnology, autoIconsEnabled, hiddenOriginal, iconResolvers);
 		var kind = details?.Kind ?? InferKind(resource);
-		var parentName = (resource as IResourceWithParent)?.Parent is { } parent
+		var parentName = resource is IResourceWithParent { Parent: { } parent }
 			? (parent.Annotations.OfType<LikeC4DslIdAnnotation>().LastOrDefault()?.DslId ?? parent.Name)
 			: null;
 		var group = resource.Annotations.OfType<LikeC4GroupAnnotation>().LastOrDefault()?.GroupName;

@@ -153,19 +153,15 @@ localRedis.WithLikeC4Reference(
 	opts => opts.WithLabel("syncs with").WithTechnology("Redis Protocol").WithKind("RESP")
 );
 
-var testingParam = builder.AddParameter(
-	"testing-resource-parameter",
-	"This should be hidden from the LikeC4 model",
-	false,
-	false
-);
-var testParamFromConfig = builder.AddParameterFromConfiguration(
-	"testing-resource-parameter-from-config",
-	"DOTNET_ENVIRONMENT",
-	false
-);
+var testingParam = builder
+	.AddParameter("testing-resource-parameter", "This should be hidden from the LikeC4 model", false, false)
+	.WithDescription("This should be hidden from the LikeC4 model");
+var testParamFromConfig = builder
+	.AddParameterFromConfiguration("testing-resource-parameter-from-config", "DOTNET_ENVIRONMENT", false)
+	.WithDescription("This should be hidden from the LikeC4 model");
 
 testingParam.WithReferenceRelationship(nodeApp);
+testParamFromConfig.WithReferenceRelationship(nodeApp);
 
 var app = builder.Build();
 

@@ -91,10 +91,11 @@ static class LatestVersionResolver
 				return null;
 			}
 
-			if (process.ExitCode != 0 || string.IsNullOrWhiteSpace(output))
-				return null;
-
-			return TryExtractVersion(output.Trim(), out var version) ? version : null;
+			return process.ExitCode == 0 && !string.IsNullOrWhiteSpace(output)
+				? TryExtractVersion(output.Trim(), out var version)
+					? version
+					: null
+				: null;
 		}
 		catch
 		{

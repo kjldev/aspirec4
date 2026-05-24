@@ -1,5 +1,3 @@
-using Aspire.Hosting.ApplicationModel;
-using Aspire.Hosting.AspireC4;
 using Aspire.Hosting.AspireC4.ApplicationModel;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -145,6 +143,6 @@ public sealed class AspireC4ResourceExtensionsTests
 		foreach (var annotation in annotations)
 			await annotation.Callback(context);
 
-		return args.Select(a => a?.ToString() ?? "").ToList();
+		return [.. args.Select(static a => a?.ToString() ?? "")];
 	}
 }
