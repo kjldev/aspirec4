@@ -1,5 +1,18 @@
 # aspirec4
 
+## 13.3.0-prerelease.10
+
+### Patch Changes
+
+- ### Bug Fixes
+
+  - add missing build/AspireC4.Hosting.props for source generator ([#20](https://github.com/kjldev/aspirec4/issues/20))
+
+  ### Changes
+
+  - Updated for likec4 with hmrport config ([#24](https://github.com/kjldev/aspirec4/issues/24))
+  - source-generator + other fixes ([#19](https://github.com/kjldev/aspirec4/issues/19))
+
 ## 13.3.0-prerelease.9
 
 ### Minor Changes
