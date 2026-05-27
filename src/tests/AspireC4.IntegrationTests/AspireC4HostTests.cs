@@ -146,7 +146,7 @@ public sealed partial class AspireC4HostTests
 		// Arrange
 		// (shared app started in ClassSetUpAsync)
 		await WaitForLikeC4ServerRunningAsync(cancellationToken);
-		using var client = s_app!.CreateHttpClient(AspireC4ServerResourceName, LikeC4ServerResource.HttpEndpointName);
+		using var client = s_app!.CreateHttpClient(AspireC4ServerResourceName, AspireC4Resource.HttpEndpointName);
 
 		// Act
 		HttpResponseMessage? response = null;

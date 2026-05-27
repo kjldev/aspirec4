@@ -20,6 +20,18 @@ namespace Aspire.Hosting.AspireC4.ApplicationModel;
 [AspireExport]
 public sealed class AspireC4Resource : Resource
 {
+	/// <summary>The name of the HTTP endpoint exposed by the LikeC4 server.</summary>
+	public const string HttpEndpointName = "http";
+
+	/// <summary>The name of the HTTP endpoint used by LikeC4's Vite Hot Module Replacement (HMR) channel.</summary>
+	public const string HMREndpointName = "http-hmr-channel";
+
+	/// <summary>The default host port exposed by the LikeC4 server when running via the local CLI.</summary>
+	public const int DefaultPort = 5173;
+
+	/// <summary>The default host port used by LikeC4's Vite HMR channel when running via the local CLI.</summary>
+	public const int DefaultHMRPort = 24678;
+
 	internal AspireC4Resource(string name, string outputDirectory)
 		: base(name)
 	{

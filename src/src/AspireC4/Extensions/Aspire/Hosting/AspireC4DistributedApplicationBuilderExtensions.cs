@@ -90,7 +90,7 @@ public static class AspireC4DistributedApplicationBuilderExtensions
 		Directory.CreateDirectory(outputDir);
 		var imageTag = callbackResult.ContainerImageTag ?? LikeC4ServerResource.DefaultTag;
 		var hmrPortMode = HMRPortCompatibility.Resolve(imageTag);
-		var resolvedHmrPort = callbackResult.HMRPort ?? LikeC4ServerResource.DefaultContainerHMRPort;
+		var resolvedHmrPort = callbackResult.HMRPort ?? AspireC4Resource.DefaultHMRPort;
 		var defaultViewId = string.IsNullOrWhiteSpace(callbackResult.DefaultViewId)
 			? null
 			: callbackResult.DefaultViewId;
@@ -149,11 +149,11 @@ public static class AspireC4DistributedApplicationBuilderExtensions
 			.WithImagePullPolicy(ImagePullPolicy.Always)
 			.WithHttpEndpoint(
 				port: port,
-				targetPort: LikeC4ServerResource.DefaultContainerServePort,
-				name: LikeC4ServerResource.HttpEndpointName
+				targetPort: AspireC4Resource.DefaultPort,
+				name: AspireC4Resource.HttpEndpointName
 			)
 			.WithUrlForEndpoint(
-				LikeC4ServerResource.HttpEndpointName,
+				AspireC4Resource.HttpEndpointName,
 				opts =>
 				{
 					opts.DisplayText = "View LikeC4 Diagram";
@@ -162,7 +162,7 @@ public static class AspireC4DistributedApplicationBuilderExtensions
 					opts.Url = defaultViewId != null ? $"/view/{defaultViewId}" : "/";
 				}
 			)
-			.WithHttpHealthCheck("/", statusCode: 200, endpointName: LikeC4LocalServerResource.HttpEndpointName)
+			.WithHttpHealthCheck("/", statusCode: 200, endpointName: AspireC4Resource.HttpEndpointName)
 			// Register container args as a callback so they are evaluated at container-start
 			// time (after BeforeStartEvent has set ContainerServePath). DisableHMR is read
 			// from AspireC4DiagramOptions so it respects configuration overrides at runtime.
@@ -193,7 +193,7 @@ public static class AspireC4DistributedApplicationBuilderExtensions
 					context.Args.Add("--use-dot");
 
 				context.Args.Add("--port");
-				context.Args.Add(LikeC4ServerResource.DefaultContainerServePort);
+				context.Args.Add(AspireC4Resource.DefaultPort);
 
 				var hmrMode = await hmrTcs.Task.WaitAsync(context.CancellationToken);
 				if (!diagOpts.Value.DisableHMR && hmrMode == HMRPortMode.Configurable)
@@ -221,10 +221,10 @@ public static class AspireC4DistributedApplicationBuilderExtensions
 				.WithHttpEndpoint(
 					port: hmrHostPort,
 					targetPort: resolvedHmrPort,
-					name: LikeC4ServerResource.HMREndpointName
+					name: AspireC4Resource.HMREndpointName
 				)
 				.WithUrlForEndpoint(
-					LikeC4ServerResource.HMREndpointName,
+					AspireC4Resource.HMREndpointName,
 					opts =>
 					{
 						opts.DisplayText = "LikeC4 HMR Endpoint";

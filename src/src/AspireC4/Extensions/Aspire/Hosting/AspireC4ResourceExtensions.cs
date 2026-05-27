@@ -51,7 +51,7 @@ public static class AspireC4ResourceExtensions
 		// so we must clean it up here to prevent a duplicate-name error when the local resource adds
 		// its own identically-named health check.
 		var containerHcName =
-			$"{aspirec4.Name}{AspireC4DistributedApplicationBuilderExtensions.AspireC4ServerResourceSuffix}_{LikeC4LocalServerResource.HttpEndpointName}_/_200_check";
+			$"{aspirec4.Name}{AspireC4DistributedApplicationBuilderExtensions.AspireC4ServerResourceSuffix}_{AspireC4Resource.HttpEndpointName}_/_200_check";
 		builder.ApplicationBuilder.Services.PostConfigure<HealthCheckServiceOptions>(opts =>
 		{
 			var stale = opts.Registrations.FirstOrDefault(r =>
@@ -80,7 +80,7 @@ public static class AspireC4ResourceExtensions
 		var (command, baseArgs) = AspireC4Builder.BuildLocalCLICommand(
 			resolvedRuntime,
 			aspirec4.OutputDirectory,
-			LikeC4LocalServerResource.DefaultPort
+			AspireC4Resource.DefaultPort
 		);
 
 		// Use the system temp directory as the working directory for the serve process.
@@ -108,7 +108,7 @@ public static class AspireC4ResourceExtensions
 
 				if (!diagOpts.Value.DisableHMR)
 				{
-					var hmrPort = diagOpts.Value.HMRPort ?? LikeC4LocalServerResource.DefaultHMRPort;
+					var hmrPort = diagOpts.Value.HMRPort ?? AspireC4Resource.DefaultHMRPort;
 					context.Args.Add("--hmr-port");
 					context.Args.Add($"{hmrPort}");
 				}
@@ -116,14 +116,14 @@ public static class AspireC4ResourceExtensions
 				return Task.CompletedTask;
 			})
 			.WithHttpEndpoint(
-				name: LikeC4LocalServerResource.HttpEndpointName,
-				targetPort: LikeC4LocalServerResource.DefaultPort
+				name: AspireC4Resource.HttpEndpointName,
+				targetPort: AspireC4Resource.DefaultPort
 			)
 			.WithHttpEndpoint(
-				name: LikeC4LocalServerResource.HMREndpointName,
-				targetPort: LikeC4LocalServerResource.DefaultHMRPort
+				name: AspireC4Resource.HMREndpointName,
+				targetPort: AspireC4Resource.DefaultHMRPort
 			)
-			.WithHttpHealthCheck("/", statusCode: 200, endpointName: LikeC4LocalServerResource.HttpEndpointName)
+			.WithHttpHealthCheck("/", statusCode: 200, endpointName: AspireC4Resource.HttpEndpointName)
 			//.WithExternalHttpEndpoints()
 			// Exclude from the diagram and manifest. Set a stable DSL identifier so that,
 			// if a consumer explicitly includes this resource (e.g. via ConfigureTestHost),

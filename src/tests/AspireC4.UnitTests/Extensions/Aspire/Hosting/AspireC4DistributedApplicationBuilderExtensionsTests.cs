@@ -1,4 +1,3 @@
-using Aspire.Hosting.AspireC4;
 using Aspire.Hosting.AspireC4.ApplicationModel;
 using Aspire.Hosting.AspireC4.LikeC4.Runtime;
 using Microsoft.Extensions.Configuration;
@@ -27,11 +26,11 @@ public sealed class AspireC4DistributedApplicationBuilderExtensionsTests
 
 		// Assert
 		await Assert.That(endpoints).Count().IsEqualTo(2);
-		await Assert.That(endpoints[0].Name).IsEqualTo(LikeC4ServerResource.HttpEndpointName);
-		await Assert.That(endpoints[0].TargetPort).IsEqualTo(LikeC4ServerResource.DefaultContainerServePort);
-		await Assert.That(endpoints[1].Name).IsEqualTo(LikeC4ServerResource.HMREndpointName);
-		await Assert.That(endpoints[1].TargetPort).IsEqualTo(LikeC4ServerResource.DefaultContainerHMRPort);
-		await Assert.That(endpoints[1].Port).IsEqualTo(LikeC4ServerResource.DefaultContainerHMRPort);
+		await Assert.That(endpoints[0].Name).IsEqualTo(AspireC4Resource.HttpEndpointName);
+		await Assert.That(endpoints[0].TargetPort).IsEqualTo(AspireC4Resource.DefaultPort);
+		await Assert.That(endpoints[1].Name).IsEqualTo(AspireC4Resource.HMREndpointName);
+		await Assert.That(endpoints[1].TargetPort).IsEqualTo(AspireC4Resource.DefaultHMRPort);
+		await Assert.That(endpoints[1].Port).IsEqualTo(AspireC4Resource.DefaultHMRPort);
 	}
 
 	[Test]
@@ -45,10 +44,10 @@ public sealed class AspireC4DistributedApplicationBuilderExtensionsTests
 		var serverResource = (LikeC4ServerResource)visualization.Resource.InnerResource!;
 		var hmrEndpoint = serverResource
 			.Annotations.OfType<EndpointAnnotation>()
-			.Single(e => e.Name == LikeC4ServerResource.HMREndpointName);
+			.Single(e => e.Name == AspireC4Resource.HMREndpointName);
 
 		// Assert — host and container use the same port so the browser's HMR WebSocket connects
-		await Assert.That(hmrEndpoint.Port).IsEqualTo(LikeC4ServerResource.DefaultContainerHMRPort);
+		await Assert.That(hmrEndpoint.Port).IsEqualTo(AspireC4Resource.DefaultHMRPort);
 	}
 
 	[Test]
@@ -62,10 +61,10 @@ public sealed class AspireC4DistributedApplicationBuilderExtensionsTests
 		var serverResource = (LikeC4ServerResource)visualization.Resource.InnerResource!;
 		var hmrEndpoint = serverResource
 			.Annotations.OfType<EndpointAnnotation>()
-			.Single(e => e.Name == LikeC4ServerResource.HMREndpointName);
+			.Single(e => e.Name == AspireC4Resource.HMREndpointName);
 
 		// Assert — must be fixed so the browser-side Vite JS (hardcoded port 24678) connects correctly
-		await Assert.That(hmrEndpoint.Port).IsEqualTo(LikeC4ServerResource.DefaultContainerHMRPort);
+		await Assert.That(hmrEndpoint.Port).IsEqualTo(AspireC4Resource.DefaultHMRPort);
 	}
 
 	[Test]
@@ -156,7 +155,7 @@ public sealed class AspireC4DistributedApplicationBuilderExtensionsTests
 		// Assert
 		var hmrIdx = args.IndexOf("--hmr-port");
 		await Assert.That(hmrIdx).IsGreaterThan(-1);
-		await Assert.That(args[hmrIdx + 1]).IsEqualTo($"{LikeC4ServerResource.DefaultContainerHMRPort}");
+		await Assert.That(args[hmrIdx + 1]).IsEqualTo($"{AspireC4Resource.DefaultHMRPort}");
 	}
 
 	[Test]
@@ -232,10 +231,10 @@ public sealed class AspireC4DistributedApplicationBuilderExtensionsTests
 		var serverResource = (LikeC4ServerResource)visualization.Resource.InnerResource!;
 		var hmrEndpoint = serverResource
 			.Annotations.OfType<EndpointAnnotation>()
-			.Single(e => e.Name == LikeC4ServerResource.HMREndpointName);
+			.Single(e => e.Name == AspireC4Resource.HMREndpointName);
 
 		// Assert
-		await Assert.That(hmrEndpoint.TargetPort).IsEqualTo(LikeC4ServerResource.DefaultContainerHMRPort);
+		await Assert.That(hmrEndpoint.TargetPort).IsEqualTo(AspireC4Resource.DefaultHMRPort);
 	}
 
 	[Test]
@@ -254,7 +253,7 @@ public sealed class AspireC4DistributedApplicationBuilderExtensionsTests
 		var serverResource = (LikeC4ServerResource)visualization.Resource.InnerResource!;
 		var hmrEndpoint = serverResource
 			.Annotations.OfType<EndpointAnnotation>()
-			.Single(e => e.Name == LikeC4ServerResource.HMREndpointName);
+			.Single(e => e.Name == AspireC4Resource.HMREndpointName);
 
 		// Assert
 		await Assert.That(hmrEndpoint.TargetPort).IsEqualTo(customHmrPort);

@@ -16,11 +16,11 @@ public sealed class AspireC4ResourceExtensionsTests
 		var localResource = (LikeC4LocalServerResource)visualization.Resource.InnerResource!;
 		var hmrEndpoint = localResource
 			.Annotations.OfType<EndpointAnnotation>()
-			.FirstOrDefault(e => e.Name == LikeC4LocalServerResource.HMREndpointName);
+			.FirstOrDefault(e => e.Name == AspireC4Resource.HMREndpointName);
 
 		// Assert
 		await Assert.That(hmrEndpoint).IsNotNull();
-		await Assert.That(hmrEndpoint!.TargetPort).IsEqualTo(LikeC4LocalServerResource.DefaultHMRPort);
+		await Assert.That(hmrEndpoint!.TargetPort).IsEqualTo(AspireC4Resource.DefaultHMRPort);
 	}
 
 	[Test]
@@ -34,11 +34,11 @@ public sealed class AspireC4ResourceExtensionsTests
 		var localResource = (LikeC4LocalServerResource)visualization.Resource.InnerResource!;
 		var httpEndpoint = localResource
 			.Annotations.OfType<EndpointAnnotation>()
-			.FirstOrDefault(e => e.Name == LikeC4LocalServerResource.HttpEndpointName);
+			.FirstOrDefault(e => e.Name == AspireC4Resource.HttpEndpointName);
 
 		// Assert
 		await Assert.That(httpEndpoint).IsNotNull();
-		await Assert.That(httpEndpoint!.TargetPort).IsEqualTo(LikeC4LocalServerResource.DefaultPort);
+		await Assert.That(httpEndpoint!.TargetPort).IsEqualTo(AspireC4Resource.DefaultPort);
 	}
 
 	[Test]
@@ -57,7 +57,7 @@ public sealed class AspireC4ResourceExtensionsTests
 		// Assert
 		var hmrIdx = args.IndexOf("--hmr-port");
 		await Assert.That(hmrIdx).IsGreaterThan(-1);
-		await Assert.That(args[hmrIdx + 1]).IsEqualTo($"{LikeC4LocalServerResource.DefaultHMRPort}");
+		await Assert.That(args[hmrIdx + 1]).IsEqualTo($"{AspireC4Resource.DefaultHMRPort}");
 	}
 
 	[Test]
@@ -113,7 +113,7 @@ public sealed class AspireC4ResourceExtensionsTests
 		// Assert
 		await Assert.That(args).Contains("serve");
 		await Assert.That(args).Contains("--port");
-		await Assert.That(args).Contains($"{LikeC4LocalServerResource.DefaultPort}");
+		await Assert.That(args).Contains($"{AspireC4Resource.DefaultPort}");
 	}
 
 	[System.Diagnostics.CodeAnalysis.SuppressMessage(

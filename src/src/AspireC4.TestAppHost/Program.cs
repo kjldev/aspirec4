@@ -24,7 +24,7 @@ if (cliRuntimeStr is not null && Enum.TryParse<LocalCLIRuntime>(cliRuntimeStr, i
 	c4.WithLocalCLI(cliRuntime);
 
 // This is to configure certain parts of the AppHost and AspireC4 purely for this example test app.
-c4.ConfigureTestHost();
+c4.ConfigureAspireC4TestHost();
 
 // Azure managed resources (containers when local).
 var azureManagerRedis = builder

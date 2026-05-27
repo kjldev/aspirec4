@@ -5,7 +5,7 @@ namespace Aspire.Hosting;
 
 static class AspireC4Extensions
 {
-	public static IResourceBuilder<AspireC4Resource> ConfigureTestHost(this IResourceBuilder<AspireC4Resource> builder)
+	public static IResourceBuilder<AspireC4Resource> ConfigureAspireC4TestHost(this IResourceBuilder<AspireC4Resource> builder)
 	{
 		// Register hand-authored extension files (custom styles, views, model extensions).
 		// The files sit next to the TestAppHost assembly so they are available in both the normal
