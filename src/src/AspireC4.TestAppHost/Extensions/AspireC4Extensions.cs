@@ -43,7 +43,7 @@ static class AspireC4Extensions
 						"Describe your Aspire orchestration as a live LikeC4 system architecture diagram - auto generated"
 					)
 					// This icon supports both light and dark mode in one...
-					.WithIcon("@/likec4/likec4-wordmark.svg")
+					.WithIcon("@/likec4/likec4-logo.svg")
 					.WithLink("https://kjl.dev/projects/aspirec4", "Learn more about AspireC4")
 					.WithLink("https://github.com/kjldev/aspirec4/", "AspireC4 on GitHub")
 					.WithLink("https://github.com/kieronlanning", "Connect with the author on GitHub")
