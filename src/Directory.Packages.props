@@ -23,8 +23,7 @@
       Do NOT upgrade these past the .NET 8 floor unless the minimum supported .NET version is raised.
       Raising to 5.x would break any consumer still on a .NET 8 or .NET 9 SDK.
     -->
-		<PackageVersion Include="Microsoft.CodeAnalysis.Analyzers" Version="3.11.0" />
-		<PackageVersion Include="Microsoft.CodeAnalysis.CSharp" Version="4.13.0" />
+		<PackageVersion Include="Microsoft.CodeAnalysis.CSharp" Version="[4.8.0]" />
 		<PackageVersion Include="Purview.Telemetry.SourceGenerator" Version="4.2.0" />
 		<!-- Testing Packages -->
 		<PackageVersion Include="Bogus" Version="35.6.5" />

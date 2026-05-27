@@ -300,16 +300,16 @@ public sealed class LikeC4StrictValidatorGenerator : IIncrementalGenerator
 		path.EndsWith(".c4", StringComparison.OrdinalIgnoreCase)
 		|| path.EndsWith(".likec4", StringComparison.OrdinalIgnoreCase);
 
-	static DslDefinitions ParseDslFile(AdditionalText file, CancellationToken ct) =>
+	static DSLDefinitions ParseDslFile(AdditionalText file, CancellationToken ct) =>
 		ExtractSpecificationItems(file.GetText(ct)?.ToString() ?? string.Empty);
 
 	/// <summary>
 	/// Extracts declared tags, element kinds, and relationship kinds from a LikeC4 DSL file.
 	/// Exposed as <see langword="internal"/> for direct unit-testing.
 	/// </summary>
-	internal static DslDefinitions ExtractSpecificationItems(string text)
+	internal static DSLDefinitions ExtractSpecificationItems(string text)
 	{
-		return new DslDefinitions(
+		return new DSLDefinitions(
 			ExtractMatches(TagLinePattern, text),
 			ExtractMatches(ElementKindLinePattern, text),
 			ExtractMatches(RelationshipKindLinePattern, text)
@@ -324,10 +324,10 @@ public sealed class LikeC4StrictValidatorGenerator : IIncrementalGenerator
 		return builder.ToImmutable();
 	}
 
-	static DslDefinitions MergeDslDefinitions(ImmutableArray<DslDefinitions> parsed)
+	static DSLDefinitions MergeDslDefinitions(ImmutableArray<DSLDefinitions> parsed)
 	{
 		if (parsed.IsEmpty)
-			return DslDefinitions.Empty;
+			return DSLDefinitions.Empty;
 
 		var tags = ImmutableArray.CreateBuilder<string>();
 		var elementKinds = ImmutableArray.CreateBuilder<string>();
@@ -340,7 +340,7 @@ public sealed class LikeC4StrictValidatorGenerator : IIncrementalGenerator
 			relationshipKinds.AddRange(d.RelationshipKinds);
 		}
 
-		return new DslDefinitions(tags.ToImmutable(), elementKinds.ToImmutable(), relationshipKinds.ToImmutable());
+		return new DSLDefinitions(tags.ToImmutable(), elementKinds.ToImmutable(), relationshipKinds.ToImmutable());
 	}
 
 	// --- Class-based definitions ---
@@ -617,7 +617,7 @@ public sealed class LikeC4StrictValidatorGenerator : IIncrementalGenerator
 	static void Validate(
 		SourceProductionContext ctx,
 		(DiagnosticSeverity? Severity, bool IncludesMetadata) globalStrict,
-		DslDefinitions dslDefs,
+		DSLDefinitions dslDefs,
 		ImmutableArray<ClassDefinitions> classDefs,
 		ImmutableArray<CallSiteInfo> tagCallSites,
 		ImmutableArray<CallSiteInfo> kindCallSites,

@@ -18,8 +18,8 @@
 		<PackageTags>aspire;dotnet;aspnetcore;c4;likec4;architecture;diagram;visualisation;visualization;</PackageTags>
 		<IncludeSymbols>true</IncludeSymbols>
 		<SymbolPackageFormat>snupkg</SymbolPackageFormat>
-		<!-- 
-			Opting into the Aspire integration analyzers - hoping it'll help me to
+		<!--
+			Opting into the Aspire integration analysers - hoping it'll help me to
 			figure out some issues with the TypeScript exports.
 		-->
 		<EnableAspireIntegrationAnalyzers>true</EnableAspireIntegrationAnalyzers>

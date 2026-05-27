@@ -160,7 +160,7 @@ public sealed class LikeC4StrictValidatorGeneratorTests
 	public async Task DslDefinitions_Empty_HasAnyIsFalse()
 	{
 		// Arrange / Act
-		var empty = DslDefinitions.Empty;
+		var empty = DSLDefinitions.Empty;
 
 		// Assert
 		await Assert.That(empty.HasAny).IsFalse();
@@ -170,7 +170,7 @@ public sealed class LikeC4StrictValidatorGeneratorTests
 	public async Task DslDefinitions_WithTags_HasAnyIsTrue()
 	{
 		// Arrange / Act
-		var defs = new DslDefinitions(["my-tag"], [], []);
+		var defs = new DSLDefinitions(["my-tag"], [], []);
 
 		// Assert
 		await Assert.That(defs.HasAny).IsTrue();
