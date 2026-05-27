@@ -160,6 +160,7 @@ public static class AspireC4DistributedApplicationBuilderExtensions
 					opts.IconResolvers.Clear();
 					opts.IconResolvers.AddRange(options.IconResolvers);
 				}
+
 				if (options.ImageAliases.Count != defaults.ImageAliases.Count)
 					opts.ImageAliases = new Dictionary<string, string>(
 						options.ImageAliases,

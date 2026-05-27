@@ -59,17 +59,17 @@ public sealed partial class AspireC4HostTests
 
 		var appBuilder = await DistributedApplicationTestingBuilder.CreateAsync<TestAppHostProgram>(cancellationToken);
 
+		var configOptions = OptionsNameHelper.CreateOptionsBuilder<AspireC4DiagramOptions>()
+			.WithConfigurationSeperator()
+			.WithProperty(opts => opts.OutputDirectory, s_outputDir)
+			.WithProperty(opts => opts.FileName, "model.gen")
+			.WithProperty(opts => opts.Title, "Integration Test Architecture")
+			.WithProperty(opts => opts.DisableHMR, true)
+			.Build()
+		;
+
 		// Inject test-specific configuration directly into the builder's configuration system.
-		appBuilder.Configuration.AddInMemoryCollection(
-			new Dictionary<string, string?>
-			{
-				["AspireC4:OutputDirectory"] = s_outputDir,
-				["AspireC4:FileName"] = "model.gen",
-				["AspireC4:Title"] = "Integration Test Architecture",
-				// Disable HMR to avoid binding port 24678 during testing.
-				["AspireC4:DisableHMR"] = "true",
-			}
-		);
+		appBuilder.Configuration.AddInMemoryCollection(configOptions);
 
 		// PostConfigure wins over all Configure callbacks, including the default FormatGeneratedFile=true.
 		// The format step invokes `npx likec4 …` which traverses up the directory tree and scans the entire

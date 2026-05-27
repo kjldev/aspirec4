@@ -19,6 +19,9 @@ public static class OptionsNameHelper
 
 	static readonly string[] ExcludedOptionsTypeSuffixNames = ["Settings", "Options"];
 
+	public static OptionsBuilder<TOptions> CreateOptionsBuilder<TOptions>()
+		=> new();
+
 	public static string GetPropertyPath<TOptions>(
 		Expression<Func<TOptions, object?>> expression,
 		string seperator = "__"
