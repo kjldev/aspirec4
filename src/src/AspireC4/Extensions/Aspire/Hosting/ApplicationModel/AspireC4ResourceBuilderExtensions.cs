@@ -21,7 +21,6 @@ public static class AspireC4ResourceBuilderExtensions
 	/// <param name="description">The description rendered in the diagram's detail panel.</param>
 	/// <param name="summary">The one-line summary shown in tooltips or the diagram map view.</param>
 	/// <param name="icon">The icon identifier for this element.</param>
-	/// <param name="configure">Optional action to apply additional fluent configuration (tags, links, metadata) to the node annotation.</param>
 	[AspireExport(
 		"withLikeC4DetailsParameters",
 		MethodName = "withLikeC4Details",
@@ -34,8 +33,7 @@ public static class AspireC4ResourceBuilderExtensions
 		string? technology = null,
 		string? description = null,
 		string? summary = null,
-		string? icon = null,
-		Action<LikeC4NodeDetailsAnnotation>? configure = null
+		string? icon = null
 	)
 		where T : IResource
 	{
@@ -47,8 +45,6 @@ public static class AspireC4ResourceBuilderExtensions
 			.WithSummary(summary)
 			.WithIcon(icon);
 
-		configure?.Invoke(annotation);
-
 		return builder.WithAnnotation(annotation, ResourceAnnotationMutationBehavior.Replace);
 	}
 
@@ -58,7 +54,7 @@ public static class AspireC4ResourceBuilderExtensions
 	/// <param name="builder">The resource builder for the resource being customised.</param>
 	/// <param name="configure">An action that configures the LikeC4 node details annotation using fluent methods.</param>
 	[AspireExportIgnore(
-		Reason = "Sync callback overload — use the parameter-based 'withLikeC4Details' overload for ATS compatibility."
+		Reason = "Action callback overload — use the parameter-based 'withLikeC4Details' overload for ATS compatibility."
 	)]
 	public static IResourceBuilder<T> WithLikeC4Details<T>(
 		[NotNull] this IResourceBuilder<T> builder,
@@ -76,17 +72,60 @@ public static class AspireC4ResourceBuilderExtensions
 	}
 
 	/// <summary>
+	/// Customises how a resource appears in the generated LikeC4 diagram, seeding scalar values
+	/// and applying additional fluent configuration via <paramref name="configure"/>.
+	/// </summary>
+	/// <param name="builder">The resource builder for the resource being customised.</param>
+	/// <param name="label">The display label for this element.</param>
+	/// <param name="technology">The technology string displayed beneath the element label.</param>
+	/// <param name="description">The description rendered in the diagram's detail panel.</param>
+	/// <param name="summary">The one-line summary shown in tooltips or the diagram map view.</param>
+	/// <param name="icon">The icon identifier for this element.</param>
+	/// <param name="configure">An action that applies additional configuration (tags, links, metadata) to the annotation.</param>
+	[AspireExportIgnore(
+		Reason = "Action callback overload — use the parameter-based 'withLikeC4Details' overload for ATS compatibility."
+	)]
+	public static IResourceBuilder<T> WithLikeC4Details<T>(
+		[NotNull] this IResourceBuilder<T> builder,
+		string? label,
+		string? technology,
+		string? description,
+		string? summary,
+		string? icon,
+		Action<LikeC4NodeDetailsAnnotation> configure
+	)
+		where T : IResource
+	{
+		ArgumentNullException.ThrowIfNull(builder);
+		ArgumentNullException.ThrowIfNull(configure);
+
+		var annotation = new LikeC4NodeDetailsAnnotation(label ?? builder.Resource.Name)
+			.WithTechnology(technology)
+			.WithDescription(description)
+			.WithSummary(summary)
+			.WithIcon(icon);
+
+		configure(annotation);
+
+		return builder.WithAnnotation(annotation, ResourceAnnotationMutationBehavior.Replace);
+	}
+
+	/// <summary>
 	/// Customises how the relationship from this resource to <paramref name="target"/> appears in the
 	/// generated LikeC4 diagram.
 	/// </summary>
 	/// <remarks>
 	/// This method only adds the LikeC4 diagram annotation — it does <em>not</em> call
 	/// <c>WithReference</c>. Continue to use Aspire's <c>WithReference</c> to establish the actual
-	/// runtime dependency, or use the overload that accepts <c>withAspireReference: true</c>.
+	/// runtime dependency.
 	/// </remarks>
 	/// <param name="builder">The resource builder for the source resource.</param>
 	/// <param name="target">The target resource builder that the relationship points to.</param>
-	/// <param name="configure">Optional action that configures the relationship appearance.</param>
+	/// <param name="label">Short label shown on the relationship arrow.</param>
+	/// <param name="technology">Technology or protocol used by the relationship (e.g., "HTTP/2", "gRPC").</param>
+	/// <param name="description">Longer description of the relationship.</param>
+	/// <param name="kind">Optional LikeC4 relationship kind identifier (e.g. "async", "sync").</param>
+	/// <param name="navigateTo">Optional ID of a LikeC4 view to navigate to when the relationship is clicked.</param>
 	[AspireExport(
 		MethodName = "withLikeC4Reference",
 		Description = "Customises how the relationship from this resource to the target appears in the generated LikeC4 diagram.",
@@ -95,7 +134,11 @@ public static class AspireC4ResourceBuilderExtensions
 	public static IResourceBuilder<T> WithLikeC4Reference<T, TRef>(
 		[NotNull] this IResourceBuilder<T> builder,
 		IResourceBuilder<TRef> target,
-		Action<LikeC4RelationshipDetailsAnnotation>? configure = null
+		string? label = null,
+		string? technology = null,
+		string? description = null,
+		string? kind = null,
+		string? navigateTo = null
 	)
 		where T : IResource
 		where TRef : IResource
@@ -103,8 +146,46 @@ public static class AspireC4ResourceBuilderExtensions
 		ArgumentNullException.ThrowIfNull(builder);
 		ArgumentNullException.ThrowIfNull(target);
 
+		var annotation = new LikeC4RelationshipDetailsAnnotation(target.Resource.Name)
+			.WithTechnology(technology)
+			.WithDescription(description)
+			.WithKind(kind);
+
+		if (label is not null)
+			annotation.WithLabel(label);
+
+		if (navigateTo is not null)
+			annotation.WithNavigateTo(navigateTo);
+
+		builder.Resource.Annotations.Add(annotation);
+
+		return builder;
+	}
+
+	/// <summary>
+	/// Customises how the relationship from this resource to <paramref name="target"/> appears in the
+	/// generated LikeC4 diagram using fluent configuration.
+	/// </summary>
+	/// <param name="builder">The resource builder for the source resource.</param>
+	/// <param name="target">The target resource builder that the relationship points to.</param>
+	/// <param name="configure">An action that configures the relationship appearance.</param>
+	[AspireExportIgnore(
+		Reason = "Action callback overload — use the parameter-based 'withLikeC4Reference' overload for ATS compatibility."
+	)]
+	public static IResourceBuilder<T> WithLikeC4Reference<T, TRef>(
+		[NotNull] this IResourceBuilder<T> builder,
+		IResourceBuilder<TRef> target,
+		Action<LikeC4RelationshipDetailsAnnotation> configure
+	)
+		where T : IResource
+		where TRef : IResource
+	{
+		ArgumentNullException.ThrowIfNull(builder);
+		ArgumentNullException.ThrowIfNull(target);
+		ArgumentNullException.ThrowIfNull(configure);
+
 		var annotation = new LikeC4RelationshipDetailsAnnotation(target.Resource.Name);
-		configure?.Invoke(annotation);
+		configure(annotation);
 		builder.Resource.Annotations.Add(annotation);
 
 		return builder;
