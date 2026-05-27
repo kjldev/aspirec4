@@ -29,8 +29,7 @@ public static class AspireC4ResourceBuilderEnvExtensions
 	[AspireExport(
 		"withLikeC4ReferenceWithEnvironment",
 		MethodName = "withLikeC4ReferenceWithEnvironment",
-		Description = "Create a new reference, while also allowing customization of how a resource appears in the generated LikeC4 diagram.",
-		RunSyncOnBackgroundThread = true
+		Description = "Create a new reference, while also allowing customization of how a resource appears in the generated LikeC4 diagram."
 	)]
 	public static IResourceBuilder<T> WithLikeC4Reference<T>(
 		[NotNull] this IResourceBuilder<T> builder,

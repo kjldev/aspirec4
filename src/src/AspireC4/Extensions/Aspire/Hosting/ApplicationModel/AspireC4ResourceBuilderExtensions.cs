@@ -24,8 +24,7 @@ public static class AspireC4ResourceBuilderExtensions
 	[AspireExport(
 		"withLikeC4DetailsParameters",
 		MethodName = "withLikeC4Details",
-		Description = "Customises how a resource appears in the generated LikeC4 diagram.",
-		RunSyncOnBackgroundThread = true
+		Description = "Customises how a resource appears in the generated LikeC4 diagram."
 	)]
 	public static IResourceBuilder<T> WithLikeC4Details<T>(
 		[NotNull] this IResourceBuilder<T> builder,
@@ -128,8 +127,7 @@ public static class AspireC4ResourceBuilderExtensions
 	/// <param name="navigateTo">Optional ID of a LikeC4 view to navigate to when the relationship is clicked.</param>
 	[AspireExport(
 		MethodName = "withLikeC4Reference",
-		Description = "Customises how the relationship from this resource to the target appears in the generated LikeC4 diagram.",
-		RunSyncOnBackgroundThread = true
+		Description = "Customises how the relationship from this resource to the target appears in the generated LikeC4 diagram."
 	)]
 	public static IResourceBuilder<T> WithLikeC4Reference<T, TRef>(
 		[NotNull] this IResourceBuilder<T> builder,
