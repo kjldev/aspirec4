@@ -85,8 +85,21 @@ public static class AspireC4DistributedApplicationBuilderExtensions
 		if (string.IsNullOrWhiteSpace(name))
 			name = AspireC4ResourceName;
 
-		// Register the callback-mutated options object.
-		builder.Services.AddSingleton(Options.Create(options));
+		// Seed the DI-registered options from the builder-time snapshot so that all
+		// properties set via the configure callback (or a pre-built options object) are
+		// reflected when IOptions<T> is resolved at runtime. Register via the standard
+		// Options framework rather than Options.Create so that:
+		//   - Extension-method Configure<T> callbacks (WithAdditionalDSLFolder, WithImageAliasFolder,
+		//     WithHideFromDashboard, etc.) are applied on top of the snapshot.
+		//   - BindConfiguration allows appsettings / environment-variable overrides.
+		// Options.Create would register a concrete singleton wrapper as IOptions<T>, causing
+		// TryAddSingleton for OptionsManager<T> to be skipped and all Configure<T> lambdas
+		// to be silently ignored.
+		var snapshot = options;
+		builder
+			.Services.AddOptions<AspireC4DiagramOptions>()
+			.Configure(opts => opts.CopyFrom(snapshot))
+			.BindConfiguration(AspireC4DiagramOptions.SectionName);
 
 		var outputDir = ResolveOutputDirectory(builder.AppHostDirectory, options.OutputDirectory);
 		Directory.CreateDirectory(outputDir);
@@ -228,10 +241,7 @@ public static class AspireC4DistributedApplicationBuilderExtensions
 			}
 		}
 
-		AspireC4Resource aspirec4Resource = new(name, outputDir)
-		{
-			InnerResource = serverResource,
-		};
+		AspireC4Resource aspirec4Resource = new(name, outputDir) { InnerResource = serverResource };
 
 		return builder
 			.AddResource(aspirec4Resource)
@@ -260,4 +270,3 @@ public static class AspireC4DistributedApplicationBuilderExtensions
 		);
 	}
 }
-

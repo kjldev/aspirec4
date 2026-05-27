@@ -16,14 +16,12 @@ public sealed class OptionsBuilder<TOptions>
 		return this;
 	}
 
-	public OptionsBuilder<TOptions> WithEnvironmentSeperator()
-		=> WithSeperator("__");
+	public OptionsBuilder<TOptions> WithEnvironmentSeperator() => WithSeperator("__");
 
-	public OptionsBuilder<TOptions> WithConfigurationSeperator()
-		=> WithSeperator(":");
+	public OptionsBuilder<TOptions> WithConfigurationSeperator() => WithSeperator(":");
 
-	public OptionsBuilder<TOptions> WithProperty(Expression<Func<TOptions, object?>> expression, object? value)
-		=> WithProperty(expression, value?.ToString());
+	public OptionsBuilder<TOptions> WithProperty(Expression<Func<TOptions, object?>> expression, object? value) =>
+		WithProperty(expression, value?.ToString());
 
 	public OptionsBuilder<TOptions> WithProperty(Expression<Func<TOptions, object?>> expression, string? value)
 	{

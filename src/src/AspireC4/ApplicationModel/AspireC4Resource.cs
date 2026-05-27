@@ -39,12 +39,12 @@ public sealed class AspireC4Resource : Resource
 	}
 
 	/// <summary>The absolute host path where the generated <c>.c4</c> file is written.</summary>
-		internal string OutputDirectory { get; }
+	internal string OutputDirectory { get; }
 
-		/// <summary>
-		/// The underlying server resource — either a <see cref="LikeC4ServerResource"/> (Docker container,
-		/// the default) or a <see cref="LikeC4LocalServerResource"/> (local CLI, after calling
-		/// <c>.WithLocalCLI()</c>).
-		/// </summary>
-		internal IResource? InnerResource { get; set; }
-	}
+	/// <summary>
+	/// The underlying server resource — either a <see cref="LikeC4ServerResource"/> (Docker container,
+	/// the default) or a <see cref="LikeC4LocalServerResource"/> (local CLI, after calling
+	/// <c>.WithLocalCLI()</c>).
+	/// </summary>
+	internal IResource? InnerResource { get; set; }
+}

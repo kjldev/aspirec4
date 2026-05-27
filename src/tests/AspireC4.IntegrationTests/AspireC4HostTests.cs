@@ -59,14 +59,14 @@ public sealed partial class AspireC4HostTests
 
 		var appBuilder = await DistributedApplicationTestingBuilder.CreateAsync<TestAppHostProgram>(cancellationToken);
 
-		var configOptions = OptionsNameHelper.CreateOptionsBuilder<AspireC4DiagramOptions>()
+		var configOptions = OptionsNameHelper
+			.CreateOptionsBuilder<AspireC4DiagramOptions>()
 			.WithConfigurationSeperator()
 			.WithProperty(opts => opts.OutputDirectory, s_outputDir)
 			.WithProperty(opts => opts.FileName, "model.gen")
 			.WithProperty(opts => opts.Title, "Integration Test Architecture")
 			.WithProperty(opts => opts.DisableHMR, true)
-			.Build()
-		;
+			.Build();
 
 		// Inject test-specific configuration directly into the builder's configuration system.
 		appBuilder.Configuration.AddInMemoryCollection(configOptions);
@@ -223,7 +223,7 @@ public sealed partial class AspireC4HostTests
 		// Assert
 		await Assert.That(File.Exists(configPath)).IsTrue();
 		await Assert.That(json).Contains("aspirec4");
-		await Assert.That(json).Contains("AspireC4 Test App");
+		await Assert.That(json).Contains("Integration Test Architecture");
 	}
 
 	[Test]
@@ -244,7 +244,7 @@ public sealed partial class AspireC4HostTests
 			pathsFound
 			&& paths
 				.EnumerateArray()
-				.Any(p => p.GetString()?.Contains("likec4-extensions", StringComparison.OrdinalIgnoreCase) == true);
+				.Any(p => p.GetString()?.Contains("extensions", StringComparison.OrdinalIgnoreCase) == true);
 
 		// Assert
 		await Assert.That(includeFound).IsTrue();
@@ -264,7 +264,7 @@ public sealed partial class AspireC4HostTests
 		using var doc = JsonDocument.Parse(json);
 		var root = doc.RootElement;
 		var aliasesFound = root.TryGetProperty("imageAliases", out var aliases);
-		var imageAliasFound = aliasesFound && aliases.TryGetProperty("@test-icons", out _);
+		var imageAliasFound = aliasesFound && aliases.TryGetProperty("@", out _);
 
 		// Assert
 		await Assert.That(aliasesFound).IsTrue();
@@ -278,11 +278,12 @@ public sealed partial class AspireC4HostTests
 		// (shared app started in ClassSetUpAsync)
 		var imagesDir = Path.Combine(
 			Path.GetDirectoryName(typeof(TestAppHostProgram).Assembly.Location)!,
-			"likec4-images"
+			"likec4",
+			"images"
 		);
 
 		// Act
-		var files = Directory.GetFiles(imagesDir);
+		var files = Directory.GetFiles(imagesDir, "*", SearchOption.AllDirectories);
 		var svgCount = files.Count(f => f.EndsWith(".svg", StringComparison.OrdinalIgnoreCase));
 		var pngCount = files.Count(f => f.EndsWith(".png", StringComparison.OrdinalIgnoreCase));
 

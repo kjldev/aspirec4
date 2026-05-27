@@ -35,4 +35,3 @@ sealed partial class AspireC4LifecycleHook
 		_resolvedLikeC4Version = resolvedVersion;
 	}
 }
-

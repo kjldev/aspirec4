@@ -19,7 +19,8 @@ public sealed class LikeC4PublishModeTests
 		var appHostProject = GetTestAppHostProjectPath();
 		var modelPath = Path.Combine(modelOutputDir, "publish-model.c4");
 
-		var configBuilder = OptionsNameHelper.CreateOptionsBuilder<AspireC4DiagramOptions>()
+		var configBuilder = OptionsNameHelper
+			.CreateOptionsBuilder<AspireC4DiagramOptions>()
 			.WithEnvironmentSeperator()
 			.WithProperty(opts => opts.OutputDirectory, modelOutputDir)
 			.WithProperty(opts => opts.FileName, "publish-model")

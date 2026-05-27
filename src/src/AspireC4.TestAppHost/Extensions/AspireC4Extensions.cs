@@ -15,7 +15,8 @@ static class AspireC4Extensions
 		// (where the TestAppHost assembly is copied to the test output directory).
 		var extensionsDir = Path.Combine(
 			Path.GetDirectoryName(typeof(TestAppHostProgram).Assembly.Location)!,
-			"likec4", "extensions"
+			"likec4",
+			"extensions"
 		);
 		if (Directory.Exists(extensionsDir))
 		{
@@ -25,7 +26,8 @@ static class AspireC4Extensions
 		// There are some assets in the repo root that we'll include.
 		var imagesDir = Path.Combine(
 			Path.GetDirectoryName(typeof(TestAppHostProgram).Assembly.Location)!,
-			"likec4", "images"
+			"likec4",
+			"images"
 		);
 		if (Directory.Exists(imagesDir))
 		{
