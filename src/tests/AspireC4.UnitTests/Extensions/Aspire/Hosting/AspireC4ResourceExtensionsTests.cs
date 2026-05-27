@@ -46,7 +46,7 @@ public sealed class AspireC4ResourceExtensionsTests
 	{
 		// Arrange
 		var appBuilder = CreateAppBuilder();
-		using var cts = new CancellationTokenSource();
+		using CancellationTokenSource cts = new();
 		var cancellationToken = cts.Token;
 
 		// Act
@@ -65,7 +65,7 @@ public sealed class AspireC4ResourceExtensionsTests
 	{
 		// Arrange
 		var appBuilder = CreateAppBuilder();
-		using var cts = new CancellationTokenSource();
+		using CancellationTokenSource cts = new();
 		var cancellationToken = cts.Token;
 
 		// Act
@@ -82,7 +82,7 @@ public sealed class AspireC4ResourceExtensionsTests
 	{
 		// Arrange
 		var appBuilder = CreateAppBuilder();
-		using var cts = new CancellationTokenSource();
+		using CancellationTokenSource cts = new();
 		var cancellationToken = cts.Token;
 		const int customHmrPort = 19876;
 
@@ -102,7 +102,7 @@ public sealed class AspireC4ResourceExtensionsTests
 	{
 		// Arrange
 		var appBuilder = CreateAppBuilder();
-		using var cts = new CancellationTokenSource();
+		using CancellationTokenSource cts = new();
 		var cancellationToken = cts.Token;
 
 		// Act

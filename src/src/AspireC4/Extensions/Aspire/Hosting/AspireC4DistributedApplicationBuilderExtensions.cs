@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using System.Diagnostics.CodeAnalysis;
 using Aspire.Hosting.AspireC4.ApplicationModel;
 using Aspire.Hosting.AspireC4.Lifecycle;
 using Aspire.Hosting.AspireC4.LikeC4.Annotations;
@@ -37,7 +38,7 @@ public static class AspireC4DistributedApplicationBuilderExtensions
 	/// <returns>An <see cref="IResourceBuilder{AspireC4Resource}"/> for further configuration.</returns>
 	[AspireExportIgnore]
 	public static IResourceBuilder<AspireC4Resource> AddAspireC4(
-		this IDistributedApplicationBuilder builder,
+		[NotNull] this IDistributedApplicationBuilder builder,
 		[ResourceName] string? name = null,
 		int? port = null,
 		Action<AspireC4DiagramOptions>? configure = null
@@ -45,6 +46,7 @@ public static class AspireC4DistributedApplicationBuilderExtensions
 	{
 		var options = new AspireC4DiagramOptions();
 		configure?.Invoke(options);
+
 		return AddAspireC4Core(builder, name, port, options);
 	}
 
@@ -67,56 +69,126 @@ public static class AspireC4DistributedApplicationBuilderExtensions
 	/// <returns>An <see cref="IResourceBuilder{AspireC4Resource}"/> for further configuration.</returns>
 	[AspireExport(Description = "Adds a LikeC4 live architecture diagram to the Aspire application.")]
 	public static IResourceBuilder<AspireC4Resource> AddAspireC4(
-		this IDistributedApplicationBuilder builder,
+		[NotNull] this IDistributedApplicationBuilder builder,
 		string? name,
 		int? port,
 		AspireC4DiagramOptions? options
-	)
-	{
-		return AddAspireC4Core(builder, name, port, options ?? new AspireC4DiagramOptions());
-	}
+	) => AddAspireC4Core(builder, name, port, options ?? new());
 
 	static IResourceBuilder<AspireC4Resource> AddAspireC4Core(
-		IDistributedApplicationBuilder builder,
+		[NotNull] IDistributedApplicationBuilder builder,
 		string? name,
 		int? port,
-		AspireC4DiagramOptions callbackResult
+		AspireC4DiagramOptions options
 	)
 	{
 		if (string.IsNullOrWhiteSpace(name))
 			name = AspireC4ResourceName;
 
-		ArgumentNullException.ThrowIfNull(builder);
-
-		// Capture a baseline to compare against when applying the callback result.
-		var callbackBaseline = new AspireC4DiagramOptions();
-
+		// Configure IOptions to apply callback-set values on top of any bound configuration.
+		// The callback-provided options override any configuration values, since this is C#-only
+		// and doesn't risk the deadlock that would occur with ATS-proxied async TypeScript callbacks.
+		var defaults = new AspireC4DiagramOptions();
 		builder
 			.Services.AddOptions<AspireC4DiagramOptions>()
 			.BindConfiguration(AspireC4DiagramOptions.SectionName)
 			.Configure(opts =>
 			{
-				// Apply only the properties the callback changed relative to fresh defaults.
-				// BindConfiguration (above) has already applied current configuration values;
-				// ApplyDelta applies callback overrides on top, without invoking the ATS proxy.
-				callbackResult.ApplyDelta(callbackBaseline, opts);
-				opts.OutputDirectory = ResolveOutputDirectory(builder.AppHostDirectory, opts.OutputDirectory);
+				// Apply callback-set values by comparing to defaults
+				if (!Equals(options.OutputDirectory, defaults.OutputDirectory))
+					opts.OutputDirectory = options.OutputDirectory;
+				if (!Equals(options.ContainerImageTag, defaults.ContainerImageTag))
+					opts.ContainerImageTag = options.ContainerImageTag;
+				if (!Equals(options.HMRPort, defaults.HMRPort))
+					opts.HMRPort = options.HMRPort;
+				if (!Equals(options.DefaultViewId, defaults.DefaultViewId))
+					opts.DefaultViewId = options.DefaultViewId;
+				if (!Equals(options.ViewTitle, defaults.ViewTitle))
+					opts.ViewTitle = options.ViewTitle;
+				if (!Equals(options.Title, defaults.Title))
+					opts.Title = options.Title;
+				if (!Equals(options.ViewDescription, defaults.ViewDescription))
+					opts.ViewDescription = options.ViewDescription;
+				if (!Equals(options.FileName, defaults.FileName))
+					opts.FileName = options.FileName;
+				if (!Equals(options.GeneratedViewId, defaults.GeneratedViewId))
+					opts.GeneratedViewId = options.GeneratedViewId;
+				if (!Equals(options.DisableHMR, defaults.DisableHMR))
+					opts.DisableHMR = options.DisableHMR;
+				if (!Equals(options.CheckLatestImageVersion, defaults.CheckLatestImageVersion))
+					opts.CheckLatestImageVersion = options.CheckLatestImageVersion;
+				if (!Equals(options.AutoIconsEnabled, defaults.AutoIconsEnabled))
+					opts.AutoIconsEnabled = options.AutoIconsEnabled;
+				if (!Equals(options.HideFromDashboard, defaults.HideFromDashboard))
+					opts.HideFromDashboard = options.HideFromDashboard;
+				if (!Equals(options.DashboardLinkDisplayName, defaults.DashboardLinkDisplayName))
+					opts.DashboardLinkDisplayName = options.DashboardLinkDisplayName;
+				if (!Equals(options.RelationshipKindSyntax, defaults.RelationshipKindSyntax))
+					opts.RelationshipKindSyntax = options.RelationshipKindSyntax;
+				if (!Equals(options.FormatGeneratedFile, defaults.FormatGeneratedFile))
+					opts.FormatGeneratedFile = options.FormatGeneratedFile;
+				if (!Equals(options.ExternalProcessTimeoutSeconds, defaults.ExternalProcessTimeoutSeconds))
+					opts.ExternalProcessTimeoutSeconds = options.ExternalProcessTimeoutSeconds;
+				if (!Equals(options.UseDotIfAvailable, defaults.UseDotIfAvailable))
+					opts.UseDotIfAvailable = options.UseDotIfAvailable;
+				if (!Equals(options.AutoIncludeAspireMetadata, defaults.AutoIncludeAspireMetadata))
+					opts.AutoIncludeAspireMetadata = options.AutoIncludeAspireMetadata;
+				if (!Equals(options.NormaliseMetadataBehaviour, defaults.NormaliseMetadataBehaviour))
+					opts.NormaliseMetadataBehaviour = options.NormaliseMetadataBehaviour;
+				if (!Equals(options.GenerateConfigFile, defaults.GenerateConfigFile))
+					opts.GenerateConfigFile = options.GenerateConfigFile;
+				if (!Equals(options.IncludeAspireDashboardLinks, defaults.IncludeAspireDashboardLinks))
+					opts.IncludeAspireDashboardLinks = options.IncludeAspireDashboardLinks;
+				if (!Equals(options.IncludeAspireTokenInDashboardLinks, defaults.IncludeAspireTokenInDashboardLinks))
+					opts.IncludeAspireTokenInDashboardLinks = options.IncludeAspireTokenInDashboardLinks;
+				if (!Equals(options.IncludeDefaultStateStyles, defaults.IncludeDefaultStateStyles))
+					opts.IncludeDefaultStateStyles = options.IncludeDefaultStateStyles;
+
+				// Collection properties
+				if (!options.ElementKindSpecs.SequenceEqual(defaults.ElementKindSpecs))
+					opts.ElementKindSpecs = [.. options.ElementKindSpecs];
+				if (!options.RelationshipKindSpecs.SequenceEqual(defaults.RelationshipKindSpecs))
+					opts.RelationshipKindSpecs = [.. options.RelationshipKindSpecs];
+				if (!options.AdditionalDSLFiles.SequenceEqual(defaults.AdditionalDSLFiles))
+					opts.AdditionalDSLFiles = [.. options.AdditionalDSLFiles];
+				if (!options.AdditionalDSLFolders.SequenceEqual(defaults.AdditionalDSLFolders))
+					opts.AdditionalDSLFolders = [.. options.AdditionalDSLFolders];
+				if (!options.ExcludedResourceTypes.SetEquals(defaults.ExcludedResourceTypes))
+					opts.ExcludedResourceTypes = [.. options.ExcludedResourceTypes];
+				if (options.IconResolvers.Count != defaults.IconResolvers.Count)
+				{
+					opts.IconResolvers.Clear();
+					opts.IconResolvers.AddRange(options.IconResolvers);
+				}
+				if (options.ImageAliases.Count != defaults.ImageAliases.Count)
+					opts.ImageAliases = new Dictionary<string, string>(
+						options.ImageAliases,
+						options.ImageAliases.Comparer
+					);
+				if (options.StateTagMap.Count != defaults.StateTagMap.Count)
+					opts.StateTagMap = new Dictionary<string, string?>(
+						options.StateTagMap,
+						options.StateTagMap.Comparer
+					);
+				if (options.ConfigFileMetadata.Count != defaults.ConfigFileMetadata.Count)
+					opts.ConfigFileMetadata = new Dictionary<string, string>(
+						options.ConfigFileMetadata,
+						options.ConfigFileMetadata.Comparer
+					);
 			});
 
-		var outputDir = ResolveOutputDirectory(builder.AppHostDirectory, callbackResult.OutputDirectory);
+		var outputDir = ResolveOutputDirectory(builder.AppHostDirectory, options.OutputDirectory);
 		Directory.CreateDirectory(outputDir);
-		var imageTag = callbackResult.ContainerImageTag ?? LikeC4ServerResource.DefaultTag;
+		var imageTag = options.ContainerImageTag ?? LikeC4ServerResource.DefaultTag;
 		var hmrPortMode = HMRPortCompatibility.Resolve(imageTag);
-		var resolvedHmrPort = callbackResult.HMRPort ?? AspireC4Resource.DefaultHMRPort;
-		var defaultViewId = string.IsNullOrWhiteSpace(callbackResult.DefaultViewId)
-			? null
-			: callbackResult.DefaultViewId;
+		var resolvedHmrPort = options.HMRPort ?? AspireC4Resource.DefaultHMRPort;
+		var defaultViewId = string.IsNullOrWhiteSpace(options.DefaultViewId) ? null : options.DefaultViewId;
 
 		// Only create a version probe when using "latest" with version checking enabled.
 		// A pinned tag always has a known HMR mode; "latest" requires a probe to discover it.
 		var needsVersionProbe =
 			string.Equals(imageTag, LikeC4ServerResource.DefaultTag, StringComparison.OrdinalIgnoreCase)
-			&& callbackResult.CheckLatestImageVersion;
+			&& options.CheckLatestImageVersion;
 
 		// Pre-complete the TCS when no probe is needed so WithArgs can proceed without waiting.
 		var hmrPortModeTcs = new TaskCompletionSource<HMRPortMode>(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -126,14 +198,14 @@ public static class AspireC4DistributedApplicationBuilderExtensions
 		builder.Services.AddSingleton(hmrPortModeTcs);
 
 		// Always use the same port on both the host and inside the container for HMR.
-		// In LikeC4 v1.57+, --hmr-port sets server.hmr.port — the port Vite BINDS to inside
+		// In LikeC4 v1.57 or higher, --hmr-port sets server.hmr.port — the port Vite BINDS to inside
 		// the container. Vite also advertises this same port to browsers as the HMR WebSocket
 		// target (no separate clientPort option exists). Docker must therefore map the SAME port
 		// on the host so the browser's connection to host:PORT reaches container:PORT correctly.
 		// Dynamic (null) host ports cannot work here: if Docker maps host:DYNAMIC → container:24678
 		// but Vite is told --hmr-port DYNAMIC it binds to container:DYNAMIC, which Docker doesn't
 		// forward, breaking the HMR WebSocket connection entirely.
-		int? hmrHostPort = callbackResult.HMRPort ?? resolvedHmrPort;
+		int? hmrHostPort = options.HMRPort ?? resolvedHmrPort;
 
 		builder
 			.Services.AddOptions<ContainerWorkspaceOptions>()
@@ -176,7 +248,7 @@ public static class AspireC4DistributedApplicationBuilderExtensions
 					opts.DisplayText = "View LikeC4 Diagram";
 					opts.DisplayOrder = 0;
 					opts.DisplayLocation = UrlDisplayLocation.SummaryAndDetails;
-					opts.Url = defaultViewId != null ? $"/view/{defaultViewId}" : "/";
+					opts.Url = string.IsNullOrWhiteSpace(defaultViewId) ? "/" : $"/view/{defaultViewId}";
 				}
 			)
 			.WithHttpHealthCheck("/", statusCode: 200, endpointName: AspireC4Resource.HttpEndpointName)
@@ -198,10 +270,10 @@ public static class AspireC4DistributedApplicationBuilderExtensions
 				context.Args.Add("start");
 				context.Args.Add(wsOpts.Value.ContainerServePath);
 
-				if (!string.IsNullOrWhiteSpace(callbackResult.Title))
+				if (!string.IsNullOrWhiteSpace(options.Title))
 				{
 					context.Args.Add("--title");
-					context.Args.Add($"\"{callbackResult.Title}\"");
+					context.Args.Add($"\"{options.Title}\"");
 				}
 
 				var useDot =
@@ -232,7 +304,7 @@ public static class AspireC4DistributedApplicationBuilderExtensions
 			.WithAnnotation(new LikeC4DslIdAnnotation(name))
 			.ExcludeFromManifest();
 
-		if (!callbackResult.DisableHMR)
+		if (!options.DisableHMR)
 		{
 			serverBuilder
 				.WithHttpEndpoint(
