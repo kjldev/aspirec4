@@ -85,118 +85,14 @@ public static class AspireC4DistributedApplicationBuilderExtensions
 		if (string.IsNullOrWhiteSpace(name))
 			name = AspireC4ResourceName;
 
-		// Configure IOptions to apply callback-set values on top of any bound configuration.
-		// The callback-provided options override any configuration values, since this is C#-only
-		// and doesn't risk the deadlock that would occur with ATS-proxied async TypeScript callbacks.
-		var defaults = new AspireC4DiagramOptions();
-		builder
-			.Services.AddOptions<AspireC4DiagramOptions>()
-			.BindConfiguration(AspireC4DiagramOptions.SectionName)
-			.Configure(opts =>
-			{
-				// Apply callback-set values by comparing to defaults
-				if (!Equals(options.OutputDirectory, defaults.OutputDirectory))
-					opts.OutputDirectory = options.OutputDirectory;
-				if (!Equals(options.ContainerImageTag, defaults.ContainerImageTag))
-					opts.ContainerImageTag = options.ContainerImageTag;
-				if (!Equals(options.HMRPort, defaults.HMRPort))
-					opts.HMRPort = options.HMRPort;
-				if (!Equals(options.DefaultViewId, defaults.DefaultViewId))
-					opts.DefaultViewId = options.DefaultViewId;
-				if (!Equals(options.ViewTitle, defaults.ViewTitle))
-					opts.ViewTitle = options.ViewTitle;
-				if (!Equals(options.Title, defaults.Title))
-					opts.Title = options.Title;
-				if (!Equals(options.ViewDescription, defaults.ViewDescription))
-					opts.ViewDescription = options.ViewDescription;
-				if (!Equals(options.FileName, defaults.FileName))
-					opts.FileName = options.FileName;
-				if (!Equals(options.GeneratedViewId, defaults.GeneratedViewId))
-					opts.GeneratedViewId = options.GeneratedViewId;
-				if (!Equals(options.DisableHMR, defaults.DisableHMR))
-					opts.DisableHMR = options.DisableHMR;
-				if (!Equals(options.CheckLatestImageVersion, defaults.CheckLatestImageVersion))
-					opts.CheckLatestImageVersion = options.CheckLatestImageVersion;
-				if (!Equals(options.AutoIconsEnabled, defaults.AutoIconsEnabled))
-					opts.AutoIconsEnabled = options.AutoIconsEnabled;
-				if (!Equals(options.HideFromDashboard, defaults.HideFromDashboard))
-					opts.HideFromDashboard = options.HideFromDashboard;
-				if (!Equals(options.DashboardLinkDisplayName, defaults.DashboardLinkDisplayName))
-					opts.DashboardLinkDisplayName = options.DashboardLinkDisplayName;
-				if (!Equals(options.RelationshipKindSyntax, defaults.RelationshipKindSyntax))
-					opts.RelationshipKindSyntax = options.RelationshipKindSyntax;
-				if (!Equals(options.FormatGeneratedFile, defaults.FormatGeneratedFile))
-					opts.FormatGeneratedFile = options.FormatGeneratedFile;
-				if (!Equals(options.ExternalProcessTimeoutSeconds, defaults.ExternalProcessTimeoutSeconds))
-					opts.ExternalProcessTimeoutSeconds = options.ExternalProcessTimeoutSeconds;
-				if (!Equals(options.UseDotIfAvailable, defaults.UseDotIfAvailable))
-					opts.UseDotIfAvailable = options.UseDotIfAvailable;
-				if (!Equals(options.AutoIncludeAspireMetadata, defaults.AutoIncludeAspireMetadata))
-					opts.AutoIncludeAspireMetadata = options.AutoIncludeAspireMetadata;
-				if (!Equals(options.NormaliseMetadataBehaviour, defaults.NormaliseMetadataBehaviour))
-					opts.NormaliseMetadataBehaviour = options.NormaliseMetadataBehaviour;
-				if (!Equals(options.GenerateConfigFile, defaults.GenerateConfigFile))
-					opts.GenerateConfigFile = options.GenerateConfigFile;
-				if (!Equals(options.IncludeAspireDashboardLinks, defaults.IncludeAspireDashboardLinks))
-					opts.IncludeAspireDashboardLinks = options.IncludeAspireDashboardLinks;
-				if (!Equals(options.IncludeAspireTokenInDashboardLinks, defaults.IncludeAspireTokenInDashboardLinks))
-					opts.IncludeAspireTokenInDashboardLinks = options.IncludeAspireTokenInDashboardLinks;
-				if (!Equals(options.IncludeDefaultStateStyles, defaults.IncludeDefaultStateStyles))
-					opts.IncludeDefaultStateStyles = options.IncludeDefaultStateStyles;
-
-				// Collection properties
-				if (!options.ElementKindSpecs.SequenceEqual(defaults.ElementKindSpecs))
-					opts.ElementKindSpecs = [.. options.ElementKindSpecs];
-				if (!options.RelationshipKindSpecs.SequenceEqual(defaults.RelationshipKindSpecs))
-					opts.RelationshipKindSpecs = [.. options.RelationshipKindSpecs];
-				if (!options.AdditionalDSLFiles.SequenceEqual(defaults.AdditionalDSLFiles))
-					opts.AdditionalDSLFiles = [.. options.AdditionalDSLFiles];
-				if (!options.AdditionalDSLFolders.SequenceEqual(defaults.AdditionalDSLFolders))
-					opts.AdditionalDSLFolders = [.. options.AdditionalDSLFolders];
-				if (!options.ExcludedResourceTypes.SetEquals(defaults.ExcludedResourceTypes))
-					opts.ExcludedResourceTypes = [.. options.ExcludedResourceTypes];
-				if (options.IconResolvers.Count != defaults.IconResolvers.Count)
-				{
-					opts.IconResolvers.Clear();
-					opts.IconResolvers.AddRange(options.IconResolvers);
-				}
-
-				if (options.ImageAliases.Count != defaults.ImageAliases.Count)
-					opts.ImageAliases = new Dictionary<string, string>(
-						options.ImageAliases,
-						options.ImageAliases.Comparer
-					);
-				if (options.StateTagMap.Count != defaults.StateTagMap.Count)
-					opts.StateTagMap = new Dictionary<string, string?>(
-						options.StateTagMap,
-						options.StateTagMap.Comparer
-					);
-				if (options.ConfigFileMetadata.Count != defaults.ConfigFileMetadata.Count)
-					opts.ConfigFileMetadata = new Dictionary<string, string>(
-						options.ConfigFileMetadata,
-						options.ConfigFileMetadata.Comparer
-					);
-			});
+		// Register the callback-mutated options object.
+		builder.Services.AddSingleton(Options.Create(options));
 
 		var outputDir = ResolveOutputDirectory(builder.AppHostDirectory, options.OutputDirectory);
 		Directory.CreateDirectory(outputDir);
 		var imageTag = options.ContainerImageTag ?? LikeC4ServerResource.DefaultTag;
-		var hmrPortMode = HMRPortCompatibility.Resolve(imageTag);
 		var resolvedHmrPort = options.HMRPort ?? AspireC4Resource.DefaultHMRPort;
 		var defaultViewId = string.IsNullOrWhiteSpace(options.DefaultViewId) ? null : options.DefaultViewId;
-
-		// Only create a version probe when using "latest" with version checking enabled.
-		// A pinned tag always has a known HMR mode; "latest" requires a probe to discover it.
-		var needsVersionProbe =
-			string.Equals(imageTag, LikeC4ServerResource.DefaultTag, StringComparison.OrdinalIgnoreCase)
-			&& options.CheckLatestImageVersion;
-
-		// Pre-complete the TCS when no probe is needed so WithArgs can proceed without waiting.
-		var hmrPortModeTcs = new TaskCompletionSource<HMRPortMode>(TaskCreationOptions.RunContinuationsAsynchronously);
-		if (!needsVersionProbe)
-			hmrPortModeTcs.TrySetResult(hmrPortMode);
-
-		builder.Services.AddSingleton(hmrPortModeTcs);
 
 		// Always use the same port on both the host and inside the container for HMR.
 		// In LikeC4 v1.57 or higher, --hmr-port sets server.hmr.port — the port Vite BINDS to inside
@@ -212,7 +108,7 @@ public static class AspireC4DistributedApplicationBuilderExtensions
 			.Services.AddOptions<ContainerWorkspaceOptions>()
 			.Configure(runtime =>
 			{
-				runtime.HMRPortMode = hmrPortMode;
+				runtime.ImageTag = imageTag;
 				runtime.ResolvedHMRPort = resolvedHmrPort;
 			});
 
@@ -264,9 +160,6 @@ public static class AspireC4DistributedApplicationBuilderExtensions
 				var diagOpts = context.ExecutionContext.ServiceProvider.GetRequiredService<
 					IOptions<AspireC4DiagramOptions>
 				>();
-				var hmrTcs = context.ExecutionContext.ServiceProvider.GetRequiredService<
-					TaskCompletionSource<HMRPortMode>
-				>();
 
 				context.Args.Add("start");
 				context.Args.Add(wsOpts.Value.ContainerServePath);
@@ -285,7 +178,8 @@ public static class AspireC4DistributedApplicationBuilderExtensions
 				context.Args.Add("--port");
 				context.Args.Add(AspireC4Resource.DefaultPort);
 
-				var hmrMode = await hmrTcs.Task.WaitAsync(context.CancellationToken);
+				// Determine HMR mode based on the image tag at container-start time.
+				var hmrMode = HMRPortCompatibility.Resolve(wsOpts.Value.ImageTag);
 				if (!diagOpts.Value.DisableHMR && hmrMode == HMRPortMode.Configurable)
 				{
 					// Pass the container-internal HMR port. Because host and container use the
@@ -337,33 +231,7 @@ public static class AspireC4DistributedApplicationBuilderExtensions
 		AspireC4Resource aspirec4Resource = new(name, outputDir)
 		{
 			InnerResource = serverResource,
-			HMRPortModeTcs = hmrPortModeTcs,
 		};
-
-		if (needsVersionProbe)
-		{
-			LikeC4VersionProbeResource probeResource = new(name + "-version-probe");
-			var probeBuilder = builder
-				.AddResource(probeResource)
-				.WithImage(LikeC4ServerResource.DefaultImage)
-				.WithImageTag(imageTag)
-				.WithImageRegistry(LikeC4ServerResource.DefaultRegistry)
-				.WithImagePullPolicy(ImagePullPolicy.Always)
-				.WithArgs("--version")
-				.ExcludeFromLikeC4()
-				.ExcludeFromManifest()
-				.WithInitialState(
-					new CustomResourceSnapshot
-					{
-						ResourceType = "Container",
-						IsHidden = true,
-						Properties = [],
-					}
-				);
-
-			serverBuilder.WaitForCompletion(probeBuilder);
-			aspirec4Resource.VersionProbeResource = probeResource;
-		}
 
 		return builder
 			.AddResource(aspirec4Resource)
@@ -392,3 +260,4 @@ public static class AspireC4DistributedApplicationBuilderExtensions
 		);
 	}
 }
+

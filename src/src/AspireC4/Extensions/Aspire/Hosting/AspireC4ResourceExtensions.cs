@@ -61,18 +61,6 @@ public static class AspireC4ResourceExtensions
 				opts.Registrations.Remove(stale);
 		});
 
-		// Remove the version probe container (registered when using "latest" with version checking).
-		// It is only needed for the container server's HMR port detection; local CLI uses a fixed port.
-		if (aspirec4.VersionProbeResource is not null)
-		{
-			builder.ApplicationBuilder.Resources.Remove(aspirec4.VersionProbeResource);
-			aspirec4.VersionProbeResource = null;
-		}
-
-		// Pre-complete the TCS so the (now-removed) container WithArgs never stalls.
-		// Local CLI mode always uses fixed HMR port — no version detection is needed.
-		aspirec4.HMRPortModeTcs.TrySetResult(HMRPortMode.FixedPort);
-
 		var resolvedRuntime = runtime == LocalCLIRuntime.Auto ? AspireC4Builder.DetectRuntime() : runtime;
 
 		// Build the base args without the HMR port — the async WithArgs callback below appends

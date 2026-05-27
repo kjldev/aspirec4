@@ -5,7 +5,11 @@ namespace Aspire.Hosting.AspireC4.LikeC4.Runtime;
 
 sealed class ContainerWorkspaceOptions
 {
-	public HMRPortMode HMRPortMode { get; set; } = HMRPortMode.FixedPort;
+	/// <summary>
+	/// The LikeC4 container image tag used to determine HMR port compatibility.
+	/// Set during <c>AddAspireC4</c> from <c>AspireC4DiagramOptions.ContainerImageTag</c>.
+	/// </summary>
+	public string? ImageTag { get; set; }
 
 	/// <summary>
 	/// The resolved HMR port to use for the LikeC4 server, both as the container target port

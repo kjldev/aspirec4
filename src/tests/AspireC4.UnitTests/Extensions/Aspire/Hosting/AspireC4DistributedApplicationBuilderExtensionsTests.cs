@@ -67,7 +67,7 @@ public sealed class AspireC4DistributedApplicationBuilderExtensionsTests
 	}
 
 	[Test]
-	public async Task AddAspireC4_StoresLegacyHmrCompatibilityMode()
+	public async Task AddAspireC4_StoresImageTagForHmrPortModeResolution()
 	{
 		// Arrange
 		var appBuilder = CreateAppBuilder();
@@ -78,11 +78,11 @@ public sealed class AspireC4DistributedApplicationBuilderExtensionsTests
 		var workspaceOptions = provider.GetRequiredService<IOptions<ContainerWorkspaceOptions>>();
 
 		// Assert
-		await Assert.That(workspaceOptions.Value.HMRPortMode).IsEqualTo(HMRPortMode.FixedPort);
+		await Assert.That(workspaceOptions.Value.ImageTag).IsEqualTo("1.55.0");
 	}
 
 	[Test]
-	public async Task AddAspireC4_StoresConfigurableHmrCompatibilityModeForCurrentMinimumVersion()
+	public async Task AddAspireC4_StoresImageTagForConfigurableVersion()
 	{
 		// Arrange
 		var appBuilder = CreateAppBuilder();
@@ -93,7 +93,7 @@ public sealed class AspireC4DistributedApplicationBuilderExtensionsTests
 		var workspaceOptions = provider.GetRequiredService<IOptions<ContainerWorkspaceOptions>>();
 
 		// Assert
-		await Assert.That(workspaceOptions.Value.HMRPortMode).IsEqualTo(HMRPortMode.Configurable);
+		await Assert.That(workspaceOptions.Value.ImageTag).IsEqualTo("100.57.0");
 	}
 
 	[Test]
