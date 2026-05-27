@@ -1177,7 +1177,7 @@ public sealed partial class ModelBuilderTests
 	{
 		// Arrange
 		var resource = CreateContainerResource("aspirec4-server");
-		resource.Annotations.Add(new LikeC4DslIdAnnotation("aspirec4"));
+		resource.Annotations.Add(new LikeC4DSLIdAnnotation("aspirec4"));
 
 		// Act
 		var model = ModelBuilder.Build([resource]);
@@ -1191,7 +1191,7 @@ public sealed partial class ModelBuilderTests
 	{
 		// Arrange
 		var server = CreateContainerResource("aspirec4-server");
-		server.Annotations.Add(new LikeC4DslIdAnnotation("aspirec4"));
+		server.Annotations.Add(new LikeC4DSLIdAnnotation("aspirec4"));
 
 		var api = CreateProjectResource("api");
 		api.Annotations.Add(new ResourceRelationshipAnnotation(server, "Reference"));
@@ -1210,7 +1210,7 @@ public sealed partial class ModelBuilderTests
 	{
 		// Arrange
 		var server = CreateContainerResource("aspirec4-server");
-		server.Annotations.Add(new LikeC4DslIdAnnotation("aspirec4"));
+		server.Annotations.Add(new LikeC4DSLIdAnnotation("aspirec4"));
 
 		var api = CreateProjectResource("api");
 		server.Annotations.Add(new ResourceRelationshipAnnotation(api, "Reference"));

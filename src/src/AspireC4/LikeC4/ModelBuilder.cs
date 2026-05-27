@@ -101,7 +101,7 @@ static class ModelBuilder
 		// container or the local-CLI executable is active).
 		Dictionary<string, string> dslIdByName = visibleResources.ToDictionary(
 			r => r.Name,
-			r => r.Annotations.OfType<LikeC4DslIdAnnotation>().LastOrDefault()?.DslId ?? r.Name,
+			r => r.Annotations.OfType<LikeC4DSLIdAnnotation>().LastOrDefault()?.DSLId ?? r.Name,
 			StringComparer.OrdinalIgnoreCase
 		);
 
@@ -241,7 +241,7 @@ static class ModelBuilder
 		var icon = ResolveIcon(resource, details, inferredTechnology, autoIconsEnabled, hiddenOriginal, iconResolvers);
 		var kind = details?.Kind ?? InferKind(resource);
 		var parentName = resource is IResourceWithParent { Parent: { } parent }
-			? (parent.Annotations.OfType<LikeC4DslIdAnnotation>().LastOrDefault()?.DslId ?? parent.Name)
+			? (parent.Annotations.OfType<LikeC4DSLIdAnnotation>().LastOrDefault()?.DSLId ?? parent.Name)
 			: null;
 		var group = resource.Annotations.OfType<LikeC4GroupAnnotation>().LastOrDefault()?.GroupName;
 

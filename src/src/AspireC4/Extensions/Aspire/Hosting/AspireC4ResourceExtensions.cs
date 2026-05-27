@@ -111,7 +111,7 @@ public static class AspireC4ResourceExtensions
 			// if a consumer explicitly includes this resource (e.g. via ConfigureTestHost),
 			// it is emitted as "aspirec4" — the same name as the Docker-container variant.
 			.ExcludeFromLikeC4()
-			.WithAnnotation(new LikeC4DslIdAnnotation(aspirec4.Name))
+			.WithAnnotation(new LikeC4DSLIdAnnotation(aspirec4.Name))
 			.ExcludeFromManifest()
 			.WithInitialState(
 				new CustomResourceSnapshot

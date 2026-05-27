@@ -153,6 +153,8 @@ localRedis.WithLikeC4Reference(
 	opts => opts.WithLabel("syncs with").WithTechnology("Redis Protocol").WithKind("RESP")
 );
 
+// Test adding some parameters , including one from configuration.
+// These should be automatically hidden from the LikeC4 model as they are not relevant to the architecture and would just add noise to the visualisation.
 var testingParam = builder
 	.AddParameter("testing-resource-parameter", "This should be hidden from the LikeC4 model", false, false)
 	.WithDescription("This should be hidden from the LikeC4 model");

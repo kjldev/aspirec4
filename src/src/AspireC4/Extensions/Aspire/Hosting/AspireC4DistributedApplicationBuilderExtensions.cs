@@ -44,7 +44,7 @@ public static class AspireC4DistributedApplicationBuilderExtensions
 		Action<AspireC4DiagramOptions>? configure = null
 	)
 	{
-		var options = new AspireC4DiagramOptions();
+		AspireC4DiagramOptions options = new();
 		configure?.Invoke(options);
 
 		return AddAspireC4Core(builder, name, port, options);
@@ -196,7 +196,7 @@ public static class AspireC4DistributedApplicationBuilderExtensions
 			// included by a consumer (e.g. via ConfigureTestHost), is always emitted as "aspirec4"
 			// regardless of the "-server" suffix on the Aspire resource name.
 			.ExcludeFromLikeC4()
-			.WithAnnotation(new LikeC4DslIdAnnotation(name))
+			.WithAnnotation(new LikeC4DSLIdAnnotation(name))
 			.ExcludeFromManifest();
 
 		if (!options.DisableHMR)

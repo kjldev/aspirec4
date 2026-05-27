@@ -15,7 +15,7 @@ static class AspireC4Extensions
 		// (where the TestAppHost assembly is copied to the test output directory).
 		var extensionsDir = Path.Combine(
 			Path.GetDirectoryName(typeof(TestAppHostProgram).Assembly.Location)!,
-			"likec4-extensions"
+			"likec4", "extensions"
 		);
 		if (Directory.Exists(extensionsDir))
 		{
@@ -23,14 +23,14 @@ static class AspireC4Extensions
 		}
 
 		// There are some assets in the repo root that we'll include.
-		builder.WithImageAliasFolder("@", Path.Combine(AppContext.BaseDirectory, "../../../../../../assets/images/"));
 		var imagesDir = Path.Combine(
 			Path.GetDirectoryName(typeof(TestAppHostProgram).Assembly.Location)!,
-			"likec4-images"
+			"likec4", "images"
 		);
 		if (Directory.Exists(imagesDir))
 		{
-			builder.WithImageAliasFolder("@test-icons", imagesDir);
+			// Overriding the default '@' to point to our copied in test apps folder
+			builder.WithImageAliasFolder("@", imagesDir);
 		}
 
 		// We're adding LikeC4 pazzazz to the LikeC4 server resource for this demo...
