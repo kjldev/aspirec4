@@ -1,6 +1,9 @@
+using Aspire.Hosting.AspireC4;
 using Aspire.Hosting.AspireC4.ApplicationModel;
 using Aspire.Hosting.AspireC4.LikeC4.Runtime;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 
 namespace Aspire.Hosting;
 
@@ -306,5 +309,86 @@ public sealed class AspireC4DistributedApplicationBuilderExtensionsTests
 			await annotation.Callback(context);
 
 		return [.. args.Select(static a => a?.ToString() ?? "")];
+	}
+
+	// Regression: configure callback must be applied via IOptions even though the callback is
+	// no longer invoked directly inside the lazy IOptions.Configure delegate (to avoid the
+	// sync-over-async deadlock with ATS-proxied async TypeScript configure callbacks).
+	[Test]
+	public async Task AddAspireC4_IOptions_AppliesConfigureCallbackValues()
+	{
+		// Arrange
+		var appBuilder = CreateAppBuilder();
+
+		// Act
+		appBuilder.AddAspireC4(configure: opts =>
+		{
+			opts.FormatGeneratedFile = false;
+			opts.ViewTitle = "My Diagram";
+		});
+		using var provider = appBuilder.Services.BuildServiceProvider();
+		var diagramOptions = provider.GetRequiredService<IOptions<AspireC4DiagramOptions>>();
+
+		// Assert
+		await Assert.That(diagramOptions.Value.FormatGeneratedFile).IsFalse();
+		await Assert.That(diagramOptions.Value.ViewTitle).IsEqualTo("My Diagram");
+	}
+
+	// Regression: explicitly setting a nullable property to null via the callback must win over
+	// any value that configuration binding might have placed there.
+	[Test]
+	public async Task AddAspireC4_IOptions_CallbackExplicitNullOverridesDefaultValue()
+	{
+		// Arrange — DefaultViewId has a default value of "index"; callback sets it to null
+		var appBuilder = CreateAppBuilder();
+
+		// Act
+		appBuilder.AddAspireC4(configure: opts => opts.DefaultViewId = null);
+		using var provider = appBuilder.Services.BuildServiceProvider();
+		var diagramOptions = provider.GetRequiredService<IOptions<AspireC4DiagramOptions>>();
+
+		// Assert — null from callback must override the built-in default ("index")
+		await Assert.That(diagramOptions.Value.DefaultViewId).IsNull();
+	}
+
+	// Regression: configuration added to the builder AFTER AddAspireC4 is called must still be
+	// reflected in IOptions<AspireC4DiagramOptions>. This mirrors the integration-test pattern
+	// where DistributedApplicationTestingBuilder injects test config after the AppHost program runs.
+	[Test]
+	public async Task AddAspireC4_IOptions_LateAddedConfigIsReflected()
+	{
+		// Arrange
+		var appBuilder = CreateAppBuilder();
+
+		// Act — call AddAspireC4 first, then add config (simulating late injection)
+		appBuilder.AddAspireC4();
+		appBuilder.Configuration.AddInMemoryCollection(
+			new Dictionary<string, string?> { ["AspireC4:ViewTitle"] = "Late Config Title" }
+		);
+		using var provider = appBuilder.Services.BuildServiceProvider();
+		var diagramOptions = provider.GetRequiredService<IOptions<AspireC4DiagramOptions>>();
+
+		// Assert — late-added config must be visible in IOptions
+		await Assert.That(diagramOptions.Value.ViewTitle).IsEqualTo("Late Config Title");
+	}
+
+	// Regression: callback-set values must win over configuration values for the same property,
+	// even when config is injected before AddAspireC4 is called.
+	[Test]
+	public async Task AddAspireC4_IOptions_CallbackWinsOverConfig()
+	{
+		// Arrange — add config first
+		var appBuilder = CreateAppBuilder();
+		appBuilder.Configuration.AddInMemoryCollection(
+			new Dictionary<string, string?> { ["AspireC4:ViewTitle"] = "Config Title" }
+		);
+
+		// Act — callback sets the same property; callback should win
+		appBuilder.AddAspireC4(configure: opts => opts.ViewTitle = "Callback Title");
+		using var provider = appBuilder.Services.BuildServiceProvider();
+		var diagramOptions = provider.GetRequiredService<IOptions<AspireC4DiagramOptions>>();
+
+		// Assert
+		await Assert.That(diagramOptions.Value.ViewTitle).IsEqualTo("Callback Title");
 	}
 }

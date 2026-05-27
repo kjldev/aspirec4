@@ -10,7 +10,19 @@ sealed partial class AspireC4LifecycleHook
 	/// </summary>
 	void SetupContainerBindMount(DistributedApplicationModel _, LikeC4ServerResource serverResource)
 	{
+		// Log before resolving options so that a future deadlock in this area (e.g. if the
+		// lazy IOptions.Configure callback ever blocks on the NonConcurrentSynchronizationContext)
+		// leaves a clear breadcrumb in the log rather than silent 60-second timeout.
+		// See: https://github.com/microsoft/aspire/issues/17487
+		telemetry.ApplyingDiagramOptionsSnapshot();
+
 		var opts = options.Value;
+
+		telemetry.DiagramOptionsSnapshotApplied(
+			Path.GetFileName(opts.OutputDirectory),
+			opts.FormatGeneratedFile,
+			opts.DisableHMR
+		);
 		var outputDir = Path.GetFullPath(opts.OutputDirectory);
 
 		// Collect all host-side directory paths that must be visible inside the container.

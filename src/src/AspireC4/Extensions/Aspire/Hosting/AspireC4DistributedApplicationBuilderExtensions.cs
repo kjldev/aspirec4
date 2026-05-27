@@ -51,30 +51,55 @@ public static class AspireC4DistributedApplicationBuilderExtensions
 
 		ArgumentNullException.ThrowIfNull(builder);
 
+		// Eagerly evaluate `configure` here — on the background thread that AddAspireC4 runs on
+		// (this method is invoked via the ATS/TypeScript AppHost export path where
+		// RunSyncOnBackgroundThread = true ensures a background thread; C# callers invoke this
+		// directly and are not on the NonConcurrentSynchronizationContext). Doing so is safe because:
+		//   1. The NonConcurrentSynchronizationContext is not occupied at this point.
+		//   2. The ATS proxy for `configure` calls .GetAwaiter().GetResult() internally, but
+		//      the sync context is free so TypeScript's setter-call responses can be dispatched.
+		//
+		// We must NOT call configure?.Invoke(opts) inside the lazy IOptions.Configure callback
+		// below: that callback may execute on the NonConcurrentSynchronizationContext (during
+		// DistributedApplication.RunAsync), and .GetResult() would block it while waiting for
+		// TypeScript's incoming setter calls — which themselves need the same blocked context.
+		// Classic sync-over-async deadlock. See microsoft/aspire#17487.
+		//
+		// Strategy: capture a baseline (pure defaults) and invoke the callback against a second
+		// fresh instance. In the lazy IOptions pipeline, BindConfiguration applies current config
+		// (including any values added after this call returns), then ApplyDelta applies only the
+		// properties the callback explicitly changed — preserving correct config < code precedence
+		// without ever calling the ATS proxy on the sync context.
+		var callbackBaseline = new AspireC4DiagramOptions();
+		var callbackResult = new AspireC4DiagramOptions();
+		configure?.Invoke(callbackResult);
+
 		builder
 			.Services.AddOptions<AspireC4DiagramOptions>()
 			.BindConfiguration(AspireC4DiagramOptions.SectionName)
 			.Configure(opts =>
 			{
-				configure?.Invoke(opts);
+				// Apply only the properties the callback changed relative to fresh defaults.
+				// BindConfiguration (above) has already applied current configuration values;
+				// ApplyDelta applies callback overrides on top, without invoking the ATS proxy.
+				callbackResult.ApplyDelta(callbackBaseline, opts);
 				opts.OutputDirectory = ResolveOutputDirectory(builder.AppHostDirectory, opts.OutputDirectory);
 			});
 
-		AspireC4DiagramOptions diagramOpts = new();
-		configure?.Invoke(diagramOpts);
-
-		var outputDir = ResolveOutputDirectory(builder.AppHostDirectory, diagramOpts.OutputDirectory);
+		var outputDir = ResolveOutputDirectory(builder.AppHostDirectory, callbackResult.OutputDirectory);
 		Directory.CreateDirectory(outputDir);
-		var imageTag = diagramOpts.ContainerImageTag ?? LikeC4ServerResource.DefaultTag;
+		var imageTag = callbackResult.ContainerImageTag ?? LikeC4ServerResource.DefaultTag;
 		var hmrPortMode = HMRPortCompatibility.Resolve(imageTag);
-		var resolvedHmrPort = diagramOpts.HMRPort ?? LikeC4ServerResource.DefaultContainerHMRPort;
-		var defaultViewId = string.IsNullOrWhiteSpace(diagramOpts.DefaultViewId) ? null : diagramOpts.DefaultViewId;
+		var resolvedHmrPort = callbackResult.HMRPort ?? LikeC4ServerResource.DefaultContainerHMRPort;
+		var defaultViewId = string.IsNullOrWhiteSpace(callbackResult.DefaultViewId)
+			? null
+			: callbackResult.DefaultViewId;
 
 		// Only create a version probe when using "latest" with version checking enabled.
 		// A pinned tag always has a known HMR mode; "latest" requires a probe to discover it.
 		var needsVersionProbe =
 			string.Equals(imageTag, LikeC4ServerResource.DefaultTag, StringComparison.OrdinalIgnoreCase)
-			&& diagramOpts.CheckLatestImageVersion;
+			&& callbackResult.CheckLatestImageVersion;
 
 		// Pre-complete the TCS when no probe is needed so WithArgs can proceed without waiting.
 		var hmrPortModeTcs = new TaskCompletionSource<HMRPortMode>(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -91,7 +116,7 @@ public static class AspireC4DistributedApplicationBuilderExtensions
 		// Dynamic (null) host ports cannot work here: if Docker maps host:DYNAMIC → container:24678
 		// but Vite is told --hmr-port DYNAMIC it binds to container:DYNAMIC, which Docker doesn't
 		// forward, breaking the HMR WebSocket connection entirely.
-		int? hmrHostPort = diagramOpts.HMRPort ?? resolvedHmrPort;
+		int? hmrHostPort = callbackResult.HMRPort ?? resolvedHmrPort;
 
 		builder
 			.Services.AddOptions<ContainerWorkspaceOptions>()
@@ -156,10 +181,10 @@ public static class AspireC4DistributedApplicationBuilderExtensions
 				context.Args.Add("start");
 				context.Args.Add(wsOpts.Value.ContainerServePath);
 
-				if (!string.IsNullOrWhiteSpace(diagramOpts.Title))
+				if (!string.IsNullOrWhiteSpace(callbackResult.Title))
 				{
 					context.Args.Add("--title");
-					context.Args.Add($"\"{diagramOpts.Title}\"");
+					context.Args.Add($"\"{callbackResult.Title}\"");
 				}
 
 				var useDot =
@@ -190,7 +215,7 @@ public static class AspireC4DistributedApplicationBuilderExtensions
 			.WithAnnotation(new LikeC4DslIdAnnotation(name))
 			.ExcludeFromManifest();
 
-		if (!diagramOpts.DisableHMR)
+		if (!callbackResult.DisableHMR)
 		{
 			serverBuilder
 				.WithHttpEndpoint(
