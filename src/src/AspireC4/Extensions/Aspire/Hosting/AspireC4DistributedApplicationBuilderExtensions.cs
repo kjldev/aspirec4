@@ -35,10 +35,7 @@ public static class AspireC4DistributedApplicationBuilderExtensions
 	/// <param name="port">Optional host port to bind the LikeC4 server's HTTP endpoint to. By default, no fixed host port is used and Docker assigns a dynamic port.</param>
 	/// <param name="configure">Optional callback to configure <see cref="AspireC4DiagramOptions"/>.</param>
 	/// <returns>An <see cref="IResourceBuilder{AspireC4Resource}"/> for further configuration.</returns>
-	[AspireExport(
-		Description = "Adds a LikeC4 live architecture diagram to the Aspire application.",
-		RunSyncOnBackgroundThread = true
-	)]
+	[AspireExportIgnore]
 	public static IResourceBuilder<AspireC4Resource> AddAspireC4(
 		this IDistributedApplicationBuilder builder,
 		[ResourceName] string? name = null,
@@ -46,33 +43,53 @@ public static class AspireC4DistributedApplicationBuilderExtensions
 		Action<AspireC4DiagramOptions>? configure = null
 	)
 	{
+		var options = new AspireC4DiagramOptions();
+		configure?.Invoke(options);
+		return AddAspireC4Core(builder, name, port, options);
+	}
+
+	/// <summary>
+	/// Adds a LikeC4 live architecture diagram to the Aspire application.
+	/// </summary>
+	/// <remarks>
+	/// This registers a lifecycle hook that generates a <c>.c4</c> model file from the Aspire
+	/// resource graph, and starts the official <c>ghcr.io/likec4/likec4</c> container as a
+	/// sidecar that renders an interactive, hot-reloading diagram in the browser.
+	/// <para>
+	/// <b>Prerequisite:</b> Docker must be available (standard Aspire requirement). To use a
+	/// local Node.js CLI instead, call <c>.WithLocalCli()</c> on the returned builder.
+	/// </para>
+	/// </remarks>
+	/// <param name="builder">The Aspire distributed application builder.</param>
+	/// <param name="name">Optional name of the LikeC4 visualization resource (used for the server container and diagram file).</param>
+	/// <param name="port">Optional host port to bind the LikeC4 server's HTTP endpoint to. By default, no fixed host port is used and Docker assigns a dynamic port.</param>
+	/// <param name="options">Optional pre-configured <see cref="AspireC4DiagramOptions"/>.</param>
+	/// <returns>An <see cref="IResourceBuilder{AspireC4Resource}"/> for further configuration.</returns>
+	[AspireExport(Description = "Adds a LikeC4 live architecture diagram to the Aspire application.")]
+	public static IResourceBuilder<AspireC4Resource> AddAspireC4(
+		this IDistributedApplicationBuilder builder,
+		string? name,
+		int? port,
+		AspireC4DiagramOptions? options
+	)
+	{
+		return AddAspireC4Core(builder, name, port, options ?? new AspireC4DiagramOptions());
+	}
+
+	static IResourceBuilder<AspireC4Resource> AddAspireC4Core(
+		IDistributedApplicationBuilder builder,
+		string? name,
+		int? port,
+		AspireC4DiagramOptions callbackResult
+	)
+	{
 		if (string.IsNullOrWhiteSpace(name))
 			name = AspireC4ResourceName;
 
 		ArgumentNullException.ThrowIfNull(builder);
 
-		// Eagerly evaluate `configure` here — on the background thread that AddAspireC4 runs on
-		// (this method is invoked via the ATS/TypeScript AppHost export path where
-		// RunSyncOnBackgroundThread = true ensures a background thread; C# callers invoke this
-		// directly and are not on the NonConcurrentSynchronizationContext). Doing so is safe because:
-		//   1. The NonConcurrentSynchronizationContext is not occupied at this point.
-		//   2. The ATS proxy for `configure` calls .GetAwaiter().GetResult() internally, but
-		//      the sync context is free so TypeScript's setter-call responses can be dispatched.
-		//
-		// We must NOT call configure?.Invoke(opts) inside the lazy IOptions.Configure callback
-		// below: that callback may execute on the NonConcurrentSynchronizationContext (during
-		// DistributedApplication.RunAsync), and .GetResult() would block it while waiting for
-		// TypeScript's incoming setter calls — which themselves need the same blocked context.
-		// Classic sync-over-async deadlock. See microsoft/aspire#17487.
-		//
-		// Strategy: capture a baseline (pure defaults) and invoke the callback against a second
-		// fresh instance. In the lazy IOptions pipeline, BindConfiguration applies current config
-		// (including any values added after this call returns), then ApplyDelta applies only the
-		// properties the callback explicitly changed — preserving correct config < code precedence
-		// without ever calling the ATS proxy on the sync context.
+		// Capture a baseline to compare against when applying the callback result.
 		var callbackBaseline = new AspireC4DiagramOptions();
-		var callbackResult = new AspireC4DiagramOptions();
-		configure?.Invoke(callbackResult);
 
 		builder
 			.Services.AddOptions<AspireC4DiagramOptions>()

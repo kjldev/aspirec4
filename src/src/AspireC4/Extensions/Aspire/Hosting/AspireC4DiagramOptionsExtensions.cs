@@ -5,8 +5,7 @@ namespace Aspire.Hosting;
 
 /// <summary>
 /// Fluent extension methods for configuring <see cref="AspireC4DiagramOptions"/>.
-/// Allows chaining configuration in the <c>configure</c> callback of
-/// <see cref="AspireC4DistributedApplicationBuilderExtensions.AddAspireC4"/>, e.g.:
+/// Allows chaining configuration in a callback passed to <c>AddAspireC4</c>, e.g.:
 /// <code>
 /// builder.AddAspireC4(opts => opts
 ///     .WithTitle("My App")

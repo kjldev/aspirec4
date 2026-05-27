@@ -115,14 +115,8 @@ public static class AspireC4ResourceExtensions
 
 				return Task.CompletedTask;
 			})
-			.WithHttpEndpoint(
-				name: AspireC4Resource.HttpEndpointName,
-				targetPort: AspireC4Resource.DefaultPort
-			)
-			.WithHttpEndpoint(
-				name: AspireC4Resource.HMREndpointName,
-				targetPort: AspireC4Resource.DefaultHMRPort
-			)
+			.WithHttpEndpoint(name: AspireC4Resource.HttpEndpointName, targetPort: AspireC4Resource.DefaultPort)
+			.WithHttpEndpoint(name: AspireC4Resource.HMREndpointName, targetPort: AspireC4Resource.DefaultHMRPort)
 			.WithHttpHealthCheck("/", statusCode: 200, endpointName: AspireC4Resource.HttpEndpointName)
 			//.WithExternalHttpEndpoints()
 			// Exclude from the diagram and manifest. Set a stable DSL identifier so that,
