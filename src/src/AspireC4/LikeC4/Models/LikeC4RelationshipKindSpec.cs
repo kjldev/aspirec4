@@ -4,6 +4,7 @@ namespace Aspire.Hosting.AspireC4.LikeC4.Models;
 /// Defines a custom relationship kind specification that is declared in the LikeC4 <c>specification</c> block
 /// with an optional technology label.
 /// </summary>
+[AspireExport(ExposeProperties = true, ExposeMethods = true)]
 public sealed class LikeC4RelationshipKindSpec
 {
 	/// <param name="name">The kind identifier, e.g. <c>"async"</c> or <c>"grpc"</c>.</param>

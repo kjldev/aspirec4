@@ -36,7 +36,7 @@ public static class AspireC4DistributedApplicationBuilderExtensions
 	/// <param name="port">Optional host port to bind the LikeC4 server's HTTP endpoint to. By default, no fixed host port is used and Docker assigns a dynamic port.</param>
 	/// <param name="configure">Optional callback to configure <see cref="AspireC4DiagramOptions"/>.</param>
 	/// <returns>An <see cref="IResourceBuilder{AspireC4Resource}"/> for further configuration.</returns>
-	[AspireExportIgnore]
+	[AspireExport(RunSyncOnBackgroundThread = true)]
 	public static IResourceBuilder<AspireC4Resource> AddAspireC4(
 		[NotNull] this IDistributedApplicationBuilder builder,
 		[ResourceName] string? name = null,
@@ -47,41 +47,6 @@ public static class AspireC4DistributedApplicationBuilderExtensions
 		AspireC4DiagramOptions options = new();
 		configure?.Invoke(options);
 
-		return AddAspireC4Core(builder, name, port, options);
-	}
-
-	/// <summary>
-	/// Adds a LikeC4 live architecture diagram to the Aspire application.
-	/// </summary>
-	/// <remarks>
-	/// This registers a lifecycle hook that generates a <c>.c4</c> model file from the Aspire
-	/// resource graph, and starts the official <c>ghcr.io/likec4/likec4</c> container as a
-	/// sidecar that renders an interactive, hot-reloading diagram in the browser.
-	/// <para>
-	/// <b>Prerequisite:</b> Docker must be available (standard Aspire requirement). To use a
-	/// local Node.js CLI instead, call <c>.WithLocalCli()</c> on the returned builder.
-	/// </para>
-	/// </remarks>
-	/// <param name="builder">The Aspire distributed application builder.</param>
-	/// <param name="name">Optional name of the LikeC4 visualization resource (used for the server container and diagram file).</param>
-	/// <param name="port">Optional host port to bind the LikeC4 server's HTTP endpoint to. By default, no fixed host port is used and Docker assigns a dynamic port.</param>
-	/// <param name="diagramOptions">Optional pre-configured <see cref="AspireC4DiagramOptions"/>.</param>
-	/// <returns>An <see cref="IResourceBuilder{AspireC4Resource}"/> for further configuration.</returns>
-	[AspireExport(Description = "Adds a LikeC4 live architecture diagram to the Aspire application.")]
-	public static IResourceBuilder<AspireC4Resource> AddAspireC4(
-		[NotNull] this IDistributedApplicationBuilder builder,
-		string? name,
-		int? port,
-		AspireC4DiagramOptions? diagramOptions
-	) => AddAspireC4Core(builder, name, port, diagramOptions ?? new());
-
-	static IResourceBuilder<AspireC4Resource> AddAspireC4Core(
-		[NotNull] IDistributedApplicationBuilder builder,
-		string? name,
-		int? port,
-		AspireC4DiagramOptions options
-	)
-	{
 		if (string.IsNullOrWhiteSpace(name))
 			name = AspireC4ResourceName;
 
@@ -95,14 +60,14 @@ public static class AspireC4DistributedApplicationBuilderExtensions
 		// Options.Create would register a concrete singleton wrapper as IOptions<T>, causing
 		// TryAddSingleton for OptionsManager<T> to be skipped and all Configure<T> lambdas
 		// to be silently ignored.
-		var snapshot = options;
 		builder
 			.Services.AddOptions<AspireC4DiagramOptions>()
-			.Configure(opts => opts.CopyFrom(snapshot))
+			.Configure(options => configure?.Invoke(options))
 			.BindConfiguration(AspireC4DiagramOptions.SectionName);
 
 		var outputDir = ResolveOutputDirectory(builder.AppHostDirectory, options.OutputDirectory);
 		Directory.CreateDirectory(outputDir);
+
 		var imageTag = options.ContainerImageTag ?? LikeC4ServerResource.DefaultTag;
 		var resolvedHmrPort = options.HMRPort ?? AspireC4Resource.DefaultHMRPort;
 		var defaultViewId = string.IsNullOrWhiteSpace(options.DefaultViewId) ? null : options.DefaultViewId;
@@ -203,14 +168,27 @@ public static class AspireC4DistributedApplicationBuilderExtensions
 
 				if (diagOpts.Value.DisableHMR)
 					context.Args.Add("--no-react-hmr");
+
+				if (!diagOpts.Value.IncludeAspireC4InternalResource)
+				{
+					// Exclude the sidecar from the architecture diagram — it is tooling, not a system element.
+					// Set a stable DSL identifier equal to the base name so that the element, when explicitly
+					// included by a consumer (e.g. via ConfigureTestHost), is always emitted as "aspirec4"
+					// regardless of the "-server" suffix on the Aspire resource name.
+					context.Resource.Annotations.Add(new ExcludeFromLikeC4Annotation());
+				}
 			})
-			// Exclude the sidecar from the architecture diagram — it is tooling, not a system element.
-			// Set a stable DSL identifier equal to the base name so that the element, when explicitly
-			// included by a consumer (e.g. via ConfigureTestHost), is always emitted as "aspirec4"
-			// regardless of the "-server" suffix on the Aspire resource name.
-			.ExcludeFromLikeC4()
 			.WithAnnotation(new LikeC4DSLIdAnnotation(name))
 			.ExcludeFromManifest();
+
+		//if (!options.IncludeAspireC4InternalResource)
+		//{
+		//	// Exclude the sidecar from the architecture diagram — it is tooling, not a system element.
+		//	// Set a stable DSL identifier equal to the base name so that the element, when explicitly
+		//	// included by a consumer (e.g. via ConfigureTestHost), is always emitted as "aspirec4"
+		//	// regardless of the "-server" suffix on the Aspire resource name.
+		//	serverBuilder.ExcludeFromLikeC4();
+		//}
 
 		if (!options.DisableHMR)
 		{

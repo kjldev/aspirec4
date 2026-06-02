@@ -1,6 +1,4 @@
-using System.Text.Json.Serialization;
-
-namespace Aspire.Hosting.AspireC4.LikeC4;
+namespace Aspire.Hosting.AspireC4.LikeC4.Icons;
 
 /// <summary>
 /// Matches resource names and types to LikeC4 icon IDs using token-overlap scoring
@@ -199,16 +197,4 @@ static partial class IconMatcher
 	// Such tokens originate from Docker image version tags (e.g. "postgres:16-alpine") and
 	// are never part of an icon name.
 	static bool IsPurelyNumeric(string t) => t.Length > 0 && t.All(char.IsDigit);
-}
-
-[JsonSerializable(typeof(LikeC4IconManifest))]
-partial class IconMatcherJsonContext : JsonSerializerContext { }
-
-sealed class LikeC4IconManifest
-{
-	[JsonPropertyName("generatedAt")]
-	public string GeneratedAt { get; init; } = "";
-
-	[JsonPropertyName("icons")]
-	public Dictionary<string, string[]> Icons { get; init; } = [];
 }

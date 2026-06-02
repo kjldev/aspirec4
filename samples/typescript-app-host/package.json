@@ -9,17 +9,20 @@
 	"scripts": {
 		"dev": "aspire run",
 		"build": "tsx",
-		"lint": "eslint apphost.ts"
+		"lint": "biome lint apphost.mts"
 	},
 	"dependencies": {
 		"vscode-jsonrpc": "^8.2.0"
 	},
 	"devDependencies": {
+		"@biomejs/biome": "2.4.16",
 		"@types/node": "^22.0.0",
-		"eslint": "^10.0.3",
 		"nodemon": "^3.1.14",
 		"tsx": "^4.21.0",
 		"typescript": "^5.9.3",
 		"typescript-eslint": "^8.57.1"
+	},
+	"allowScripts": {
+		"esbuild@0.28.0": true
 	}
 }

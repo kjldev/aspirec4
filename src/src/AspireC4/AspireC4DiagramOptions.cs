@@ -1,4 +1,4 @@
-using Aspire.Hosting.AspireC4.LikeC4;
+using Aspire.Hosting.AspireC4.LikeC4.Icons;
 using Aspire.Hosting.AspireC4.LikeC4.Models;
 
 namespace Aspire.Hosting.AspireC4;
@@ -309,6 +309,12 @@ public sealed class AspireC4DiagramOptions
 	public bool IncludeDefaultStateStyles { get; set; } = true;
 
 	/// <summary>
+	/// Exists purely for debugging/ monitoring - this will render on the internal (container or Exe-based)
+	/// AspireC4Resource that serves the LikeC4 diagram.
+	/// </summary>
+	public bool IncludeAspireC4InternalResource { get; set; }
+
+	/// <summary>
 	/// Resource types that are automatically excluded from the generated LikeC4 diagram.
 	/// Exclusion is based on the runtime type of each Aspire resource: a resource is excluded
 	/// when its type is the same as, or a subclass of, any type in this set.
@@ -346,54 +352,11 @@ public sealed class AspireC4DiagramOptions
 	/// </code>
 	/// </example>
 	[System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1002:Do not expose generic lists")]
-	public List<IconResolver> IconResolvers { get; } = [];
+	public List<Func<IconResolverContext, string?>> IconResolvers { get; } = [];
 
 	/// <summary>
 	/// When <see cref="GenerateConfigFile"/> is <see langword="true"/>, provides additional metadata to include in the generated config file.
 	/// </summary>
 	[System.Diagnostics.CodeAnalysis.SuppressMessage("Usage", "CA2227:Collection properties should be read only")]
 	public Dictionary<string, string> ConfigFileMetadata { get; set; } = [];
-
-	/// <summary>
-	/// Copies all property values from <paramref name="source"/> into this instance.
-	/// Used to seed the DI-registered options from a builder-time snapshot so that
-	/// extension-method <c>Configure&lt;T&gt;</c> callbacks can layer on top.
-	/// </summary>
-	internal void CopyFrom(AspireC4DiagramOptions source)
-	{
-		GeneratedViewId = source.GeneratedViewId;
-		DefaultViewId = source.DefaultViewId;
-		Title = source.Title;
-		ViewTitle = source.ViewTitle;
-		ViewDescription = source.ViewDescription;
-		OutputDirectory = source.OutputDirectory;
-		FileName = source.FileName;
-		DisableHMR = source.DisableHMR;
-		HMRPort = source.HMRPort;
-		ContainerImageTag = source.ContainerImageTag;
-		CheckLatestImageVersion = source.CheckLatestImageVersion;
-		AutoIconsEnabled = source.AutoIconsEnabled;
-		HideFromDashboard = source.HideFromDashboard;
-		DashboardLinkDisplayName = source.DashboardLinkDisplayName;
-		RelationshipKindSyntax = source.RelationshipKindSyntax;
-		FormatGeneratedFile = source.FormatGeneratedFile;
-		ExternalProcessTimeoutSeconds = source.ExternalProcessTimeoutSeconds;
-		UseDotIfAvailable = source.UseDotIfAvailable;
-		AutoIncludeAspireMetadata = source.AutoIncludeAspireMetadata;
-		NormaliseMetadataBehaviour = source.NormaliseMetadataBehaviour;
-		GenerateConfigFile = source.GenerateConfigFile;
-		IncludeAspireDashboardLinks = source.IncludeAspireDashboardLinks;
-		IncludeAspireTokenInDashboardLinks = source.IncludeAspireTokenInDashboardLinks;
-		IncludeDefaultStateStyles = source.IncludeDefaultStateStyles;
-		ElementKindSpecs = source.ElementKindSpecs;
-		RelationshipKindSpecs = source.RelationshipKindSpecs;
-		AdditionalDSLFiles = source.AdditionalDSLFiles;
-		AdditionalDSLFolders = source.AdditionalDSLFolders;
-		ImageAliases = source.ImageAliases;
-		StateTagMap = source.StateTagMap;
-		ExcludedResourceTypes = source.ExcludedResourceTypes;
-		ConfigFileMetadata = source.ConfigFileMetadata;
-		IconResolvers.Clear();
-		IconResolvers.AddRange(source.IconResolvers);
-	}
 }

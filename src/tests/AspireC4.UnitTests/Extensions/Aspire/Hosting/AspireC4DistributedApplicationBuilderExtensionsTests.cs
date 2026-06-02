@@ -137,7 +137,7 @@ public sealed class AspireC4DistributedApplicationBuilderExtensionsTests
 	}
 
 	[Test]
-	public async Task AddAspireC4_ContainerArgs_IncludesHmrPortForConfigurableMode(CancellationToken cancellationToken)
+	public async Task AddAspireC4_ContainerArgs_IncludesHMRPortForConfigurableMode(CancellationToken cancellationToken)
 	{
 		// Arrange
 		var appBuilder = CreateAppBuilder();
@@ -154,7 +154,7 @@ public sealed class AspireC4DistributedApplicationBuilderExtensionsTests
 	}
 
 	[Test]
-	public async Task AddAspireC4_ContainerArgs_ExcludesHmrPortForFixedPortMode(CancellationToken cancellationToken)
+	public async Task AddAspireC4_ContainerArgs_ExcludesHMRPortForFixedPortMode(CancellationToken cancellationToken)
 	{
 		// Arrange
 		var appBuilder = CreateAppBuilder();
@@ -169,7 +169,7 @@ public sealed class AspireC4DistributedApplicationBuilderExtensionsTests
 	}
 
 	[Test]
-	public async Task AddAspireC4_ContainerArgs_ExcludesHmrPortWhenHmrDisabled(CancellationToken cancellationToken)
+	public async Task AddAspireC4_ContainerArgs_ExcludesHMRPortWhenHmrDisabled(CancellationToken cancellationToken)
 	{
 		// Arrange
 		var appBuilder = CreateAppBuilder();

@@ -77,6 +77,10 @@ ts-restore:
 ts-run:
     aspire run --apphost {{ _typescriptAppHost }}
 
+[group('typescript')]
+ts-lint:
+    cd {{ _typescriptAppHost }} && npm run lint
+
 # ── Release ───────────────────────────────────────────────────────────────────
 
 # Add a changeset description for the current changes (interactive)

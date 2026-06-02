@@ -4,11 +4,11 @@
 		<CentralPackageTransitivePinningEnabled>true</CentralPackageTransitivePinningEnabled>
 	</PropertyGroup>
 	<ItemGroup>
-		<PackageVersion Include="Aspire.Hosting" Version="13.3.5" />
-		<PackageVersion Include="Aspire.Hosting.Testing" Version="13.3.5" />
-		<PackageVersion Include="Aspire.Hosting.JavaScript" Version="13.3.5" />
-		<PackageVersion Include="Aspire.Hosting.Azure.PostgreSQL" Version="13.3.5" />
-		<PackageVersion Include="Aspire.Hosting.Azure.Redis" Version="13.3.5" />
+		<PackageVersion Include="Aspire.Hosting" Version="13.4.0" />
+		<PackageVersion Include="Aspire.Hosting.Testing" Version="13.4.0" />
+		<PackageVersion Include="Aspire.Hosting.JavaScript" Version="13.4.0" />
+		<PackageVersion Include="Aspire.Hosting.Azure.PostgreSQL" Version="13.4.0" />
+		<PackageVersion Include="Aspire.Hosting.Azure.Redis" Version="13.4.0" />
 		<PackageVersion Include="Microsoft.SourceLink.GitHub" Version="10.0.300" />
 		<!--
       Roslyn packages: PINNED to the versions that ship with .NET 8 SDK (minimum supported runtime).
@@ -30,7 +30,7 @@
 		<PackageVersion Include="Microsoft.Testing.Platform.MSBuild" Version="2.2.3" />
 		<PackageVersion Include="NSubstitute" Version="5.3.0" />
 		<PackageVersion Include="NSubstitute.Analyzers.CSharp" Version="1.0.17" />
-		<PackageVersion Include="TUnit" Version="1.45.29" />
-		<PackageVersion Include="TUnit.Aspire" Version="1.45.29" />
+		<PackageVersion Include="TUnit" Version="1.48.6" />
+		<PackageVersion Include="TUnit.Aspire" Version="1.48.6" />
 	</ItemGroup>
 </Project>

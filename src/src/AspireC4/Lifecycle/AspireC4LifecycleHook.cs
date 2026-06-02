@@ -23,7 +23,7 @@ sealed partial class AspireC4LifecycleHook(
 ) : IDistributedApplicationEventingSubscriber, IDisposable
 {
 	// Well-known Aspire resource name for the dashboard process.
-	const string AspireDashboardResourceName = "aspire-dashboard";
+	public const string AspireDashboardResourceName = "aspire-dashboard";
 
 	readonly ConcurrentDictionary<string, string?> _resourceStates = new(StringComparer.OrdinalIgnoreCase);
 

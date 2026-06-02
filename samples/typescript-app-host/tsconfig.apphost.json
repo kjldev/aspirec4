@@ -10,6 +10,11 @@
     "outDir": "./dist/apphost",
     "rootDir": "."
   },
-  "include": ["apphost.ts", ".modules/**/*.ts"],
-  "exclude": ["node_modules"]
+  "include": [
+    "apphost.mts",
+    ".aspire/modules/**/*.ts"
+  ],
+  "exclude": [
+    "node_modules"
+  ]
 }
