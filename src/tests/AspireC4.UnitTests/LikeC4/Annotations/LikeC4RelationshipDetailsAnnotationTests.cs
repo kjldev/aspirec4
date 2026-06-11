@@ -1,3 +1,5 @@
+using Aspire.Hosting.ApplicationModel;
+
 namespace Aspire.Hosting.AspireC4.LikeC4.Annotations;
 
 public sealed class LikeC4RelationshipDetailsAnnotationTests

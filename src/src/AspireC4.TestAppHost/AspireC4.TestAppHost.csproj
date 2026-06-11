@@ -1,6 +1,7 @@
 <Project Sdk="Aspire.AppHost.Sdk/13.4.3">
 	<PropertyGroup>
 		<OutputType>Exe</OutputType>
+		<NoWarn>$(NoWarn);CA2234;</NoWarn>
 	</PropertyGroup>
 
 	<ItemGroup>

@@ -11,10 +11,11 @@
 		<Company>KJL Solutions Ltd.</Company>
 		<Copyright>KJL Solutions Ltd., $(COPYRIGHT_YEAR) | All rights reserved.</Copyright>
 		<PackageIcon>likec4-logo.png</PackageIcon>
-		<RepositoryUrl>https://github.com/kjldev/aspirec4/</RepositoryUrl>
 		<PackageLicenseFile>LICENSE.md</PackageLicenseFile>
 		<PackageReadmeFile>README.md</PackageReadmeFile>
-		<PackageProjectUrl>https://kjl.dev/projects/aspirec4/</PackageProjectUrl>
+		<PackageProjectUrl>https://kjl.dev/projects/aspirec4</PackageProjectUrl>
+		<RepositoryUrl>https://github.com/kjldev/aspirec4</RepositoryUrl>
+		<RepositoryType>git</RepositoryType>
 		<PackageTags>aspire;dotnet;aspnetcore;c4;likec4;architecture;diagram;visualisation;visualization;</PackageTags>
 		<IncludeSymbols>true</IncludeSymbols>
 		<SymbolPackageFormat>snupkg</SymbolPackageFormat>

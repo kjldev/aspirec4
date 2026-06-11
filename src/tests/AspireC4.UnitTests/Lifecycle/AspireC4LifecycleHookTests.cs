@@ -1,3 +1,5 @@
+using Aspire.Hosting.ApplicationModel;
+
 namespace Aspire.Hosting.AspireC4.Lifecycle;
 
 /// <summary>

@@ -1,3 +1,4 @@
+using Aspire.Hosting.ApplicationModel;
 using Aspire.Hosting.AspireC4.LikeC4.Icons;
 using Aspire.Hosting.AspireC4.LikeC4.Models;
 

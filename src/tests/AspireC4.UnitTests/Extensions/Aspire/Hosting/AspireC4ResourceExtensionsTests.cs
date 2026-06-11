@@ -1,3 +1,4 @@
+using Aspire.Hosting.ApplicationModel;
 using Aspire.Hosting.AspireC4.ApplicationModel;
 using Microsoft.Extensions.DependencyInjection;
 
