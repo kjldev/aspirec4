@@ -2,7 +2,7 @@
 	<PropertyGroup>
 		<NamespacePrefix>Aspire.Hosting</NamespacePrefix>
 	</PropertyGroup>
-	
+
 	<Import Sdk="Purview.DotNetProjectSdk" Project="Sdk.props" />
 
 	<PropertyGroup>
