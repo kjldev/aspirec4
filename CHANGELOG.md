@@ -1,5 +1,11 @@
 # aspirec4
 
+## 13.3.2
+
+### Patch Changes
+
+- updated docs and latest aspire packages
+
 ## 13.3.0-prerelease.10
 
 ### Patch Changes
