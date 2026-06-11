@@ -211,6 +211,7 @@ public static class AspireC4DiagramOptionsExtensions
 	/// <summary>
 	/// Adds a custom relationship kind identifier to the <c>specification { }</c> block.
 	/// </summary>
+	/// <param name="options"></param>
 	/// <param name="name">The kind identifier, e.g. <c>"async"</c> or <c>"grpc"</c>.</param>
 	/// <param name="technology">Optional default technology label for all relationships of this kind ([NotNull]this AspireC4DiagramOptions options, e.g. <c>"AMQP"</c>, <c>"gRPC"</c>).</param>
 	/// <returns>The same <see cref="AspireC4DiagramOptions"/> for further configuration.</returns>
@@ -374,6 +375,7 @@ public static class AspireC4DiagramOptionsExtensions
 	/// Enables or disables the startup version check that runs when the <c>"latest"</c>
 	/// container image tag is in use.
 	/// </summary>
+	/// <param name="options"></param>
 	/// <param name="check">
 	/// <see langword="true"/> (default) to run <c>likec4 --version</c> in a throwaway
 	/// container at startup and use the resolved version to configure version-gated features;
@@ -396,6 +398,7 @@ public static class AspireC4DiagramOptionsExtensions
 	/// of image files, written to the <c>imageAliases</c> section of the generated
 	/// <c>likec4.config.json</c>.
 	/// </summary>
+	/// <param name="options"></param>
 	/// <param name="aliasKey">The alias identifier, which must start with <c>@</c>.</param>
 	/// <param name="folderPath">The absolute path to the image directory.</param>
 	/// <returns>The same <see cref="IResourceBuilder{AspireC4Resource}"/> for further configuration.</returns>
@@ -427,6 +430,7 @@ public static class AspireC4DiagramOptionsExtensions
 	/// Registers an additional folder whose <c>.c4</c> files will be included in the LikeC4
 	/// project via the <c>include.paths</c> field of the generated <c>likec4.config.json</c>.
 	/// </summary>
+	/// <param name="options"></param>
 	/// <param name="folderPath">The absolute path to a directory containing <c>.c4</c> source files.</param>
 	/// <returns>The same <see cref="IResourceBuilder{AspireC4Resource}"/> for further configuration.</returns>
 	/// <exception cref="DirectoryNotFoundException">
@@ -453,6 +457,7 @@ public static class AspireC4DiagramOptionsExtensions
 	/// Registers an additional <c>.c4</c> source file that will be copied to the LikeC4
 	/// output directory alongside the auto-generated model file.
 	/// </summary>
+	/// <param name="options"></param>
 	/// <param name="sourcePath">
 	/// The path to the source file. Relative paths are resolved from the current working directory.
 	/// </param>
@@ -477,6 +482,12 @@ public static class AspireC4DiagramOptionsExtensions
 		return options;
 	}
 
+	/// <summary>
+	/// Enables or disables the inclusion of Aspire's internal resource definitions (e.g. <c>aspire::Container</c>, <c>aspire::Database</c>) in the generated LikeC4 model.
+	/// </summary>
+	/// <param name="options"></param>
+	/// <param name="include">True to include AspireC4's internal resource definitions; false to exclude them.</param>
+	/// <returns>The same <see cref="AspireC4DiagramOptions"/> for further configuration.</returns>
 	[AspireExport]
 	public static AspireC4DiagramOptions WithIncludeAspireC4InternalResource(
 		[NotNull] this AspireC4DiagramOptions options,

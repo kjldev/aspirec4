@@ -4,11 +4,11 @@ public sealed partial class AspireC4LifecycleHookTests
 {
 	// All tests use absolute paths derived from the platform's path-root so that
 	// ComputeCommonAncestor works correctly on both Windows and Unix.
-	static readonly string s_root = Path.GetPathRoot(Path.GetFullPath("."))!
+	static readonly string Root = Path.GetPathRoot(Path.GetFullPath("."))!
 		.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
 
 	static string P(params string[] segments) =>
-		Path.Combine(s_root + Path.DirectorySeparatorChar, Path.Combine(segments));
+		Path.Combine(Root + Path.DirectorySeparatorChar, Path.Combine(segments));
 
 	[Test]
 	public async Task ComputeCommonAncestor_SinglePath_ReturnsThatPath()
@@ -110,9 +110,9 @@ public sealed partial class AspireC4LifecycleHookTests
 		// Arrange
 
 		// Act
-		Func<string> act = () => AspireC4LifecycleHook.ComputeCommonAncestor([]);
+		static string Act() => AspireC4LifecycleHook.ComputeCommonAncestor([]);
 
 		// Assert
-		await Assert.That(act).Throws<ArgumentException>();
+		await Assert.That(Act).Throws<ArgumentException>();
 	}
 }

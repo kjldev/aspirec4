@@ -137,9 +137,9 @@ public sealed class AspireC4DiagramOptions
 	/// The formatter modifies the file in-place so the on-disk copy is human-readable;
 	/// the formatted content is also what gets synced to the Docker container workspace.
 	/// Failures are silently ignored — the application always continues regardless of the result.
-	/// Set to <see langword="false"/> to skip formatting (useful if <c>npx</c> is slow or unavailable).
+	/// Set to <see langword="false"/> to skip formatting (useful if <c>npx</c> is slow or unavailable). Default is <see langword="false"/>.
 	/// </summary>
-	public bool FormatGeneratedFile { get; set; } = true;
+	public bool FormatGeneratedFile { get; set; }
 
 	/// <summary>
 	/// Maximum number of seconds to wait for an external process (<c>npx likec4 format</c>)
@@ -224,7 +224,7 @@ public sealed class AspireC4DiagramOptions
 	/// </summary>
 	/// <remarks>
 	/// Each entry must be an absolute path to an existing directory.
-	/// Use <see cref="AspireC4ResourceExtensions.WithAdditionalDSLFolder"/> to register directories;
+	/// Use <see cref="AspireC4DiagramOptionsExtensions.WithAdditionalDSLFolder"/> to register directories;
 	/// that method validates existence at call time.
 	/// In Docker container mode, each folder is bind-mounted read-only into the container at
 	/// a deterministic path under <c>/data/ext/</c>.
@@ -239,7 +239,7 @@ public sealed class AspireC4DiagramOptions
 	/// path of a directory that contains image files.
 	/// </summary>
 	/// <remarks>
-	/// Use <see cref="AspireC4ResourceExtensions.WithImageAliasFolder"/> to register aliases; that method
+	/// Use <see cref="AspireC4DiagramOptionsExtensions.WithImageAliasFolder"/> to register aliases; that method
 	/// validates that the key starts with <c>@</c> and that the directory exists at call time.
 	/// In Docker container mode, each image directory is bind-mounted read-only at a deterministic
 	/// path under <c>/data/img/</c>.

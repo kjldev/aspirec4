@@ -136,7 +136,7 @@ public sealed class AspireC4ResourceExtensionsTests
 				ServiceProvider = sp,
 			}
 		);
-		var context = new CommandLineArgsCallbackContext(args, cancellationToken)
+		var context = new CommandLineArgsCallbackContext(args, resource, cancellationToken)
 		{
 			ExecutionContext = executionContext,
 		};

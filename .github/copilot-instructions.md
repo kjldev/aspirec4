@@ -49,13 +49,13 @@ This is a .NET Aspire extension library that auto-generates live [LikeC4](https:
 
 ### Data flow
 
-1. `AddLikeC4Visualization()` (in `LikeC4VisualizationExtensions`) registers `LikeC4VisualizationLifecycleHook` and a `LikeC4ServerResource` (Docker container: `ghcr.io/likec4/likec4`).
-2. On `BeforeStartEvent`, the lifecycle hook calls `LikeC4ModelBuilder.Build()` to traverse the Aspire resource graph into a `LikeC4Model`, then `LikeC4DslGenerator.Generate()` to write a `.c4` file to disk (default: `./likec4/model.c4` relative to the AppHost).
-3. The LikeC4 container mounts the output directory via a named Docker volume (name derived from a SHA-256 hash of the AppHost path) and hot-reloads when the file changes.
+1. `AddAspireC4()` registers the lifecycle hook and a `LikeC4ServerResource` (Docker container: `ghcr.io/likec4/likec4`).
+2. On `BeforeStartEvent`, the lifecycle hook calls `LikeC4ModelBuilder.Build()` to traverse the Aspire resource graph into a `LikeC4Model`, then `LikeC4DslGenerator.Generate()` to write `./likec4/gen/model.gen.c4` by default.
+3. The LikeC4 container mounts the output directory via a named Docker volume and hot-reloads when the file changes.
 4. A debounced background watcher calls `ResourceNotificationService` to detect state changes and regenerate the file, updating element colours to reflect live resource states.
-5. **HMR relay**: On Windows (or for pre-1.56 LikeC4 images with a fixed HMR port), a TCP relay listens on port 24678 on the host and proxies connections to the dynamic Docker-allocated port.
+5. **Windows HMR note**: the HMR endpoint stays on fixed host port `24678`, and Docker Desktop uses polling-based file watching because host filesystem events do not propagate reliably into the container.
 
-**Alternative server mode**: `.WithLocalCli()` swaps the Docker container for a local Node.js CLI (npx/pnpm/yarn/bun/deno). `.WithHideFromDashboard()` removes the sidecar from the Aspire dashboard and surfaces a link+command on each `ProjectResource` instead.
+**Alternative server mode**: `.WithLocalCLI()` swaps the Docker container for a local Node.js CLI (npx/pnpm/yarn/bun/deno). `.WithHideFromDashboard()` removes the sidecar from the Aspire dashboard and surfaces a link+command on each `ProjectResource` instead.
 
 ### Exclusion logic
 
