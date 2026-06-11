@@ -5,15 +5,19 @@ namespace Aspire.Hosting.AspireC4.LikeC4.Runtime;
 
 sealed class ContainerWorkspaceOptions
 {
-	public HMRPortMode HMRPortMode { get; set; } = HMRPortMode.FixedPort;
+	/// <summary>
+	/// The LikeC4 container image tag used to determine HMR port compatibility.
+	/// Set during <c>AddAspireC4</c> from <c>AspireC4DiagramOptions.ContainerImageTag</c>.
+	/// </summary>
+	public string? ImageTag { get; set; }
 
 	/// <summary>
 	/// The resolved HMR port to use for the LikeC4 server, both as the container target port
 	/// and as the value passed via <c>--hmr-port</c> in Configurable mode.
-	/// Defaults to <see cref="LikeC4ServerResource.DefaultContainerHMRPort"/> (24678).
+	/// Defaults to <see cref="AspireC4Resource.DefaultHMRPort"/> (24678).
 	/// Set during <c>AddAspireC4</c> from <c>AspireC4DiagramOptions.HMRPort</c> if configured.
 	/// </summary>
-	public int ResolvedHMRPort { get; set; } = LikeC4ServerResource.DefaultContainerHMRPort;
+	public int ResolvedHMRPort { get; set; } = AspireC4Resource.DefaultHMRPort;
 
 	/// <summary>
 	/// The resolved local CLI runtime when <c>WithLocalCLI()</c> was called.

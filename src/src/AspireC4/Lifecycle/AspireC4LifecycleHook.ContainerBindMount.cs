@@ -8,7 +8,7 @@ sealed partial class AspireC4LifecycleHook
 	/// Computes the single common-ancestor bind mount for the container, adds it to the
 	/// <see cref="LikeC4ServerResource"/>, and appends the <c>likec4 start</c> command-line arguments.
 	/// </summary>
-	void SetupContainerBindMount(DistributedApplicationModel _, LikeC4ServerResource serverResource)
+	internal void SetupContainerBindMount(DistributedApplicationModel _, LikeC4ServerResource serverResource)
 	{
 		// Log before resolving options so that a future deadlock in this area (e.g. if the
 		// lazy IOptions.Configure callback ever blocks on the NonConcurrentSynchronizationContext)

@@ -4,11 +4,11 @@
 		<CentralPackageTransitivePinningEnabled>true</CentralPackageTransitivePinningEnabled>
 	</PropertyGroup>
 	<ItemGroup>
-		<PackageVersion Include="Aspire.Hosting" Version="13.3.5" />
-		<PackageVersion Include="Aspire.Hosting.Testing" Version="13.3.5" />
-		<PackageVersion Include="Aspire.Hosting.JavaScript" Version="13.3.5" />
-		<PackageVersion Include="Aspire.Hosting.Azure.PostgreSQL" Version="13.3.5" />
-		<PackageVersion Include="Aspire.Hosting.Azure.Redis" Version="13.3.5" />
+		<PackageVersion Include="Aspire.Hosting" Version="13.4.3" />
+		<PackageVersion Include="Aspire.Hosting.Testing" Version="13.4.3" />
+		<PackageVersion Include="Aspire.Hosting.JavaScript" Version="13.4.3" />
+		<PackageVersion Include="Aspire.Hosting.Azure.PostgreSQL" Version="13.4.3" />
+		<PackageVersion Include="Aspire.Hosting.Azure.Redis" Version="13.4.3" />
 		<PackageVersion Include="Microsoft.SourceLink.GitHub" Version="10.0.300" />
 		<!--
       Roslyn packages: PINNED to the versions that ship with .NET 8 SDK (minimum supported runtime).
@@ -16,22 +16,21 @@
       NuGet package. It is loaded by the consumer's host compiler at build time, so the Roslyn
       version it is compiled against must be <= the consumer's SDK Roslyn version.
 
-      .NET 8 SDK  => Roslyn (Microsoft.CodeAnalysis.CSharp) 4.8.0
+      .NET 8 SDK  => Roslyn (Microsoft.CodeAnalysis.CSharp) 4.13.0
       .NET 9 SDK  => Roslyn 4.12.x
       .NET 10 SDK => Roslyn 5.x
 
       Do NOT upgrade these past the .NET 8 floor unless the minimum supported .NET version is raised.
       Raising to 5.x would break any consumer still on a .NET 8 or .NET 9 SDK.
     -->
-		<PackageVersion Include="Microsoft.CodeAnalysis.Analyzers" Version="3.3.4" />
-		<PackageVersion Include="Microsoft.CodeAnalysis.CSharp" Version="4.8.0" />
-		<PackageVersion Include="Purview.Telemetry.SourceGenerator" Version="4.1.0" />
+		<PackageVersion Include="Microsoft.CodeAnalysis.CSharp" Version="[4.8.0]" />
+		<PackageVersion Include="Purview.Telemetry.SourceGenerator" Version="4.2.0" />
 		<!-- Testing Packages -->
 		<PackageVersion Include="Bogus" Version="35.6.5" />
 		<PackageVersion Include="Microsoft.Testing.Platform.MSBuild" Version="2.2.3" />
 		<PackageVersion Include="NSubstitute" Version="5.3.0" />
 		<PackageVersion Include="NSubstitute.Analyzers.CSharp" Version="1.0.17" />
-		<PackageVersion Include="TUnit" Version="1.45.29" />
-		<PackageVersion Include="TUnit.Aspire" Version="1.45.29" />
+		<PackageVersion Include="TUnit" Version="1.53.0" />
+		<PackageVersion Include="TUnit.Aspire" Version="1.53.0" />
 	</ItemGroup>
 </Project>

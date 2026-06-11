@@ -19,12 +19,11 @@ sealed partial class AspireC4LifecycleHook(
 	ResourceNotificationService resourceNotificationService,
 	ResourceLoggerService resourceLoggerService,
 	IAspireC4LifecycleHookTelemetry telemetry,
-	IConfiguration configuration,
-	TaskCompletionSource<HMRPortMode> hmrPortModeTcs
+	IConfiguration configuration
 ) : IDistributedApplicationEventingSubscriber, IDisposable
 {
 	// Well-known Aspire resource name for the dashboard process.
-	const string AspireDashboardResourceName = "aspire-dashboard";
+	public const string AspireDashboardResourceName = "aspire-dashboard";
 
 	readonly ConcurrentDictionary<string, string?> _resourceStates = new(StringComparer.OrdinalIgnoreCase);
 
@@ -93,15 +92,12 @@ sealed partial class AspireC4LifecycleHook(
 
 					// Always record the effective tag immediately so the version property is
 					// visible in the dashboard even when using "latest" or when the docker run
-					// version check is disabled. WatchProbeLogsAndCompleteAsync will
-					// overwrite this with the actual resolved version when using "latest".
+					// version check is disabled.
 					var effectiveTag = options.Value.ContainerImageTag ?? LikeC4ServerResource.DefaultTag;
 					_resolvedLikeC4Version = effectiveTag;
 
-					TryUpdateHmrPortModeFromLatestVersionAsync(evt.Model, ct);
+					await WriteC4FileAsync(evt.Model, ct);
 				}
-
-				await WriteC4FileAsync(evt.Model, ct);
 
 				// Always keep the inner server resource hidden — AspireC4Resource is the single
 				// dashboard entry. Its state, URLs, and properties are forwarded from the inner.

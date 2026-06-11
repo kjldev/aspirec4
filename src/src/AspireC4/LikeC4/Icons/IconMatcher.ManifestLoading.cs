@@ -1,6 +1,6 @@
 using System.Text.Json;
 
-namespace Aspire.Hosting.AspireC4.LikeC4;
+namespace Aspire.Hosting.AspireC4.LikeC4.Icons;
 
 static partial class IconMatcher
 {

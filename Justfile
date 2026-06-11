@@ -32,38 +32,46 @@ test-all: test test-integration test-e2e
 restore:
     dotnet tool restore
     dotnet restore {{ _solution }}
+
 # Build the entire solution
 [group('dotnet')]
 build configuration=config_default:
     dotnet build {{ _solution }} --no-restore --configuration {{ configuration }}
+
 # Cleans the solution
 [group('dotnet')]
 clean configuration=config_default:
     dotnet clean {{ _solution }} --configuration {{ configuration }}
+
 # Run all tests (unit + integration)
 [group('dotnet')]
 test configuration=config_default:
     dotnet test --solution {{ _solution }} --configuration {{ configuration }}
+
 # Run unit tests only
 [group('dotnet')]
 test-unit configuration=config_default:
     dotnet test --project src/tests/AspireC4.UnitTests --configuration {{ configuration }}
+
 # Run integration tests only
 [group('dotnet')]
 test-integration configuration=config_default:
     dotnet test --project src/tests/AspireC4.IntegrationTests --configuration {{ configuration }}
+
 # Run C# linting (CSharpier check)
 [group('dotnet')]
 lintcheck:
     dotnet csharpier check {{ _root }}
+
 # Run C# linting and auto-fix (CSharpier format)
 [group('dotnet')]
 lintfix:
     dotnet csharpier format {{ _root }}
+
 # Build and produce NuGet packages into artifacts/nuget (version read from package.json)
 [group('dotnet')]
 pack configuration=config_default: (build configuration)
-    dotnet pack {{ _solution }} --no-build --no-restore --configuration {{ configuration }} --output artifacts/nuget "/p:Version=$(node -p "require('./package.json').version")"
+    dotnet pack {{ _solution }} --configuration {{ configuration }} --output artifacts/nuget "-p:Version=$(node -p "require('./package.json').version")"
 
 # ── TypeScript AppHost --------------------------------------------------------
 
@@ -76,6 +84,10 @@ ts-restore:
 [group('typescript')]
 ts-run:
     aspire run --apphost {{ _typescriptAppHost }}
+
+[group('typescript')]
+ts-lint:
+    cd {{ _typescriptAppHost }} && npm run lint
 
 # ── Release ───────────────────────────────────────────────────────────────────
 
@@ -106,10 +118,6 @@ diagrams:
     just _run-likec4 .
 # ── Container runtime tests ───────────────────────────────────────────────────
 
-# [private]
-# _e2e_docker_image := "aspirec4-e2e-docker"
-# [private]
-# _e2e_dockerfile_docker := "tests/Docker/Dockerfile.e2e"
 [private]
 _e2e_dockerfile_cli := "tests/Docker/Dockerfile.e2e-cli"
 
@@ -120,29 +128,36 @@ test-e2e-docker configuration=config_default:
     dotnet test \
         --project src/tests/AspireC4.IntegrationTests \
         --configuration {{ configuration }}
+
 # Build and run integration tests with npx as the LikeC4 server (WithLocalCLI Npx)
 [group('container-tests')]
 test-e2e-npm configuration=config_default: (_e2e-cli-image "aspirec4-e2e-npm" "npm")
     just _e2e-cli-run aspirec4-e2e-npm {{ configuration }}
+
 # Build and run integration tests with pnpm dlx as the LikeC4 server (WithLocalCLI Pnpm)
 [group('container-tests')]
 test-e2e-pnpm configuration=config_default: (_e2e-cli-image "aspirec4-e2e-pnpm" "pnpm")
     just _e2e-cli-run aspirec4-e2e-pnpm {{ configuration }}
+
 # Build and run integration tests with yarn dlx as the LikeC4 server (WithLocalCLI Yarn)
 [group('container-tests')]
 test-e2e-yarn configuration=config_default: (_e2e-cli-image "aspirec4-e2e-yarn" "yarn")
     just _e2e-cli-run aspirec4-e2e-yarn {{ configuration }}
+
 # Build and run integration tests with bunx as the LikeC4 server (WithLocalCLI Bun)
 [group('container-tests')]
 test-e2e-bun configuration=config_default: (_e2e-cli-image "aspirec4-e2e-bun" "bun")
     just _e2e-cli-run aspirec4-e2e-bun {{ configuration }}
+
 # Build and run integration tests with deno as the LikeC4 server (WithLocalCLI Deno)
 [group('container-tests')]
 test-e2e-deno configuration=config_default: (_e2e-cli-image "aspirec4-e2e-deno" "deno")
     just _e2e-cli-run aspirec4-e2e-deno {{ configuration }}
+
 # Build and run all e2e integration tests: Docker container runtime + all local CLI runtimes
 [group('container-tests')]
 test-e2e configuration=config_default: (test-e2e-docker configuration) (test-e2e-cli configuration)
+
 # Build and run integration tests for all local CLI runtimes (npm, pnpm, yarn, bun, deno)
 [group('container-tests')]
 test-e2e-cli configuration=config_default: (test-e2e-npm configuration) (test-e2e-pnpm configuration) (test-e2e-yarn configuration) (test-e2e-bun configuration) (test-e2e-deno configuration)
@@ -151,10 +166,12 @@ test-e2e-cli configuration=config_default: (test-e2e-npm configuration) (test-e2
 [private]
 _e2e-image image dockerfile:
     docker build -f {{ dockerfile }} -t {{ image }} .
+
 # Build (or rebuild) a named local-CLI e2e image from the shared Dockerfile.e2e-cli
 [private]
 _e2e-cli-image image target:
     docker build --target {{ target }} -f {{ _e2e_dockerfile_cli }} -t {{ image }} .
+
 # Run a pre-built local-CLI e2e image.
 # Workspace is writable (needed by NuGet restore). Named volumes redirect build artefacts
 # and package manager caches so they don't accumulate on the host across runs.

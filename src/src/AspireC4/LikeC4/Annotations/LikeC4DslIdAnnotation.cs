@@ -10,14 +10,14 @@ namespace Aspire.Hosting.AspireC4.LikeC4.Annotations;
 /// (the base resource name, e.g. <c>aspirec4</c>) regardless of the <c>-server</c>
 /// suffix carried by the Aspire resource object.
 /// </remarks>
-sealed class LikeC4DslIdAnnotation : IResourceAnnotation
+sealed class LikeC4DSLIdAnnotation : IResourceAnnotation
 {
 	/// <summary>The DSL identifier to emit for this resource in the generated <c>.c4</c> file.</summary>
-	public string DslId { get; }
+	public string DSLId { get; }
 
-	public LikeC4DslIdAnnotation(string dslId)
+	public LikeC4DSLIdAnnotation(string dslId)
 	{
 		ArgumentException.ThrowIfNullOrWhiteSpace(dslId);
-		DslId = dslId;
+		DSLId = dslId;
 	}
 }

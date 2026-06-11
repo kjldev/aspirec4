@@ -2,7 +2,9 @@
 	<PropertyGroup>
 		<NamespacePrefix>Aspire.Hosting</NamespacePrefix>
 	</PropertyGroup>
-	<Import Project="../.dotnet/Directory.Build.props" />
+
+	<Import Sdk="Purview.DotNetProjectSdk" Project="Sdk.props" />
+
 	<PropertyGroup>
 		<!-- Matching the Aspire.* minimum framework -->
 		<TargetFramework>net8.0</TargetFramework>
@@ -11,6 +13,6 @@
 		<EnforceExtendedAnalyzerRules>true</EnforceExtendedAnalyzerRules>
 	</PropertyGroup>
 	<PropertyGroup Condition="'$(IsTestProject)' == 'true'">
-		<NoWarn>$(NoWarn);CA1034;</NoWarn>
+		<NoWarn>$(NoWarn);CA1034;CA2234;</NoWarn>
 	</PropertyGroup>
 </Project>

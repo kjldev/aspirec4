@@ -24,14 +24,18 @@ if (cliRuntimeStr is not null && Enum.TryParse<LocalCLIRuntime>(cliRuntimeStr, i
 	c4.WithLocalCLI(cliRuntime);
 
 // This is to configure certain parts of the AppHost and AspireC4 purely for this example test app.
-c4.ConfigureTestHost();
+c4.ConfigureAspireC4TestHost();
 
 // Azure managed resources (containers when local).
 var azureManagerRedis = builder
 	.AddAzureManagedRedis("azure-redis")
 	// Run as container when local
 	.RunAsContainer(c =>
-		c.WithRedisCommander(c => c.WithLikeC4Details("Redis Commander", summary: "Local Redis Web Interface"))
+		c.WithRedisCommander(c =>
+			c.WithLikeC4Details(options =>
+				options.WithLabel("Redis Commander").WithSummary("Local Redis Web Interface")
+			)
+		)
 	)
 	// Add LikeC4 details to the component for better visualization in the C4 model.
 	.WithLikeC4Details(opts =>
@@ -63,7 +67,11 @@ Callers must:
 var azurePostgres = builder
 	.AddAzurePostgresFlexibleServer("azure-postgres")
 	// Run as container when local
-	.RunAsContainer(c => c.WithPgWeb(pC => pC.WithLikeC4Details("PgWeb", summary: "Local Postgres Web Interface")))
+	.RunAsContainer(c =>
+		c.WithPgWeb(pC =>
+			pC.WithLikeC4Details(options => options.WithLabel("PgWeb").WithSummary("Local Postgres Web Interface"))
+		)
+	)
 	// Add LikeC4 details to the component for better visualization in the C4 model.
 	.WithLikeC4Details(static c4 =>
 		c4.WithLabel("Azure Postgres")
@@ -113,9 +121,10 @@ var localPostgres = builder
 var nodeApp = builder
 	.AddNodeApp("node-app", "../../../samples/node-app", "index.ts")
 	// Add LikeC4 details to the component for better visualization in the C4 model.
-	.WithLikeC4Details(
-		label: "Sample Node App",
-		description: "A sample Node.js application that connects to Azure Redis and Azure Postgres"
+	.WithLikeC4Details(options =>
+		options
+			.WithLabel("Sample Node App")
+			.WithDescription("A sample Node.js application that connects to Azure Redis and Azure Postgres")
 	)
 	.WithNpm(install: true)
 	.WithHttpEndpoint(env: "PORT")
@@ -153,6 +162,8 @@ localRedis.WithLikeC4Reference(
 	opts => opts.WithLabel("syncs with").WithTechnology("Redis Protocol").WithKind("RESP")
 );
 
+// Test adding some parameters , including one from configuration.
+// These should be automatically hidden from the LikeC4 model as they are not relevant to the architecture and would just add noise to the visualisation.
 var testingParam = builder
 	.AddParameter("testing-resource-parameter", "This should be hidden from the LikeC4 model", false, false)
 	.WithDescription("This should be hidden from the LikeC4 model");

@@ -1,12 +1,16 @@
 # aspirec4
 
+## 13.3.2
+
+### Patch Changes
+
+- service release - using new Project Sdk
+
 ## 13.3.1
 
 ### Patch Changes
 
-- ### Bug Fixes
-
-  - prevent sync-over-async deadlock when async configure callback is used in TypeScript AppHost ([#26](https://github.com/kjldev/aspirec4/issues/26))
+- updated docs and latest aspire packages
 
 ## 13.3.0-prerelease.10
 

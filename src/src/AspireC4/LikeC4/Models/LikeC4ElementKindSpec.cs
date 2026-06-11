@@ -4,6 +4,7 @@ namespace Aspire.Hosting.AspireC4.LikeC4.Models;
 /// Defines a custom element kind specification that is declared in the LikeC4 <c>specification</c> block
 /// with optional style, notation, and technology defaults.
 /// </summary>
+[AspireExport(ExposeProperties = true, ExposeMethods = true)]
 public sealed class LikeC4ElementKindSpec
 {
 	/// <param name="name">The kind identifier, e.g. <c>"database"</c> or <c>"queue"</c>.</param>

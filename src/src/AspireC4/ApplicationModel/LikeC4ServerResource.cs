@@ -14,26 +14,17 @@ namespace Aspire.Hosting.AspireC4.ApplicationModel;
 /// </remarks>
 public sealed class LikeC4ServerResource : ContainerResource
 {
-	/// <summary>The name of the HTTP endpoint exposed by the LikeC4 server.</summary>
-	public const string HttpEndpointName = LikeC4LocalServerResource.HttpEndpointName;
-
-	/// <summary>The name of the HTTP endpoint used by LikeC4's Vite Hot Module Replacement (HMR) channel.</summary>
-	public const string HMREndpointName = LikeC4LocalServerResource.HMREndpointName;
-
 	/// <summary>The container registry hosting the LikeC4 image.</summary>
-	internal const string DefaultRegistry = "ghcr.io";
+	public const string DefaultRegistry = "ghcr.io";
 
 	/// <summary>The container image name (without registry prefix).</summary>
-	internal const string DefaultImage = "likec4/likec4";
+	public const string DefaultImage = "likec4/likec4";
 
-	/// <summary>The default image tag used when <see cref="AspireC4DiagramOptions.ContainerImageTag"/> is not set.</summary>
-	internal const string DefaultTag = "latest";
-
-	/// <summary>The container port exposed by <c>likec4 serve</c>.</summary>
-	internal const int DefaultContainerServePort = LikeC4LocalServerResource.DefaultPort;
-
-	/// <summary>The container port used by LikeC4's Vite HMR channel.</summary>
-	internal const int DefaultContainerHMRPort = LikeC4LocalServerResource.DefaultHMRPort;
+	/// <summary>
+	/// The default image tag used when <see cref="AspireC4DiagramOptions.ContainerImageTag"/> is not set.
+	/// </summary>
+	/// <remarks>To use the dynamic HMR ports, make sure the minimum version is 1.57.</remarks>
+	public const string DefaultTag = "latest";
 
 	/// <summary>
 	/// Root path inside the container where the host directory tree is bind-mounted.

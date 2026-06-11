@@ -1,5 +1,4 @@
 ﻿using System.ComponentModel;
-using System.Diagnostics.CodeAnalysis;
 using Aspire.Hosting.AspireC4.LikeC4.Annotations;
 
 namespace Aspire.Hosting;
@@ -14,16 +13,18 @@ namespace Aspire.Hosting;
 public static class AspireC4ResourceBuilderEnvExtensions
 {
 	/// <summary>
-	/// Adds a reference to another resource with a connection string, and configures it to be a LikeC4 relationship.
+	/// Adds a reference to another resource with a connection string, and configures it to be a LikeC4 relationship,
+	/// using a fluent callback to customise the relationship.
 	/// </summary>
-	[AspireExport(
-		"withLikeC4ReferenceWithEnvironment",
-		MethodName = "withLikeC4ReferenceWithEnvironment",
-		Description = "Create a new reference, while also allowing customization of how a resource appears in the generated LikeC4 diagram.",
-		RunSyncOnBackgroundThread = true
-	)]
+	/// <param name="builder">The resource builder for the source resource.</param>
+	/// <param name="source">The target resource builder with a connection string.</param>
+	/// <param name="configure">An action that configures the relationship appearance.</param>
+	/// <param name="connectionName">The connection name passed to Aspire's <c>WithReference</c>.</param>
+	/// <param name="optional">Whether the reference is optional.</param>
+	/// <param name="skipAspireReference">When <see langword="true"/>, skips calling Aspire's <c>WithReference</c>.</param>
+	[AspireExport("withLikeC4ReferenceWithEnvironmentResource", RunSyncOnBackgroundThread = true)]
 	public static IResourceBuilder<T> WithLikeC4Reference<T>(
-		[NotNull] this IResourceBuilder<T> builder,
+		this IResourceBuilder<T> builder,
 		IResourceBuilder<IResourceWithConnectionString> source,
 		Action<LikeC4RelationshipDetailsAnnotation>? configure = null,
 		string? connectionName = null,
@@ -32,9 +33,16 @@ public static class AspireC4ResourceBuilderEnvExtensions
 	)
 		where T : IResourceWithEnvironment
 	{
+		ArgumentNullException.ThrowIfNull(builder);
+		ArgumentNullException.ThrowIfNull(source);
+
 		if (!skipAspireReference)
 			builder.WithReference(source, connectionName, optional);
 
-		return builder.WithLikeC4Reference(source, configure);
+		var annotation = new LikeC4RelationshipDetailsAnnotation(source.Resource.Name);
+		configure?.Invoke(annotation);
+		builder.Resource.Annotations.Add(annotation);
+
+		return builder;
 	}
 }

@@ -1,4 +1,6 @@
+using Aspire.Hosting.AspireC4.Lifecycle;
 using Aspire.Hosting.AspireC4.LikeC4.Annotations;
+using Aspire.Hosting.AspireC4.LikeC4.Icons;
 using Aspire.Hosting.AspireC4.LikeC4.Models;
 
 namespace Aspire.Hosting.AspireC4.LikeC4;
@@ -63,7 +65,7 @@ static class ModelBuilder
 		bool autoIconsEnabled = true,
 		AspireMetadataInclusion aspireMetadataInclusion = AspireMetadataInclusion.All,
 		NormaliseMetadataBehaviour normaliseMetadataBehaviour = NormaliseMetadataBehaviour.Normalise,
-		IReadOnlyList<IconResolver>? iconResolvers = null,
+		IReadOnlyList<Func<IconResolverContext, string?>>? iconResolvers = null,
 		bool includeDashboardLinks = true,
 		string? dashboardBaseUrl = null,
 		string? dashboardBrowserToken = null,
@@ -101,7 +103,7 @@ static class ModelBuilder
 		// container or the local-CLI executable is active).
 		Dictionary<string, string> dslIdByName = visibleResources.ToDictionary(
 			r => r.Name,
-			r => r.Annotations.OfType<LikeC4DslIdAnnotation>().LastOrDefault()?.DslId ?? r.Name,
+			r => r.Annotations.OfType<LikeC4DSLIdAnnotation>().LastOrDefault()?.DSLId ?? r.Name,
 			StringComparer.OrdinalIgnoreCase
 		);
 
@@ -214,7 +216,7 @@ static class ModelBuilder
 			}
 		}
 
-		return false;
+		return resource.Name == AspireC4LifecycleHook.AspireDashboardResourceName;
 	}
 
 	static LikeC4Element BuildElement(
@@ -225,7 +227,7 @@ static class ModelBuilder
 		AspireMetadataInclusion aspireMetadataInclusion = AspireMetadataInclusion.All,
 		NormaliseMetadataBehaviour normaliseMetadataBehaviour = NormaliseMetadataBehaviour.Normalise,
 		IResource? hiddenOriginal = null,
-		IReadOnlyList<IconResolver>? iconResolvers = null,
+		IReadOnlyList<Func<IconResolverContext, string?>>? iconResolvers = null,
 		bool includeDashboardLinks = true,
 		string? dashboardBaseUrl = null,
 		string? dashboardBrowserToken = null,
@@ -241,7 +243,7 @@ static class ModelBuilder
 		var icon = ResolveIcon(resource, details, inferredTechnology, autoIconsEnabled, hiddenOriginal, iconResolvers);
 		var kind = details?.Kind ?? InferKind(resource);
 		var parentName = resource is IResourceWithParent { Parent: { } parent }
-			? (parent.Annotations.OfType<LikeC4DslIdAnnotation>().LastOrDefault()?.DslId ?? parent.Name)
+			? (parent.Annotations.OfType<LikeC4DSLIdAnnotation>().LastOrDefault()?.DSLId ?? parent.Name)
 			: null;
 		var group = resource.Annotations.OfType<LikeC4GroupAnnotation>().LastOrDefault()?.GroupName;
 
@@ -521,7 +523,7 @@ static class ModelBuilder
 		string? inferredTechnology,
 		bool autoIconsEnabled,
 		IResource? hiddenOriginal = null,
-		IReadOnlyList<IconResolver>? iconResolvers = null
+		IReadOnlyList<Func<IconResolverContext, string?>>? iconResolvers = null
 	)
 	{
 		if (!string.IsNullOrWhiteSpace(details?.Icon))

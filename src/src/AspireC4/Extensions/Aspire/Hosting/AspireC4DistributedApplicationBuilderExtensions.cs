@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using System.Diagnostics.CodeAnalysis;
 using Aspire.Hosting.AspireC4.ApplicationModel;
 using Aspire.Hosting.AspireC4.Lifecycle;
 using Aspire.Hosting.AspireC4.LikeC4.Annotations;
@@ -35,94 +36,57 @@ public static class AspireC4DistributedApplicationBuilderExtensions
 	/// <param name="port">Optional host port to bind the LikeC4 server's HTTP endpoint to. By default, no fixed host port is used and Docker assigns a dynamic port.</param>
 	/// <param name="configure">Optional callback to configure <see cref="AspireC4DiagramOptions"/>.</param>
 	/// <returns>An <see cref="IResourceBuilder{AspireC4Resource}"/> for further configuration.</returns>
-	[AspireExport(
-		Description = "Adds a LikeC4 live architecture diagram to the Aspire application.",
-		RunSyncOnBackgroundThread = true
-	)]
+	[AspireExport(RunSyncOnBackgroundThread = true)]
 	public static IResourceBuilder<AspireC4Resource> AddAspireC4(
-		this IDistributedApplicationBuilder builder,
+		[NotNull] this IDistributedApplicationBuilder builder,
 		[ResourceName] string? name = null,
 		int? port = null,
 		Action<AspireC4DiagramOptions>? configure = null
 	)
 	{
+		AspireC4DiagramOptions options = new();
+		configure?.Invoke(options);
+
 		if (string.IsNullOrWhiteSpace(name))
 			name = AspireC4ResourceName;
 
-		ArgumentNullException.ThrowIfNull(builder);
-
-		// Eagerly evaluate `configure` here — on the background thread that AddAspireC4 runs on
-		// (this method is invoked via the ATS/TypeScript AppHost export path where
-		// RunSyncOnBackgroundThread = true ensures a background thread; C# callers invoke this
-		// directly and are not on the NonConcurrentSynchronizationContext). Doing so is safe because:
-		//   1. The NonConcurrentSynchronizationContext is not occupied at this point.
-		//   2. The ATS proxy for `configure` calls .GetAwaiter().GetResult() internally, but
-		//      the sync context is free so TypeScript's setter-call responses can be dispatched.
-		//
-		// We must NOT call configure?.Invoke(opts) inside the lazy IOptions.Configure callback
-		// below: that callback may execute on the NonConcurrentSynchronizationContext (during
-		// DistributedApplication.RunAsync), and .GetResult() would block it while waiting for
-		// TypeScript's incoming setter calls — which themselves need the same blocked context.
-		// Classic sync-over-async deadlock. See microsoft/aspire#17487.
-		//
-		// Strategy: capture a baseline (pure defaults) and invoke the callback against a second
-		// fresh instance. In the lazy IOptions pipeline, BindConfiguration applies current config
-		// (including any values added after this call returns), then ApplyDelta applies only the
-		// properties the callback explicitly changed — preserving correct config < code precedence
-		// without ever calling the ATS proxy on the sync context.
-		var callbackBaseline = new AspireC4DiagramOptions();
-		var callbackResult = new AspireC4DiagramOptions();
-		configure?.Invoke(callbackResult);
-
+		// Seed the DI-registered options from the builder-time snapshot so that all
+		// properties set via the configure callback (or a pre-built options object) are
+		// reflected when IOptions<T> is resolved at runtime. Register via the standard
+		// Options framework rather than Options.Create so that:
+		//   - Extension-method Configure<T> callbacks (WithAdditionalDSLFolder, WithImageAliasFolder,
+		//     WithHideFromDashboard, etc.) are applied on top of the snapshot.
+		//   - BindConfiguration allows appsettings / environment-variable overrides.
+		// Options.Create would register a concrete singleton wrapper as IOptions<T>, causing
+		// TryAddSingleton for OptionsManager<T> to be skipped and all Configure<T> lambdas
+		// to be silently ignored.
 		builder
 			.Services.AddOptions<AspireC4DiagramOptions>()
-			.BindConfiguration(AspireC4DiagramOptions.SectionName)
-			.Configure(opts =>
-			{
-				// Apply only the properties the callback changed relative to fresh defaults.
-				// BindConfiguration (above) has already applied current configuration values;
-				// ApplyDelta applies callback overrides on top, without invoking the ATS proxy.
-				callbackResult.ApplyDelta(callbackBaseline, opts);
-				opts.OutputDirectory = ResolveOutputDirectory(builder.AppHostDirectory, opts.OutputDirectory);
-			});
+			.Configure(options => configure?.Invoke(options))
+			.BindConfiguration(AspireC4DiagramOptions.SectionName);
 
-		var outputDir = ResolveOutputDirectory(builder.AppHostDirectory, callbackResult.OutputDirectory);
+		var outputDir = ResolveOutputDirectory(builder.AppHostDirectory, options.OutputDirectory);
 		Directory.CreateDirectory(outputDir);
-		var imageTag = callbackResult.ContainerImageTag ?? LikeC4ServerResource.DefaultTag;
-		var hmrPortMode = HMRPortCompatibility.Resolve(imageTag);
-		var resolvedHmrPort = callbackResult.HMRPort ?? LikeC4ServerResource.DefaultContainerHMRPort;
-		var defaultViewId = string.IsNullOrWhiteSpace(callbackResult.DefaultViewId)
-			? null
-			: callbackResult.DefaultViewId;
 
-		// Only create a version probe when using "latest" with version checking enabled.
-		// A pinned tag always has a known HMR mode; "latest" requires a probe to discover it.
-		var needsVersionProbe =
-			string.Equals(imageTag, LikeC4ServerResource.DefaultTag, StringComparison.OrdinalIgnoreCase)
-			&& callbackResult.CheckLatestImageVersion;
-
-		// Pre-complete the TCS when no probe is needed so WithArgs can proceed without waiting.
-		var hmrPortModeTcs = new TaskCompletionSource<HMRPortMode>(TaskCreationOptions.RunContinuationsAsynchronously);
-		if (!needsVersionProbe)
-			hmrPortModeTcs.TrySetResult(hmrPortMode);
-
-		builder.Services.AddSingleton(hmrPortModeTcs);
+		var imageTag = options.ContainerImageTag ?? LikeC4ServerResource.DefaultTag;
+		var resolvedHmrPort = options.HMRPort ?? AspireC4Resource.DefaultHMRPort;
+		var defaultViewId = string.IsNullOrWhiteSpace(options.DefaultViewId) ? null : options.DefaultViewId;
 
 		// Always use the same port on both the host and inside the container for HMR.
-		// In LikeC4 v1.57+, --hmr-port sets server.hmr.port — the port Vite BINDS to inside
+		// In LikeC4 v1.57 or higher, --hmr-port sets server.hmr.port — the port Vite BINDS to inside
 		// the container. Vite also advertises this same port to browsers as the HMR WebSocket
 		// target (no separate clientPort option exists). Docker must therefore map the SAME port
 		// on the host so the browser's connection to host:PORT reaches container:PORT correctly.
 		// Dynamic (null) host ports cannot work here: if Docker maps host:DYNAMIC → container:24678
 		// but Vite is told --hmr-port DYNAMIC it binds to container:DYNAMIC, which Docker doesn't
 		// forward, breaking the HMR WebSocket connection entirely.
-		int? hmrHostPort = callbackResult.HMRPort ?? resolvedHmrPort;
+		int? hmrHostPort = options.HMRPort ?? resolvedHmrPort;
 
 		builder
 			.Services.AddOptions<ContainerWorkspaceOptions>()
 			.Configure(runtime =>
 			{
-				runtime.HMRPortMode = hmrPortMode;
+				runtime.ImageTag = imageTag;
 				runtime.ResolvedHMRPort = resolvedHmrPort;
 			});
 
@@ -149,20 +113,20 @@ public static class AspireC4DistributedApplicationBuilderExtensions
 			.WithImagePullPolicy(ImagePullPolicy.Always)
 			.WithHttpEndpoint(
 				port: port,
-				targetPort: LikeC4ServerResource.DefaultContainerServePort,
-				name: LikeC4ServerResource.HttpEndpointName
+				targetPort: AspireC4Resource.DefaultPort,
+				name: AspireC4Resource.HttpEndpointName
 			)
 			.WithUrlForEndpoint(
-				LikeC4ServerResource.HttpEndpointName,
+				AspireC4Resource.HttpEndpointName,
 				opts =>
 				{
 					opts.DisplayText = "View LikeC4 Diagram";
 					opts.DisplayOrder = 0;
 					opts.DisplayLocation = UrlDisplayLocation.SummaryAndDetails;
-					opts.Url = defaultViewId != null ? $"/view/{defaultViewId}" : "/";
+					opts.Url = string.IsNullOrWhiteSpace(defaultViewId) ? "/" : $"/view/{defaultViewId}";
 				}
 			)
-			.WithHttpHealthCheck("/", statusCode: 200, endpointName: LikeC4LocalServerResource.HttpEndpointName)
+			.WithHttpHealthCheck("/", statusCode: 200, endpointName: AspireC4Resource.HttpEndpointName)
 			// Register container args as a callback so they are evaluated at container-start
 			// time (after BeforeStartEvent has set ContainerServePath). DisableHMR is read
 			// from AspireC4DiagramOptions so it respects configuration overrides at runtime.
@@ -174,17 +138,14 @@ public static class AspireC4DistributedApplicationBuilderExtensions
 				var diagOpts = context.ExecutionContext.ServiceProvider.GetRequiredService<
 					IOptions<AspireC4DiagramOptions>
 				>();
-				var hmrTcs = context.ExecutionContext.ServiceProvider.GetRequiredService<
-					TaskCompletionSource<HMRPortMode>
-				>();
 
 				context.Args.Add("start");
 				context.Args.Add(wsOpts.Value.ContainerServePath);
 
-				if (!string.IsNullOrWhiteSpace(callbackResult.Title))
+				if (!string.IsNullOrWhiteSpace(options.Title))
 				{
 					context.Args.Add("--title");
-					context.Args.Add($"\"{callbackResult.Title}\"");
+					context.Args.Add($"\"{options.Title}\"");
 				}
 
 				var useDot =
@@ -193,9 +154,10 @@ public static class AspireC4DistributedApplicationBuilderExtensions
 					context.Args.Add("--use-dot");
 
 				context.Args.Add("--port");
-				context.Args.Add(LikeC4ServerResource.DefaultContainerServePort);
+				context.Args.Add(AspireC4Resource.DefaultPort);
 
-				var hmrMode = await hmrTcs.Task.WaitAsync(context.CancellationToken);
+				// Determine HMR mode based on the image tag at container-start time.
+				var hmrMode = HMRPortCompatibility.Resolve(wsOpts.Value.ImageTag);
 				if (!diagOpts.Value.DisableHMR && hmrMode == HMRPortMode.Configurable)
 				{
 					// Pass the container-internal HMR port. Because host and container use the
@@ -206,25 +168,38 @@ public static class AspireC4DistributedApplicationBuilderExtensions
 
 				if (diagOpts.Value.DisableHMR)
 					context.Args.Add("--no-react-hmr");
+
+				if (!diagOpts.Value.IncludeAspireC4InternalResource)
+				{
+					// Exclude the sidecar from the architecture diagram — it is tooling, not a system element.
+					// Set a stable DSL identifier equal to the base name so that the element, when explicitly
+					// included by a consumer (e.g. via ConfigureTestHost), is always emitted as "aspirec4"
+					// regardless of the "-server" suffix on the Aspire resource name.
+					context.Resource.Annotations.Add(new ExcludeFromLikeC4Annotation());
+				}
 			})
-			// Exclude the sidecar from the architecture diagram — it is tooling, not a system element.
-			// Set a stable DSL identifier equal to the base name so that the element, when explicitly
-			// included by a consumer (e.g. via ConfigureTestHost), is always emitted as "aspirec4"
-			// regardless of the "-server" suffix on the Aspire resource name.
-			.ExcludeFromLikeC4()
-			.WithAnnotation(new LikeC4DslIdAnnotation(name))
+			.WithAnnotation(new LikeC4DSLIdAnnotation(name))
 			.ExcludeFromManifest();
 
-		if (!callbackResult.DisableHMR)
+		//if (!options.IncludeAspireC4InternalResource)
+		//{
+		//	// Exclude the sidecar from the architecture diagram — it is tooling, not a system element.
+		//	// Set a stable DSL identifier equal to the base name so that the element, when explicitly
+		//	// included by a consumer (e.g. via ConfigureTestHost), is always emitted as "aspirec4"
+		//	// regardless of the "-server" suffix on the Aspire resource name.
+		//	serverBuilder.ExcludeFromLikeC4();
+		//}
+
+		if (!options.DisableHMR)
 		{
 			serverBuilder
 				.WithHttpEndpoint(
 					port: hmrHostPort,
 					targetPort: resolvedHmrPort,
-					name: LikeC4ServerResource.HMREndpointName
+					name: AspireC4Resource.HMREndpointName
 				)
 				.WithUrlForEndpoint(
-					LikeC4ServerResource.HMREndpointName,
+					AspireC4Resource.HMREndpointName,
 					opts =>
 					{
 						opts.DisplayText = "LikeC4 HMR Endpoint";
@@ -244,36 +219,7 @@ public static class AspireC4DistributedApplicationBuilderExtensions
 			}
 		}
 
-		AspireC4Resource aspirec4Resource = new(name, outputDir)
-		{
-			InnerResource = serverResource,
-			HMRPortModeTcs = hmrPortModeTcs,
-		};
-
-		if (needsVersionProbe)
-		{
-			LikeC4VersionProbeResource probeResource = new(name + "-version-probe");
-			var probeBuilder = builder
-				.AddResource(probeResource)
-				.WithImage(LikeC4ServerResource.DefaultImage)
-				.WithImageTag(imageTag)
-				.WithImageRegistry(LikeC4ServerResource.DefaultRegistry)
-				.WithImagePullPolicy(ImagePullPolicy.Always)
-				.WithArgs("--version")
-				.ExcludeFromLikeC4()
-				.ExcludeFromManifest()
-				.WithInitialState(
-					new CustomResourceSnapshot
-					{
-						ResourceType = "Container",
-						IsHidden = true,
-						Properties = [],
-					}
-				);
-
-			serverBuilder.WaitForCompletion(probeBuilder);
-			aspirec4Resource.VersionProbeResource = probeResource;
-		}
+		AspireC4Resource aspirec4Resource = new(name, outputDir) { InnerResource = serverResource };
 
 		return builder
 			.AddResource(aspirec4Resource)

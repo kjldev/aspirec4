@@ -1,3 +1,5 @@
+using Microsoft.Extensions.DependencyInjection;
+
 namespace Aspire.Hosting.AspireC4;
 
 /// <summary>
@@ -17,11 +19,18 @@ public sealed class LikeC4PublishModeTests
 		var appHostProject = GetTestAppHostProjectPath();
 		var modelPath = Path.Combine(modelOutputDir, "publish-model.c4");
 
+		var configBuilder = OptionsNameHelper
+			.CreateOptionsBuilder<AspireC4DiagramOptions>()
+			.WithEnvironmentSeperator()
+			.WithProperty(opts => opts.OutputDirectory, modelOutputDir)
+			.WithProperty(opts => opts.FileName, "publish-model")
+			.WithProperty(opts => opts.Title, "Publish Mode Test");
+
 		try
 		{
 			Directory.CreateDirectory(outputDir);
 
-			var startInfo = new System.Diagnostics.ProcessStartInfo
+			System.Diagnostics.ProcessStartInfo startInfo = new()
 			{
 				FileName = "dotnet",
 				Arguments =
@@ -31,14 +40,9 @@ public sealed class LikeC4PublishModeTests
 				UseShellExecute = false,
 				CreateNoWindow = true,
 			};
-			startInfo.Environment["AspireC4__OutputDirectory"] = modelOutputDir;
-			startInfo.Environment["AspireC4__FileName"] = "publish-model";
-			startInfo.Environment["AspireC4__Title"] = "Publish Mode Test";
+			configBuilder.Populate(startInfo.Environment);
+
 			startInfo.Environment["Logging__LogLevel__Default"] = "Debug";
-			// Disable strict mode: the TestAppHost has intentionally undeclared values used to
-			// trigger source generator warnings. The PostConfigure in AddAspireC4 re-reads this
-			// from config after the user's configure callback, so the env var takes effect.
-			startInfo.Environment["AspireC4__Strict__Mode"] = "None";
 
 			// Act
 			using var process = new System.Diagnostics.Process { StartInfo = startInfo };

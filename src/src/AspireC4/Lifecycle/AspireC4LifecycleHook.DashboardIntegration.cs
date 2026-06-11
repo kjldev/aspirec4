@@ -93,7 +93,7 @@ sealed partial class AspireC4LifecycleHook
 					continue;
 
 				var url = notification
-					.Snapshot.Urls.FirstOrDefault(u => u.Name == LikeC4ServerResource.HttpEndpointName && !u.IsInternal)
+					.Snapshot.Urls.FirstOrDefault(u => u.Name == AspireC4Resource.HttpEndpointName && !u.IsInternal)
 					?.Url;
 
 				if (url is null)

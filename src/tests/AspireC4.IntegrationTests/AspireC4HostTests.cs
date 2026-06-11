@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Text.Json;
+using Aspire.Hosting.ApplicationModel;
 using Aspire.Hosting.AspireC4.ApplicationModel;
 using Aspire.Hosting.Testing;
 using Microsoft.Extensions.Configuration;
@@ -59,17 +60,17 @@ public sealed partial class AspireC4HostTests
 
 		var appBuilder = await DistributedApplicationTestingBuilder.CreateAsync<TestAppHostProgram>(cancellationToken);
 
+		var configOptions = OptionsNameHelper
+			.CreateOptionsBuilder<AspireC4DiagramOptions>()
+			.WithConfigurationSeperator()
+			.WithProperty(opts => opts.OutputDirectory, s_outputDir)
+			.WithProperty(opts => opts.FileName, "model.gen")
+			.WithProperty(opts => opts.Title, "Integration Test Architecture")
+			.WithProperty(opts => opts.DisableHMR, true)
+			.Build();
+
 		// Inject test-specific configuration directly into the builder's configuration system.
-		appBuilder.Configuration.AddInMemoryCollection(
-			new Dictionary<string, string?>
-			{
-				["AspireC4:OutputDirectory"] = s_outputDir,
-				["AspireC4:FileName"] = "model.gen",
-				["AspireC4:Title"] = "Integration Test Architecture",
-				// Disable HMR to avoid binding port 24678 during testing.
-				["AspireC4:DisableHMR"] = "true",
-			}
-		);
+		appBuilder.Configuration.AddInMemoryCollection(configOptions);
 
 		// PostConfigure wins over all Configure callbacks, including the default FormatGeneratedFile=true.
 		// The format step invokes `npx likec4 …` which traverses up the directory tree and scans the entire
@@ -146,7 +147,7 @@ public sealed partial class AspireC4HostTests
 		// Arrange
 		// (shared app started in ClassSetUpAsync)
 		await WaitForLikeC4ServerRunningAsync(cancellationToken);
-		using var client = s_app!.CreateHttpClient(AspireC4ServerResourceName, LikeC4ServerResource.HttpEndpointName);
+		using var client = s_app!.CreateHttpClient(AspireC4ServerResourceName, AspireC4Resource.HttpEndpointName);
 
 		// Act
 		HttpResponseMessage? response = null;
@@ -223,7 +224,7 @@ public sealed partial class AspireC4HostTests
 		// Assert
 		await Assert.That(File.Exists(configPath)).IsTrue();
 		await Assert.That(json).Contains("aspirec4");
-		await Assert.That(json).Contains("AspireC4 Test App");
+		await Assert.That(json).Contains("Integration Test Architecture");
 	}
 
 	[Test]
@@ -244,7 +245,7 @@ public sealed partial class AspireC4HostTests
 			pathsFound
 			&& paths
 				.EnumerateArray()
-				.Any(p => p.GetString()?.Contains("likec4-extensions", StringComparison.OrdinalIgnoreCase) == true);
+				.Any(p => p.GetString()?.Contains("extensions", StringComparison.OrdinalIgnoreCase) == true);
 
 		// Assert
 		await Assert.That(includeFound).IsTrue();
@@ -264,7 +265,7 @@ public sealed partial class AspireC4HostTests
 		using var doc = JsonDocument.Parse(json);
 		var root = doc.RootElement;
 		var aliasesFound = root.TryGetProperty("imageAliases", out var aliases);
-		var imageAliasFound = aliasesFound && aliases.TryGetProperty("@test-icons", out _);
+		var imageAliasFound = aliasesFound && aliases.TryGetProperty("@", out _);
 
 		// Assert
 		await Assert.That(aliasesFound).IsTrue();
@@ -278,11 +279,12 @@ public sealed partial class AspireC4HostTests
 		// (shared app started in ClassSetUpAsync)
 		var imagesDir = Path.Combine(
 			Path.GetDirectoryName(typeof(TestAppHostProgram).Assembly.Location)!,
-			"likec4-images"
+			"likec4",
+			"images"
 		);
 
 		// Act
-		var files = Directory.GetFiles(imagesDir);
+		var files = Directory.GetFiles(imagesDir, "*", SearchOption.AllDirectories);
 		var svgCount = files.Count(f => f.EndsWith(".svg", StringComparison.OrdinalIgnoreCase));
 		var pngCount = files.Count(f => f.EndsWith(".png", StringComparison.OrdinalIgnoreCase));
 
