@@ -659,3 +659,4 @@ sketch
 # End of https://www.toptal.com/developers/gitignore/api/openframeworks+visualstudio,visualstudiocode,jetbrains,react,node,astro,aspnetcore,ncrunch,go
 
 !scripts/*
+!**/Sdk/*

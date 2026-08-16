@@ -12,13 +12,13 @@ readonly struct CallSiteInfo(string value, Location location) : IEquatable<CallS
 
 	public bool Equals(CallSiteInfo other) => Value == other.Value && Location.Equals(other.Location);
 
-	public override bool Equals(object obj) => obj is CallSiteInfo c && Equals(c);
+	public override bool Equals(object? obj) => obj is CallSiteInfo c && Equals(c);
 
 	public override int GetHashCode()
 	{
 		unchecked
 		{
-			var h = Value?.GetHashCode() ?? 0;
+			var h = Value?.GetHashCode(StringComparison.Ordinal) ?? 0;
 			h = (h * 397) ^ (Location?.GetHashCode() ?? 0);
 			return h;
 		}

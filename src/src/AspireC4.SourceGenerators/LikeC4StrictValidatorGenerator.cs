@@ -35,7 +35,7 @@ namespace Aspire.Hosting.AspireC4.SourceGenerators;
 /// Both modes may be active simultaneously; allowed sets are merged.
 /// </remarks>
 [Generator]
-public sealed class LikeC4StrictValidatorGenerator : IIncrementalGenerator
+public sealed partial class LikeC4StrictValidatorGenerator : IIncrementalGenerator
 {
 	const string AttributeNamespace = "Aspire.Hosting.AspireC4";
 	const string AttributeShortName = "LikeC4RegistryAttribute";
@@ -368,7 +368,7 @@ public sealed class LikeC4StrictValidatorGenerator : IIncrementalGenerator
 		{
 			ct.ThrowIfCancellationRequested();
 
-			int? registryType = nested.Name switch
+			var registryType = nested.Name switch
 			{
 				"Tags" => RegistryTypeTag,
 				"ElementKinds" => RegistryTypeElementKind,
@@ -488,18 +488,18 @@ public sealed class LikeC4StrictValidatorGenerator : IIncrementalGenerator
 		return new ClassDefinitions(
 			displayName,
 			location,
-			ImmutableArray.CreateRange(tags),
-			ImmutableArray.CreateRange(elementKinds),
-			ImmutableArray.CreateRange(relationshipKinds),
-			ImmutableArray.CreateRange(groups),
-			ImmutableArray.CreateRange(metadataKeys),
+			[.. tags],
+			[.. elementKinds],
+			[.. relationshipKinds],
+			[.. groups],
+			[.. metadataKeys],
 			registryStrictMode,
 			ComputeTypeStrictMode(RegistryTypeTag),
 			ComputeTypeStrictMode(RegistryTypeElementKind),
 			ComputeTypeStrictMode(RegistryTypeRelationshipKind),
 			ComputeTypeStrictMode(RegistryTypeGroup),
 			ComputeTypeStrictMode(RegistryTypeMetadataKey),
-			ImmutableArray.CreateRange(duplicates)
+			[.. duplicates]
 		);
 	}
 
@@ -531,7 +531,7 @@ public sealed class LikeC4StrictValidatorGenerator : IIncrementalGenerator
 		return context
 			.SyntaxProvider.CreateSyntaxProvider(
 				predicate: (node, _) => IsTargetInvocation(node, methodName),
-				transform: (ctx, ct) => ExtractCallSiteInfo(ctx, ct)
+				transform: ExtractCallSiteInfo
 			)
 			.Where(static v => v.HasValue)
 			.Select(static (v, _) => v!.Value);
@@ -580,7 +580,7 @@ public sealed class LikeC4StrictValidatorGenerator : IIncrementalGenerator
 		if (string.IsNullOrWhiteSpace(val))
 			return (null, false);
 
-		var normalized = val!.Trim();
+		var normalized = val.Trim();
 		if (normalized.Equals("off", StringComparison.OrdinalIgnoreCase))
 			return (null, false);
 		if (normalized.Equals("suggestion", StringComparison.OrdinalIgnoreCase))
@@ -627,7 +627,7 @@ public sealed class LikeC4StrictValidatorGenerator : IIncrementalGenerator
 	{
 		if (classDefs.Length > 1)
 		{
-			for (int i = 1; i < classDefs.Length; i++)
+			for (var i = 1; i < classDefs.Length; i++)
 			{
 				ctx.ReportDiagnostic(
 					Diagnostic.Create(MultipleDefinitionsClasses, classDefs[i].Location, classDefs[i].DisplayName)
@@ -641,19 +641,19 @@ public sealed class LikeC4StrictValidatorGenerator : IIncrementalGenerator
 				ctx.ReportDiagnostic(Diagnostic.Create(DuplicateTypeDeclaration, dupLocation, typeName));
 		}
 
-		bool hasDslValidation = globalStrict.Severity is not null && dslDefs.HasAny;
-		bool hasClassValidation = classDefs.Length > 0;
+		var hasDslValidation = globalStrict.Severity is not null && dslDefs.HasAny;
+		var hasClassValidation = classDefs.Length > 0;
 
 		if (!hasDslValidation && !hasClassValidation)
 			return;
 
 		var primaryDef = hasClassValidation ? classDefs[0] : null;
-		int registryRaw = primaryDef?.RegistryStrictMode ?? ClassDefinitions.SeverityInherit;
-		bool registryExplicit = registryRaw != ClassDefinitions.SeverityInherit;
-		bool globalExplicit = globalStrict.Severity is not null;
-		bool isExplicitlyEnabled = registryExplicit || globalExplicit;
+		var registryRaw = primaryDef?.RegistryStrictMode ?? ClassDefinitions.SeverityInherit;
+		var registryExplicit = registryRaw != ClassDefinitions.SeverityInherit;
+		var globalExplicit = globalStrict.Severity is not null;
+		var isExplicitlyEnabled = registryExplicit || globalExplicit;
 
-		DiagnosticSeverity? registrySeverity = registryRaw switch
+		var registrySeverity = registryRaw switch
 		{
 			ClassDefinitions.SeverityOff => null,
 			ClassDefinitions.SeverityInherit => globalStrict.Severity
@@ -707,13 +707,13 @@ public sealed class LikeC4StrictValidatorGenerator : IIncrementalGenerator
 			: new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 #pragma warning restore IDE0028
 
-		int tagsTypeRaw = primaryDef?.TagsTypeStrictMode ?? ClassDefinitions.SeverityInherit;
-		int kindsTypeRaw = CombineRaw(
+		var tagsTypeRaw = primaryDef?.TagsTypeStrictMode ?? ClassDefinitions.SeverityInherit;
+		var kindsTypeRaw = CombineRaw(
 			primaryDef?.ElementKindsTypeStrictMode ?? ClassDefinitions.SeverityInherit,
 			primaryDef?.RelationshipKindsTypeStrictMode ?? ClassDefinitions.SeverityInherit
 		);
-		int groupsTypeRaw = primaryDef?.GroupsTypeStrictMode ?? ClassDefinitions.SeverityInherit;
-		int metadataTypeRaw = primaryDef?.MetadataKeysTypeStrictMode ?? ClassDefinitions.SeverityInherit;
+		var groupsTypeRaw = primaryDef?.GroupsTypeStrictMode ?? ClassDefinitions.SeverityInherit;
+		var metadataTypeRaw = primaryDef?.MetadataKeysTypeStrictMode ?? ClassDefinitions.SeverityInherit;
 
 		var tagsSeverity = ResolveTypeSeverity(tagsTypeRaw);
 		var kindsSeverity = ResolveTypeSeverity(kindsTypeRaw);

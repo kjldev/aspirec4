@@ -17,6 +17,7 @@ namespace Aspire.Hosting;
 public static class AspireC4DistributedApplicationBuilderExtensions
 {
 	internal const string AspireC4ResourceName = "aspirec4";
+
 	internal const string AspireC4ServerResourceSuffix = "-server";
 
 	/// <summary>

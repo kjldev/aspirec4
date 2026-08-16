@@ -84,7 +84,7 @@ static class ModelBuilder
 		// ContainerResource with the same name becomes the visible counterpart.
 		// WithReference() still annotates with the hidden Azure resource, so we need
 		// this lookup to resolve the visible surrogate by name.
-		Dictionary<string, IResource> visibleByName = visibleResources
+		var visibleByName = visibleResources
 			.GroupBy(r => r.Name, StringComparer.OrdinalIgnoreCase)
 			.ToDictionary(g => g.Key, g => g.First(), StringComparer.OrdinalIgnoreCase);
 
@@ -92,7 +92,7 @@ static class ModelBuilder
 		// than the visible surrogate (e.g. a generic ContainerResource). We pass the hidden
 		// original to the element builder so the icon matcher can use its type name to select
 		// the correct azure icon (e.g. azure:azure-database-postgre-sql-server).
-		Dictionary<string, IResource> hiddenByName = resources
+		var hiddenByName = resources
 			.Where(r => !visibleResources.Contains(r))
 			.GroupBy(r => r.Name, StringComparer.OrdinalIgnoreCase)
 			.ToDictionary(g => g.Key, g => g.First(), StringComparer.OrdinalIgnoreCase);
@@ -101,7 +101,7 @@ static class ModelBuilder
 		// under a different identifier than its Aspire resource name (used, for example, to
 		// normalise the AspireC4 sidecar to "aspirec4" regardless of whether the Docker
 		// container or the local-CLI executable is active).
-		Dictionary<string, string> dslIdByName = visibleResources.ToDictionary(
+		var dslIdByName = visibleResources.ToDictionary(
 			r => r.Name,
 			r => r.Annotations.OfType<LikeC4DSLIdAnnotation>().LastOrDefault()?.DSLId ?? r.Name,
 			StringComparer.OrdinalIgnoreCase
@@ -286,7 +286,7 @@ static class ModelBuilder
 			Icon = icon,
 			ParentName = parentName,
 			State = state,
-			Tags = [.. stateTags, .. (details?.Tags ?? [])],
+			Tags = [.. stateTags, .. details?.Tags ?? []],
 			Links = [.. userLinks, .. autoLinks],
 			Metadata = [.. userMetadata, .. autoMetadata],
 			Group = group,
@@ -313,9 +313,7 @@ static class ModelBuilder
 
 		if (inclusion.HasFlag(AspireMetadataInclusion.Metadata))
 		{
-			HashSet<string> existingKeys = existingMetadata
-				.Select(m => m.Key)
-				.ToHashSet(StringComparer.OrdinalIgnoreCase);
+			var existingKeys = existingMetadata.Select(m => m.Key).ToHashSet(StringComparer.OrdinalIgnoreCase);
 
 			if (!existingKeys.Contains("aspire-name"))
 			{
@@ -335,7 +333,7 @@ static class ModelBuilder
 
 		if (inclusion.HasFlag(AspireMetadataInclusion.Links))
 		{
-			HashSet<string> existingUris = existingLinks.Select(l => l.Uri).ToHashSet(StringComparer.OrdinalIgnoreCase);
+			var existingUris = existingLinks.Select(l => l.Uri).ToHashSet(StringComparer.OrdinalIgnoreCase);
 
 			// Prefer snapshot URLs (same source as Aspire dashboard, correct public port).
 			// Fall back to EndpointAnnotation when no snapshot data is available yet

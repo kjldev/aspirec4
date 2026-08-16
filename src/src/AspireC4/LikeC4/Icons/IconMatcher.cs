@@ -115,7 +115,7 @@ static partial class IconMatcher
 				}
 
 				// Skip candidates that don't contain any marker for this collection.
-				if (!tokens.Any(t => markers.Contains(t)))
+				if (!tokens.Any(markers.Contains))
 				{
 					continue;
 				}
@@ -166,7 +166,7 @@ static partial class IconMatcher
 			}
 
 			// Skip candidates already handled by the cloud phase.
-			if (tokens.Any(t => allCloudMarkers.Contains(t)))
+			if (tokens.Any(allCloudMarkers.Contains))
 			{
 				continue;
 			}

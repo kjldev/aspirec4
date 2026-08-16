@@ -33,18 +33,18 @@ sealed class ClassDefinitions(
 	public static readonly ClassDefinitions Empty = new(
 		string.Empty,
 		null,
-		ImmutableArray<string>.Empty,
-		ImmutableArray<string>.Empty,
-		ImmutableArray<string>.Empty,
-		ImmutableArray<string>.Empty,
-		ImmutableArray<string>.Empty,
+		[],
+		[],
+		[],
+		[],
+		[],
 		SeverityInherit,
 		SeverityInherit,
 		SeverityInherit,
 		SeverityInherit,
 		SeverityInherit,
 		SeverityInherit,
-		ImmutableArray<(string, Location?)>.Empty
+		[]
 	);
 
 	public string DisplayName { get; } = displayName;
@@ -99,7 +99,7 @@ sealed class ClassDefinitions(
 	{
 		unchecked
 		{
-			var h = DisplayName?.GetHashCode() ?? 0;
+			var h = DisplayName?.GetHashCode(StringComparison.Ordinal) ?? 0;
 			h = (h * 397) ^ Tags.Length;
 			h = (h * 397) ^ ElementKinds.Length;
 			h = (h * 397) ^ RelationshipKinds.Length;

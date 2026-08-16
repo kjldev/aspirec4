@@ -3,7 +3,7 @@ using System.Text.Json.Serialization;
 namespace Aspire.Hosting.AspireC4.LikeC4.Icons;
 
 [JsonSerializable(typeof(LikeC4IconManifest))]
-partial class IconMatcherJsonContext : JsonSerializerContext { }
+sealed partial class IconMatcherJsonContext : JsonSerializerContext { }
 
 sealed class LikeC4IconManifest
 {
