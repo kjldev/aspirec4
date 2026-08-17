@@ -2,6 +2,7 @@ using System.Collections.Immutable;
 using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using Aspire.Hosting.AspireC4.SourceGenerators.Helpers;
+using Aspire.Hosting.AspireC4.SourceGenerators.Models;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.Diagnostics;
@@ -189,13 +190,13 @@ public sealed class LikeC4StrictValidatorGeneratorTests
 
 		// Act
 		var result = RunGenerator(source, cancellationToken: cancellationToken);
-		var attributeSource = GetGeneratedSource(result, "LikeC4RegistryAttributes.g.cs");
+		var attributeSource = GetGeneratedSource(result, "LikeC4RegistryAttribute.g.cs");
 
 		// Assert
 		await Assert.That(attributeSource).IsNotNull();
 		await Assert.That(attributeSource!).Contains("LikeC4RegistryAttribute");
-		await Assert.That(attributeSource).Contains("LikeC4RegistryType");
-		await Assert.That(attributeSource).Contains("KnownTypeAttribute");
+		await Assert.That(GetGeneratedSource(result, "LikeC4RegistryType.g.cs")).IsNotNull();
+		await Assert.That(GetGeneratedSource(result, "KnownTypeAttribute.g.cs")).IsNotNull();
 	}
 
 	// -----------------------------------------------------------------------
@@ -1313,6 +1314,37 @@ public sealed class LikeC4StrictValidatorGeneratorTests
 		var result = RunGenerator(source, cancellationToken: cancellationToken);
 
 		// Assert
+		var diagnostics = GetDiagnostics(result, "ASPIREC4001");
+		await Assert.That(diagnostics.Count).IsGreaterThan(0);
+		await Assert.That(diagnostics[0].Severity).IsEqualTo(DiagnosticSeverity.Error);
+	}
+
+	[Test]
+	public async Task RunGenerator_WithNestedTypeSeverity_OverridesRegistrySeverity(CancellationToken cancellationToken)
+	{
+		const string source = """
+			using Aspire.Hosting.AspireC4;
+			namespace TestApp;
+
+			[LikeC4Registry]
+			static class MyRegistry
+			{
+			    [Severity(LikeC4Severity.Error)]
+			    public static class Tags { public const string External = "external"; }
+			}
+
+			class Setup
+			{
+			    static void Configure()
+			    {
+			        var value = new object();
+			        value.WithTag("undeclared");
+			    }
+			}
+			""";
+
+		var result = RunGenerator(source, cancellationToken: cancellationToken);
+
 		var diagnostics = GetDiagnostics(result, "ASPIREC4001");
 		await Assert.That(diagnostics.Count).IsGreaterThan(0);
 		await Assert.That(diagnostics[0].Severity).IsEqualTo(DiagnosticSeverity.Error);

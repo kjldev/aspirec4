@@ -12,12 +12,13 @@
 		<PurviewSourceGenVersion>[1.0.0-prerelease.19,)</PurviewSourceGenVersion>
 	</PropertyGroup>
 	<ItemGroup>
-		<PackageVersion Include="Aspire.Hosting" Version="13.4.3" />
-		<PackageVersion Include="Aspire.Hosting.Testing" Version="13.4.3" />
-		<PackageVersion Include="Aspire.Hosting.JavaScript" Version="13.4.3" />
-		<PackageVersion Include="Aspire.Hosting.Azure.PostgreSQL" Version="13.4.3" />
-		<PackageVersion Include="Aspire.Hosting.Azure.Redis" Version="13.4.3" />
-		<PackageVersion Include="Microsoft.SourceLink.GitHub" Version="10.0.300" />
+		<PackageVersion Include="Aspire.Hosting" Version="[13.4.3,)" />
+		<PackageVersion Include="Aspire.Hosting.AppHost" Version="[13.4.3,)" />
+		<PackageVersion Include="Aspire.Hosting.Testing" Version="[13.4.3,)" />
+		<PackageVersion Include="Aspire.Hosting.JavaScript" Version="[13.4.3,)" />
+		<PackageVersion Include="Aspire.Hosting.Azure.PostgreSQL" Version="[13.4.3,)" />
+		<PackageVersion Include="Aspire.Hosting.Azure.Redis" Version="[13.4.3,)" />
+		<PackageVersion Include="Microsoft.SourceLink.GitHub" Version="[10.0.300,)" />
 		<PackageVersion Include="Microsoft.CodeAnalysis.CSharp" Version="$(RoslynCompilerVersion)" />
 		<PackageVersion Include="Microsoft.CodeAnalysis.Analyzers" Version="$(RoslynAnalyzersVersion)" />
 		<PackageVersion Include="Purview.SourceGeneratorFramework" Version="$(PurviewSourceGenVersion)" />

@@ -1,6 +1,6 @@
 using System.Collections.Immutable;
 
-namespace Aspire.Hosting.AspireC4.SourceGenerators;
+namespace Aspire.Hosting.AspireC4.SourceGenerators.Models;
 
 /// <summary>Definitions extracted from one or more LikeC4 DSL additional files.</summary>
 readonly struct DSLDefinitions(

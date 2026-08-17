@@ -13,10 +13,10 @@ static partial class SourceGenHelper
 	)
 	{
 		var isDisabled = IncrementalPipeline.IsDisabledValueProvider(context, PropertyLibrary.DisableSourceGenerator);
-		var isStrict = IncrementalPipeline.PropertyValueProvider(
+		var strictMode = IncrementalPipeline.PropertyValueProvider(
 			context,
 			PropertyLibrary.AspireC4Strict,
-			v => bool.TryParse(v, out var result) && result
+			ParseStrictMode
 		);
 
 		var dslDefinition = context
@@ -64,7 +64,7 @@ static partial class SourceGenHelper
 					}
 			)
 			.CombineWith(isDisabled, (modelContext, isDisabled, _) => modelContext with { IsDisabled = isDisabled })
-			.CombineWith(isStrict, (modelContext, isStrict, _) => modelContext with { IsStrict = isStrict });
+			.CombineWith(strictMode, (modelContext, value, _) => modelContext with { StrictMode = value });
 
 		return model;
 	}
@@ -89,18 +89,47 @@ static partial class SourceGenHelper
 			cancellationToken
 		);
 
-		if (getRegistryMembers.IsEmpty)
-			return GeneratorResult<LikeC4RegistryTarget>.Empty;
-
 		return GeneratorResult<LikeC4RegistryTarget>.Ok(
 			new(
+				context.TargetSymbol.ToDisplayString(),
+				context.TargetSymbol.Locations.FirstOrDefault(static location => location.IsInSource),
 				defaultSeverity,
 				getRegistryMembers.ToImmutableDictionary(
 					k => k.Key,
 					v => new EquatableArray<RegistrySpecDefinition>(v.Value)
+				),
+				new EquatableArray<DuplicateRegistryType>(
+					FindDuplicateRegistryTypes((INamedTypeSymbol)context.TargetSymbol)
 				)
 			)
 		);
+	}
+
+	static StrictModeSettings ParseStrictMode(string? value)
+	{
+		if (
+			value is null
+			|| string.IsNullOrWhiteSpace(value)
+			|| value.Equals("off", StringComparison.OrdinalIgnoreCase)
+		)
+			return default;
+
+		if (value.Equals("suggestion", StringComparison.OrdinalIgnoreCase))
+			return new(DiagnosticSeverity.Info, false);
+		if (value.Equals("warning", StringComparison.OrdinalIgnoreCase))
+			return new(DiagnosticSeverity.Warning, false);
+		if (value.Equals("allincludingmetadata", StringComparison.OrdinalIgnoreCase))
+			return new(DiagnosticSeverity.Error, true);
+		if (
+			value.Equals("error", StringComparison.OrdinalIgnoreCase)
+			|| value.Equals("true", StringComparison.OrdinalIgnoreCase)
+			|| value.Equals("yes", StringComparison.OrdinalIgnoreCase)
+			|| value.Equals("all", StringComparison.OrdinalIgnoreCase)
+		)
+			return new(DiagnosticSeverity.Error, false);
+
+		// If the value is unrecognized, return default settings (off)
+		return default;
 	}
 
 	static IncrementalValuesProvider<CallSiteInfo> CreateCallSiteProvider(

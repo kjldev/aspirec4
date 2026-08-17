@@ -52,7 +52,7 @@ static class DiagnosticLibrary
 	public static readonly DiagnosticDescriptor UndeclaredGroup = new(
 		id: "ASPIREC4004",
 		title: "Undeclared LikeC4 group",
-		messageFormat: $"Group '{0}' is not declared. Add it as 'public const string' in the 'Groups' nested class of your {TypeLibrary.LikeC4RegistryAttribute} class.",
+		messageFormat: $"Group '{{0}}' is not declared. Add it as 'public const string' in the 'Groups' nested class of your {TypeLibrary.LikeC4RegistryAttribute} class.",
 		category: "AspireC4",
 		defaultSeverity: DiagnosticSeverity.Warning,
 		isEnabledByDefault: true,
@@ -93,7 +93,7 @@ static class DiagnosticLibrary
 	/// via individual <c>[KnownType]</c> attributes on constants.
 	/// </summary>
 	public static readonly DiagnosticDescriptor UnknownRegistryType = new(
-		id: "ASPIREC4006",
+		id: "ASPIREC4007",
 		title: "The declared class is an unknown registry type",
 		messageFormat: "Registry type '{0}' is an unknown name. Valid names are Tag, ElementKind, RelationshipKind, Group, or MetadataKey (with purals accepted).",
 		category: "AspireC4",

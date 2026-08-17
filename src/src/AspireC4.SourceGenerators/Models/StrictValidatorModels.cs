@@ -10,7 +10,7 @@ readonly record struct StrictValidatorGenerationModel(
 {
 	public bool IsDisabled { get; init; } = false;
 
-	public bool IsStrict { get; init; } = false;
+	public StrictModeSettings StrictMode { get; init; }
 
 	public DSLDefinitions DSLDefinition { get; init; }
 
@@ -24,9 +24,19 @@ readonly record struct StrictValidatorGenerationModel(
 }
 
 readonly record struct LikeC4RegistryTarget(
+	string DisplayName,
+	Location? Location,
 	SeverityDefinition DefaultSeverity,
-	ImmutableDictionary<RegistryTypeDefinition, EquatableArray<RegistrySpecDefinition>> Specifications
+	ImmutableDictionary<RegistryTypeDefinition, EquatableArray<RegistrySpecDefinition>> Specifications,
+	EquatableArray<DuplicateRegistryType> DuplicateRegistryTypes
 );
+
+readonly record struct DuplicateRegistryType(string TypeName, Location? Location);
+
+readonly record struct StrictModeSettings(DiagnosticSeverity? Severity, bool IncludesMetadata)
+{
+	public bool IsEnabled => Severity is not null;
+}
 
 readonly record struct RegistrySpecDefinition(
 	string SpecName,

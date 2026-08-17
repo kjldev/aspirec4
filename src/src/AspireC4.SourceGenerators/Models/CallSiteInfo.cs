@@ -1,6 +1,6 @@
 using Microsoft.CodeAnalysis;
 
-namespace Aspire.Hosting.AspireC4.SourceGenerators;
+namespace Aspire.Hosting.AspireC4.SourceGenerators.Models;
 
 /// <summary>A resolved constant string value from a call-site argument, with its source location.</summary>
 readonly struct CallSiteInfo(string value, Location location) : IEquatable<CallSiteInfo>

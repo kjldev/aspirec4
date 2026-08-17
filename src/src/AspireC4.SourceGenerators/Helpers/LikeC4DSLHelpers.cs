@@ -1,5 +1,6 @@
 using System.Collections.Immutable;
 using System.Text.RegularExpressions;
+using Aspire.Hosting.AspireC4.SourceGenerators.Models;
 using Microsoft.CodeAnalysis;
 
 namespace Aspire.Hosting.AspireC4.SourceGenerators.Helpers;

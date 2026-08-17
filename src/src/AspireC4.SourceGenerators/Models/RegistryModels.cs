@@ -16,12 +16,7 @@ readonly partial record struct KnownTypesAttributeData(
 [Generate(TypeLibrary.SeverityAttributeFullname)]
 readonly partial record struct SeverityAttributeData([Argument(IsEnum = true, Name = "severity")] string Severity);
 
-readonly record struct RegistryTypeDefinition(
-	string Name,
-	int Value,
-	SeverityDefinition DefaultSeverity,
-	EquatableArray<string> ValidTypeNames
-)
+readonly record struct RegistryTypeDefinition(string Name, int Value, EquatableArray<string> ValidTypeNames)
 {
 	public string FullName => TypeLibrary.LikeC4RegistryTypeFullname + "." + Name;
 

@@ -1,7 +1,6 @@
-using System.Collections.Immutable;
 using System.Diagnostics.CodeAnalysis;
-using System.Globalization;
 using Aspire.Hosting.AspireC4.SourceGenerators.Helpers;
+using Aspire.Hosting.AspireC4.SourceGenerators.Models;
 using Microsoft.CodeAnalysis;
 
 namespace Aspire.Hosting.AspireC4.SourceGenerators;
@@ -67,253 +66,6 @@ public sealed partial class LikeC4StrictValidatorGenerator : IIncrementalGenerat
 		);
 	}
 
-	static ClassDefinitions ExtractClassDefinitions(GeneratorAttributeSyntaxContext ctx, CancellationToken ct)
-	{
-		if (ctx.TargetSymbol is not INamedTypeSymbol classSymbol)
-			return ClassDefinitions.Empty;
-
-		var displayName = classSymbol.ToDisplayString();
-		var location = classSymbol.Locations.Length > 0 ? classSymbol.Locations[0] : null;
-
-		var tags = new List<string>();
-		var elementKinds = new List<string>();
-		var relationshipKinds = new List<string>();
-		var groups = new List<string>();
-		var metadataKeys = new List<string>();
-
-		// Track which registry types are declared via named nested classes vs [KnownType] fields.
-		var nestedClassTypes = new HashSet<int>();
-		var knownTypeFieldsByType = new Dictionary<int, List<(string Value, int StrictMode, Location? Loc)>>();
-
-		// Step 1: scan named nested classes (Tags, ElementKinds, RelationshipKinds, Groups, MetadataKeys).
-		ScanNestedClasses(
-			classSymbol,
-			tags,
-			elementKinds,
-			relationshipKinds,
-			groups,
-			metadataKeys,
-			nestedClassTypes,
-			ct
-		);
-
-		// Step 2: scan top-level fields with [KnownType] attributes.
-		ScanForKnownTypes(
-			classSymbol,
-			tags,
-			elementKinds,
-			relationshipKinds,
-			groups,
-			metadataKeys,
-			knownTypeFieldsByType,
-			ct
-		);
-
-		// Step 3: compute per-type severity from [KnownType] fields (highest severity wins; Off suppresses).
-		int ComputeTypeStrictMode(int registryType) =>
-			knownTypeFieldsByType.TryGetValue(registryType, out var fields)
-				? fields.Aggregate(ClassDefinitions.SeverityInherit, static (acc, f) => Math.Max(acc, f.StrictMode))
-				: ClassDefinitions.SeverityInherit;
-
-		// Step 4: read registry-level severity from [LikeC4Registry(Strict = ...)] (ctx.Attributes[0]).
-		var registryAttr = ctx.Attributes.Length > 0 ? ctx.Attributes[0] : null;
-		var registryStrictMode = ClassDefinitions.SeverityInherit;
-		if (registryAttr is not null)
-		{
-			var strictArg = registryAttr.NamedArguments.FirstOrDefault(static a => a.Key == "Strict");
-			if (strictArg.Value.Kind == TypedConstantKind.Enum && strictArg.Value.Value is int strictInt)
-				registryStrictMode = strictInt;
-		}
-
-		// Step 5: detect duplicate type declarations (nested class + [KnownType] for same type).
-		var duplicates = new List<(string TypeName, Location? Location)>();
-		foreach (var kvp in knownTypeFieldsByType)
-		{
-			if (!nestedClassTypes.Contains(kvp.Key))
-				continue;
-
-			var typeName = kvp.Key switch
-			{
-				RegistryTypeTag => "Tag",
-				RegistryTypeElementKind => "ElementKind",
-				RegistryTypeRelationshipKind => "RelationshipKind",
-				RegistryTypeGroup => "Group",
-				RegistryTypeMetadataKey => "MetadataKey",
-				_ => kvp.Key.ToString(CultureInfo.InvariantCulture),
-			};
-
-			duplicates.Add((typeName, kvp.Value.Count > 0 ? kvp.Value[0].Loc : null));
-		}
-
-		return new ClassDefinitions(
-			displayName,
-			location,
-			[.. tags],
-			[.. elementKinds],
-			[.. relationshipKinds],
-			[.. groups],
-			[.. metadataKeys],
-			registryStrictMode,
-			ComputeTypeStrictMode(RegistryTypeTag),
-			ComputeTypeStrictMode(RegistryTypeElementKind),
-			ComputeTypeStrictMode(RegistryTypeRelationshipKind),
-			ComputeTypeStrictMode(RegistryTypeGroup),
-			ComputeTypeStrictMode(RegistryTypeMetadataKey),
-			[.. duplicates]
-		);
-	}
-
-	//static void ScanForKnownTypes(
-	//	INamedTypeSymbol classSymbol,
-	//	List<string> tags,
-	//	List<string> elementKinds,
-	//	List<string> relationshipKinds,
-	//	List<string> groups,
-	//	List<string> metadataKeys,
-	//	Dictionary<int, List<(string Value, int StrictMode, Location? Loc)>> knownTypeFieldsByType,
-	//	CancellationToken ct
-	//)
-	//{
-	//	foreach (var member in classSymbol.GetMembers())
-	//	{
-	//		ct.ThrowIfCancellationRequested();
-
-	//		if (
-	//			member is not IFieldSymbol field
-	//			|| !field.IsConst
-	//			|| field.Type.SpecialType != SpecialType.System_String
-	//			|| field.ConstantValue is not string value
-	//		)
-	//			continue;
-
-	//		var knownTypeAttr = field
-	//			.GetAttributes()
-	//			.FirstOrDefault(static a => a.AttributeClass?.Name == "KnownTypeAttribute");
-
-	//		if (knownTypeAttr is null)
-	//			continue;
-
-	//		if (knownTypeAttr.ConstructorArguments.Length == 0)
-	//			continue;
-
-	//		var typeArg = knownTypeAttr.ConstructorArguments[0];
-	//		if (typeArg.Kind != TypedConstantKind.Enum || typeArg.Value is not int registryTypeInt)
-	//			continue;
-
-	//		var strictArg = knownTypeAttr.NamedArguments.FirstOrDefault(static a => a.Key == "Strict");
-	//		var fieldStrictMode =
-	//			strictArg.Value.Kind == TypedConstantKind.Enum && strictArg.Value.Value is int strictInt
-	//				? strictInt
-	//				: ClassDefinitions.SeverityInherit;
-
-	//		var fieldLocation = field.Locations.Length > 0 ? field.Locations[0] : null;
-
-	//		if (!knownTypeFieldsByType.TryGetValue(registryTypeInt, out var fieldList))
-	//			knownTypeFieldsByType[registryTypeInt] = fieldList = [];
-
-	//		fieldList.Add((value, fieldStrictMode, fieldLocation));
-
-	//		GetTargetList(registryTypeInt, tags, elementKinds, relationshipKinds, groups, metadataKeys)?.Add(value);
-	//	}
-	//}
-
-	//static void ScanNestedClasses(
-	//	INamedTypeSymbol classSymbol,
-	//	List<string> tags,
-	//	List<string> elementKinds,
-	//	List<string> relationshipKinds,
-	//	List<string> groups,
-	//	List<string> metadataKeys,
-	//	HashSet<int> nestedClassTypes,
-	//	CancellationToken ct
-	//)
-	//{
-	//	foreach (var nested in classSymbol.GetTypeMembers())
-	//	{
-	//		ct.ThrowIfCancellationRequested();
-
-	//		var registryType = nested.Name switch
-	//		{
-	//			"Tags" => RegistryTypeTag,
-	//			"ElementKinds" => RegistryTypeElementKind,
-	//			"RelationshipKinds" => RegistryTypeRelationshipKind,
-	//			"Groups" => RegistryTypeGroup,
-	//			"MetadataKeys" => RegistryTypeMetadataKey,
-	//			_ => (int?)null,
-	//		};
-
-	//		if (registryType is null)
-	//			continue;
-
-	//		nestedClassTypes.Add(registryType.Value);
-	//		var target = GetTargetList(
-	//			registryType.Value,
-	//			tags,
-	//			elementKinds,
-	//			relationshipKinds,
-	//			groups,
-	//			metadataKeys
-	//		)!;
-
-	//		foreach (var member in nested.GetMembers())
-	//		{
-	//			if (
-	//				member is not IFieldSymbol field
-	//				|| !field.IsConst
-	//				|| field.DeclaredAccessibility != Accessibility.Public
-	//				|| field.Type.SpecialType != SpecialType.System_String
-	//				|| field.ConstantValue is not string value
-	//			)
-	//				continue;
-
-	//			target.Add(value);
-	//		}
-	//	}
-	//}
-
-	//static List<string>? GetTargetList(
-	//	int registryType,
-	//	List<string> tags,
-	//	List<string> elementKinds,
-	//	List<string> relationshipKinds,
-	//	List<string> groups,
-	//	List<string> metadataKeys
-	//) =>
-	//	registryType switch
-	//	{
-	//		RegistryTypeTag => tags,
-	//		RegistryTypeElementKind => elementKinds,
-	//		RegistryTypeRelationshipKind => relationshipKinds,
-	//		RegistryTypeGroup => groups,
-	//		RegistryTypeMetadataKey => metadataKeys,
-	//		_ => null,
-	//	};
-
-	//static (DiagnosticSeverity? Severity, bool IncludesMetadata) ParseGlobalStrict(string? val)
-	//{
-	//	if (string.IsNullOrWhiteSpace(val))
-	//		return (null, false);
-
-	//	var normalized = val.Trim();
-	//	if (normalized.Equals("off", StringComparison.OrdinalIgnoreCase))
-	//		return (null, false);
-	//	if (normalized.Equals("suggestion", StringComparison.OrdinalIgnoreCase))
-	//		return (DiagnosticSeverity.Info, false);
-	//	if (normalized.Equals("warning", StringComparison.OrdinalIgnoreCase))
-	//		return (DiagnosticSeverity.Warning, false);
-	//	if (
-	//		normalized.Equals("error", StringComparison.OrdinalIgnoreCase)
-	//		|| normalized.Equals("true", StringComparison.OrdinalIgnoreCase)
-	//		|| normalized.Equals("yes", StringComparison.OrdinalIgnoreCase)
-	//		|| normalized.Equals("all", StringComparison.OrdinalIgnoreCase)
-	//	)
-	//		return (DiagnosticSeverity.Error, false);
-	//	if (normalized.Equals("allincludingmetadata", StringComparison.OrdinalIgnoreCase))
-	//		return (DiagnosticSeverity.Error, true);
-
-	//	return (null, false);
-	//}
-
 	static DiagnosticDescriptor WithSeverity(DiagnosticDescriptor descriptor, DiagnosticSeverity severity) =>
 		severity == descriptor.DefaultSeverity
 			? descriptor
@@ -331,157 +83,198 @@ public sealed partial class LikeC4StrictValidatorGenerator : IIncrementalGenerat
 	[SuppressMessage(
 		"Maintainability",
 		"CA1502:Avoid excessive complexity",
-		Justification = "I will come back to this at somepoint."
+		Justification = "Validation intentionally combines the supported registry and DSL severity scopes."
 	)]
-	static void Validate(
-		SourceProductionContext ctx,
-		(DiagnosticSeverity? Severity, bool IncludesMetadata) globalStrict,
-		DSLDefinitions dslDefs,
-		ImmutableArray<ClassDefinitions> classDefs,
-		ImmutableArray<CallSiteInfo> tagCallSites,
-		ImmutableArray<CallSiteInfo> kindCallSites,
-		ImmutableArray<CallSiteInfo> groupCallSites,
-		ImmutableArray<CallSiteInfo> metadataCallSites
-	)
+	static void Validate(SourceProductionContext ctx, StrictValidatorGenerationModel model)
 	{
-		if (classDefs.Length > 1)
+		foreach (var result in model.Targets)
 		{
-			for (var i = 1; i < classDefs.Length; i++)
+			foreach (var diagnostic in result.Diagnostics)
+				ctx.ReportDiagnostic(diagnostic.ToDiagnostic());
+		}
+
+		var targets = model
+			.Targets.Where(static result => result.IsSuccess)
+			.Select(static result => result.Value)
+			.ToArray();
+		if (targets.Length > 1)
+		{
+			for (var index = 1; index < targets.Length; index++)
 			{
 				ctx.ReportDiagnostic(
-					Diagnostic.Create(MultipleDefinitionsClasses, classDefs[i].Location, classDefs[i].DisplayName)
+					Diagnostic.Create(
+						DiagnosticLibrary.MultipleDefinitionsClasses,
+						targets[index].Location,
+						targets[index].DisplayName
+					)
 				);
 			}
 		}
 
-		foreach (var def in classDefs)
+		foreach (var target in targets)
 		{
-			foreach (var (typeName, dupLocation) in def.DuplicateTypeDeclarations)
-				ctx.ReportDiagnostic(Diagnostic.Create(DuplicateTypeDeclaration, dupLocation, typeName));
+			foreach (var duplicate in target.DuplicateRegistryTypes)
+			{
+				ctx.ReportDiagnostic(
+					Diagnostic.Create(
+						DiagnosticLibrary.DuplicateTypeDeclaration,
+						duplicate.Location,
+						duplicate.TypeName
+					)
+				);
+			}
 		}
 
-		var hasDslValidation = globalStrict.Severity is not null && dslDefs.HasAny;
-		var hasClassValidation = classDefs.Length > 0;
-
-		if (!hasDslValidation && !hasClassValidation)
+		var hasDslValidation = model.StrictMode.IsEnabled && model.DSLDefinition.HasAny;
+		var hasRegistryValidation = targets.Length > 0;
+		if (!hasDslValidation && !hasRegistryValidation)
 			return;
 
-		var primaryDef = hasClassValidation ? classDefs[0] : null;
-		var registryRaw = primaryDef?.RegistryStrictMode ?? ClassDefinitions.SeverityInherit;
-		var registryExplicit = registryRaw != ClassDefinitions.SeverityInherit;
-		var globalExplicit = globalStrict.Severity is not null;
-		var isExplicitlyEnabled = registryExplicit || globalExplicit;
+		var primaryTarget = hasRegistryValidation ? targets[0] : default;
+		var registrySeverityDefinition = hasRegistryValidation
+			? primaryTarget.DefaultSeverity
+			: TypeLibrary.SeverityValues.Inherit;
+		var registryExplicit = registrySeverityDefinition != TypeLibrary.SeverityValues.Inherit;
+		var isExplicitlyEnabled = registryExplicit || model.StrictMode.IsEnabled;
 
-		var registrySeverity = registryRaw switch
-		{
-			ClassDefinitions.SeverityOff => null,
-			ClassDefinitions.SeverityInherit => globalStrict.Severity
-				?? (hasClassValidation ? DiagnosticSeverity.Info : null),
-			ClassDefinitions.SeveritySuggestion => DiagnosticSeverity.Info,
-			ClassDefinitions.SeverityWarning => DiagnosticSeverity.Warning,
-			ClassDefinitions.SeverityError => DiagnosticSeverity.Error,
-			_ => null,
-		};
+		var registrySeverity = ResolveSeverity(
+			registrySeverityDefinition,
+			model.StrictMode.Severity ?? (hasRegistryValidation ? DiagnosticSeverity.Info : null)
+		);
 
-		DiagnosticSeverity? ResolveTypeSeverity(int typeRaw) =>
-			typeRaw switch
-			{
-				ClassDefinitions.SeverityOff => null,
-				ClassDefinitions.SeverityInherit => registrySeverity,
-				ClassDefinitions.SeveritySuggestion => DiagnosticSeverity.Info,
-				ClassDefinitions.SeverityWarning => DiagnosticSeverity.Warning,
-				ClassDefinitions.SeverityError => DiagnosticSeverity.Error,
-				_ => registrySeverity,
-			};
+		IEnumerable<RegistrySpecDefinition> GetSpecifications(RegistryTypeDefinition type) =>
+			hasRegistryValidation && primaryTarget.Specifications.TryGetValue(type, out var specifications)
+				? specifications
+				: [];
 
-		int CombineRaw(int a, int b) =>
-			a == ClassDefinitions.SeverityOff || b == ClassDefinitions.SeverityOff
-				? ClassDefinitions.SeverityOff
-				: Math.Max(a, b);
-
-		bool ShouldValidate(HashSet<string> allowedSet, DiagnosticSeverity? severity) =>
-			severity is not null && (allowedSet.Count > 0 || isExplicitlyEnabled);
+		var tagSpecifications = GetSpecifications(TypeLibrary.RegistryTypeValues.Tag).ToArray();
+		var elementSpecifications = GetSpecifications(TypeLibrary.RegistryTypeValues.ElementKind).ToArray();
+		var relationshipSpecifications = GetSpecifications(TypeLibrary.RegistryTypeValues.RelationshipKind).ToArray();
+		var groupSpecifications = GetSpecifications(TypeLibrary.RegistryTypeValues.Group).ToArray();
+		var metadataSpecifications = GetSpecifications(TypeLibrary.RegistryTypeValues.MetadataKey).ToArray();
 
 		var allowedTags = BuildAllowedSet(
-			hasDslValidation ? dslDefs.Tags.AsEnumerable() : [],
-			hasClassValidation ? classDefs.SelectMany(static d => d.Tags) : []
+			hasDslValidation ? model.DSLDefinition.Tags : [],
+			tagSpecifications.Select(static definition => definition.SpecName)
 		);
-
 		var allowedKinds = BuildAllowedSet(
-			hasDslValidation ? dslDefs.ElementKinds.Concat(dslDefs.RelationshipKinds) : [],
-			hasClassValidation ? classDefs.SelectMany(static d => d.ElementKinds.Concat(d.RelationshipKinds)) : []
+			hasDslValidation ? model.DSLDefinition.ElementKinds.Concat(model.DSLDefinition.RelationshipKinds) : [],
+			elementSpecifications
+				.Select(static definition => definition.SpecName)
+				.Concat(relationshipSpecifications.Select(static definition => definition.SpecName))
+		);
+		var allowedGroups = BuildAllowedSet([], groupSpecifications.Select(static definition => definition.SpecName));
+		var allowedMetadata = BuildAllowedSet(
+			[],
+			metadataSpecifications
+				.Select(static definition => definition.SpecName)
+				.Select(NormaliseMetadataKeyForComparison)
 		);
 
-#pragma warning disable IDE0028
-		var allowedGroups = hasClassValidation
-			? BuildAllowedSet([], classDefs.SelectMany(static d => d.Groups))
-			: new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-		// Normalise declared keys so that "Azure SKU", "Azure_SKU", and "azure sku" all map to
-		// the same normalised form and are matched case-insensitively at the call site.
-		var allowedMetadata = hasClassValidation
-			? BuildAllowedSet(
-				[],
-				classDefs.SelectMany(static d => d.MetadataKeys).Select(NormaliseMetadataKeyForComparison)
-			)
-			: new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-#pragma warning restore IDE0028
-
-		var tagsTypeRaw = primaryDef?.TagsTypeStrictMode ?? ClassDefinitions.SeverityInherit;
-		var kindsTypeRaw = CombineRaw(
-			primaryDef?.ElementKindsTypeStrictMode ?? ClassDefinitions.SeverityInherit,
-			primaryDef?.RelationshipKindsTypeStrictMode ?? ClassDefinitions.SeverityInherit
-		);
-		var groupsTypeRaw = primaryDef?.GroupsTypeStrictMode ?? ClassDefinitions.SeverityInherit;
-		var metadataTypeRaw = primaryDef?.MetadataKeysTypeStrictMode ?? ClassDefinitions.SeverityInherit;
-
-		var tagsSeverity = ResolveTypeSeverity(tagsTypeRaw);
-		var kindsSeverity = ResolveTypeSeverity(kindsTypeRaw);
-		var groupsSeverity = ResolveTypeSeverity(groupsTypeRaw);
+		var tagSeverity = ResolveTypeSeverity(tagSpecifications, registrySeverity);
+		var elementSeverity = GetTypeSeverityDefinition(elementSpecifications);
+		var relationshipSeverity = GetTypeSeverityDefinition(relationshipSpecifications);
+		var kindSeverity = ResolveSeverity(CombineSeverity(elementSeverity, relationshipSeverity), registrySeverity);
+		var groupSeverity = ResolveTypeSeverity(groupSpecifications, registrySeverity);
+		var metadataDefinition = GetTypeSeverityDefinition(metadataSpecifications);
 		var metadataSeverity =
-			metadataTypeRaw != ClassDefinitions.SeverityInherit
-				? ResolveTypeSeverity(metadataTypeRaw)
-				: (globalStrict.IncludesMetadata ? registrySeverity : null);
+			metadataDefinition != TypeLibrary.SeverityValues.Inherit
+				? ResolveSeverity(metadataDefinition, registrySeverity)
+				: (model.StrictMode.IncludesMetadata ? registrySeverity : null);
 
-		if (ShouldValidate(allowedTags, tagsSeverity) && tagsSeverity is { } tagSeverity)
+		ReportUndeclared(
+			ctx,
+			allowedTags,
+			tagSeverity,
+			isExplicitlyEnabled,
+			DiagnosticLibrary.UndeclaredTag,
+			model.TagCallSites,
+			static value => value
+		);
+		ReportUndeclared(
+			ctx,
+			allowedKinds,
+			kindSeverity,
+			isExplicitlyEnabled,
+			DiagnosticLibrary.UndeclaredKind,
+			model.KindCallSites,
+			static value => value
+		);
+		ReportUndeclared(
+			ctx,
+			allowedGroups,
+			groupSeverity,
+			isExplicitlyEnabled,
+			DiagnosticLibrary.UndeclaredGroup,
+			model.GroupCallSites,
+			static value => value
+		);
+		ReportUndeclared(
+			ctx,
+			allowedMetadata,
+			metadataSeverity,
+			isExplicitlyEnabled,
+			DiagnosticLibrary.UndeclaredMetadataKey,
+			model.MetadataCallSites,
+			NormaliseMetadataKeyForComparison
+		);
+	}
+
+	static SeverityDefinition GetTypeSeverityDefinition(IEnumerable<RegistrySpecDefinition> specifications)
+	{
+		var severity = TypeLibrary.SeverityValues.Inherit;
+		foreach (var specification in specifications)
 		{
-			var descriptor = WithSeverity(UndeclaredTag, tagSeverity);
-			foreach (var site in tagCallSites)
-			{
-				if (!allowedTags.Contains(site.Value))
-					ctx.ReportDiagnostic(Diagnostic.Create(descriptor, site.Location, site.Value));
-			}
+			if (specification.Severity.Value > severity.Value)
+				severity = specification.Severity;
 		}
+		return severity;
+	}
 
-		if (ShouldValidate(allowedKinds, kindsSeverity) && kindsSeverity is { } kindSeverity)
-		{
-			var descriptor = WithSeverity(UndeclaredKind, kindSeverity);
-			foreach (var site in kindCallSites)
-			{
-				if (!allowedKinds.Contains(site.Value))
-					ctx.ReportDiagnostic(Diagnostic.Create(descriptor, site.Location, site.Value));
-			}
-		}
+	static SeverityDefinition CombineSeverity(SeverityDefinition first, SeverityDefinition second) =>
+		first == TypeLibrary.SeverityValues.Off || second == TypeLibrary.SeverityValues.Off
+			? TypeLibrary.SeverityValues.Off
+			: (first.Value >= second.Value ? first : second);
 
-		if (ShouldValidate(allowedGroups, groupsSeverity) && groupsSeverity is { } groupSeverity)
-		{
-			var descriptor = WithSeverity(UndeclaredGroup, groupSeverity);
-			foreach (var site in groupCallSites)
-			{
-				if (!allowedGroups.Contains(site.Value))
-					ctx.ReportDiagnostic(Diagnostic.Create(descriptor, site.Location, site.Value));
-			}
-		}
+	static DiagnosticSeverity? ResolveTypeSeverity(
+		IEnumerable<RegistrySpecDefinition> specifications,
+		DiagnosticSeverity? inherited
+	) => ResolveSeverity(GetTypeSeverityDefinition(specifications), inherited);
 
-		if (ShouldValidate(allowedMetadata, metadataSeverity) && metadataSeverity is { } metaSeverity)
+	static DiagnosticSeverity? ResolveSeverity(SeverityDefinition severity, DiagnosticSeverity? inherited)
+	{
+		if (severity == TypeLibrary.SeverityValues.Off)
+			return null;
+		if (severity == TypeLibrary.SeverityValues.Suggestion)
+			return DiagnosticSeverity.Info;
+		if (severity == TypeLibrary.SeverityValues.Warning)
+			return DiagnosticSeverity.Warning;
+		if (severity == TypeLibrary.SeverityValues.Error)
+			return DiagnosticSeverity.Error;
+
+		// Inherit
+		return inherited;
+	}
+
+	static void ReportUndeclared(
+		SourceProductionContext ctx,
+		HashSet<string> allowed,
+		DiagnosticSeverity? severity,
+		bool isExplicitlyEnabled,
+		DiagnosticDescriptor descriptor,
+		IEnumerable<CallSiteInfo> callSites,
+		Func<string, string> normalize
+	)
+	{
+		if (severity is not { } resolvedSeverity || (allowed.Count == 0 && !isExplicitlyEnabled))
+			return;
+
+		var resolvedDescriptor = WithSeverity(descriptor, resolvedSeverity);
+		foreach (var callSite in callSites)
 		{
-			var descriptor = WithSeverity(UndeclaredMetadataKey, metaSeverity);
-			foreach (var site in metadataCallSites)
+			if (!allowed.Contains(normalize(callSite.Value)))
 			{
-				// Normalise the call-site key the same way the registry keys were normalised
-				// so that "Azure SKU", "azure sku", "AZURE_sku" all match "Azure_SKU".
-				var normalised = NormaliseMetadataKeyForComparison(site.Value);
-				if (!allowedMetadata.Contains(normalised))
-					ctx.ReportDiagnostic(Diagnostic.Create(descriptor, site.Location, site.Value));
+				ctx.ReportDiagnostic(Diagnostic.Create(resolvedDescriptor, callSite.Location, callSite.Value));
 			}
 		}
 	}

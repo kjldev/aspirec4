@@ -1,4 +1,4 @@
-﻿## Release 13.3.2
+## Release 13.3.2
 
 ### New Rules
 
@@ -10,3 +10,4 @@ ASPIREC4003 | AspireC4 | Warning | LikeC4StrictValidatorGenerator
 ASPIREC4004 | AspireC4 | Warning | LikeC4StrictValidatorGenerator
 ASPIREC4005 | AspireC4 | Warning | LikeC4StrictValidatorGenerator
 ASPIREC4006 | AspireC4 | Warning | LikeC4StrictValidatorGenerator
+ASPIREC4007 | AspireC4 | Warning | LikeC4StrictValidatorGenerator

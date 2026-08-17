@@ -46,17 +46,18 @@ static class TypeLibrary
 
 		public static SeverityDefinition Get(string name)
 		{
-			if (Inherit.FullName == name || Inherit.Name == name)
+			if (MatchesEnumMember(name, Inherit.FullName, Inherit.Name))
 				return Inherit;
-			if (Off.FullName == name || Off.Name == name)
+			if (MatchesEnumMember(name, Off.FullName, Off.Name))
 				return Off;
-			if (Suggestion.FullName == name || Suggestion.Name == name)
+			if (MatchesEnumMember(name, Suggestion.FullName, Suggestion.Name))
 				return Suggestion;
-			if (Warning.FullName == name || Warning.Name == name)
+			if (MatchesEnumMember(name, Warning.FullName, Warning.Name))
 				return Warning;
-			if (Error.FullName == name || Error.Name == name)
+			if (MatchesEnumMember(name, Error.FullName, Error.Name))
 				return Error;
 
+			// If no match is found, return an empty SeverityDefinition
 			return SeverityDefinition.Empty;
 		}
 	}
@@ -87,18 +88,31 @@ static class TypeLibrary
 
 		public static RegistryTypeDefinition GetByName(string name)
 		{
-			if (Tag.FullName == name || Tag.ValidTypeNames.Any(m => m == name))
+			if (MatchesEnumMember(name, Tag.FullName, Tag.Name) || Tag.ValidTypeNames.Any(m => m == name))
 				return Tag;
-			if (ElementKind.FullName == name || ElementKind.ValidTypeNames.Any(m => m == name))
+			if (
+				MatchesEnumMember(name, ElementKind.FullName, ElementKind.Name)
+				|| ElementKind.ValidTypeNames.Any(m => m == name)
+			)
 				return ElementKind;
-			if (RelationshipKind.FullName == name || RelationshipKind.ValidTypeNames.Any(m => m == name))
+			if (
+				MatchesEnumMember(name, RelationshipKind.FullName, RelationshipKind.Name)
+				|| RelationshipKind.ValidTypeNames.Any(m => m == name)
+			)
 				return RelationshipKind;
-			if (Group.FullName == name || Group.ValidTypeNames.Any(m => m == name))
+			if (MatchesEnumMember(name, Group.FullName, Group.Name) || Group.ValidTypeNames.Any(m => m == name))
 				return Group;
-			if (MetadataKey.FullName == name || MetadataKey.ValidTypeNames.Any(m => m == name))
+			if (
+				MatchesEnumMember(name, MetadataKey.FullName, MetadataKey.Name)
+				|| MetadataKey.ValidTypeNames.Any(m => m == name)
+			)
 				return MetadataKey;
 
+			// If no match is found, return an empty RegistryTypeDefinition
 			return RegistryTypeDefinition.Empty;
 		}
 	}
+
+	static bool MatchesEnumMember(string value, string fullName, string memberName) =>
+		value == memberName || value == fullName || value.EndsWith("." + memberName, StringComparison.Ordinal);
 }

@@ -54,6 +54,34 @@ partial class SourceGenHelper
 	static bool IsValidField(IFieldSymbol fieldSymbol) =>
 		fieldSymbol.IsConst && fieldSymbol.Type.SpecialType == SpecialType.System_String;
 
+	static ImmutableArray<DuplicateRegistryType> FindDuplicateRegistryTypes(INamedTypeSymbol targetSymbol)
+	{
+		var nestedTypes = new HashSet<RegistryTypeDefinition>(
+			targetSymbol
+				.GetTypeMembers()
+				.Select(static type => TypeLibrary.RegistryTypeValues.GetByName(type.Name))
+				.Where(static type => type != RegistryTypeDefinition.Empty)
+		);
+
+		var duplicates = ImmutableArray.CreateBuilder<DuplicateRegistryType>();
+		foreach (var field in targetSymbol.GetMembers().OfType<IFieldSymbol>().Where(IsValidField))
+		{
+			var attribute = KnownTypesAttributeData.FromAttributeData(field);
+			if (!attribute.Exists)
+				continue;
+
+			var registryType = TypeLibrary.RegistryTypeValues.GetByName(attribute.Type);
+			if (nestedTypes.Contains(registryType))
+			{
+				duplicates.Add(
+					new(registryType.Name, field.Locations.FirstOrDefault(static location => location.IsInSource))
+				);
+			}
+		}
+
+		return duplicates.ToImmutable();
+	}
+
 	static bool ScanField(
 		ISourceGenLogger? logger,
 		Dictionary<RegistryTypeDefinition, List<RegistrySpecDefinition>> registryMembers,
@@ -89,9 +117,15 @@ partial class SourceGenHelper
 	)
 	{
 		var registrationType = TypeLibrary.RegistryTypeValues.GetByName(nestedType.Name);
-		return registrationType == RegistryTypeDefinition.Empty
-			? false
-			: ScanNestedClassFields(logger, defaultSeverity, registryMembers[registrationType], nestedType);
+		if (registrationType == RegistryTypeDefinition.Empty)
+			return false;
+
+		var severityAttribute = SeverityAttributeData.FromAttributeData(nestedType);
+		var severity = severityAttribute.Exists
+			? TypeLibrary.SeverityValues.Get(severityAttribute.Severity)
+			: defaultSeverity;
+
+		return ScanNestedClassFields(logger, severity, registryMembers[registrationType], nestedType);
 	}
 
 	static bool ScanNestedClassFields(
