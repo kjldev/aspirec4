@@ -28,8 +28,8 @@ jobs:
 
       - name: CSharpier format check
         run: |
-          dotnet tool install --global csharpier --version 1.2.6
-          csharpier check src
+          dotnet tool restore
+          dotnet csharpier check src/
 
   build-and-test:
     name: Build and Test
@@ -99,4 +99,3 @@ jobs:
           if [[ "${failures}" -ne 0 ]]; then
             exit 1
           fi
-
