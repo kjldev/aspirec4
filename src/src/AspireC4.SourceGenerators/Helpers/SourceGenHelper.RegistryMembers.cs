@@ -8,6 +8,7 @@ partial class SourceGenHelper
 {
 	static ImmutableDictionary<RegistryTypeDefinition, ImmutableArray<RegistrySpecDefinition>> CollectRegistryMembers(
 		INamedTypeSymbol targetSymbol,
+		SeverityDefinition defaultSeverity,
 		ISourceGenLogger? logger,
 		CancellationToken cancellationToken
 	)
@@ -31,7 +32,7 @@ partial class SourceGenHelper
 		{
 			if (member.TypeKind == TypeKind.Class)
 			{
-				if (ScanNestedType(logger, registryMembers, member))
+				if (ScanNestedType(logger, defaultSeverity, registryMembers, member))
 					logger?.Info($"Found class: {member.Name}", 1);
 			}
 		}
@@ -68,13 +69,21 @@ partial class SourceGenHelper
 			return false;
 
 		logger?.Info($"Field is a {registrationType.Name}", 2);
-		registryMembers[registrationType].Add(new((string)fieldSymbol.ConstantValue!, fieldSymbol.Locations));
+		registryMembers[registrationType]
+			.Add(
+				new(
+					(string)fieldSymbol.ConstantValue!,
+					TypeLibrary.SeverityValues.Get(knownTypeAttribute.Strict),
+					fieldSymbol.Locations
+				)
+			);
 
 		return true;
 	}
 
 	static bool ScanNestedType(
 		ISourceGenLogger? logger,
+		SeverityDefinition defaultSeverity,
 		Dictionary<RegistryTypeDefinition, List<RegistrySpecDefinition>> registryMembers,
 		INamedTypeSymbol nestedType
 	)
@@ -82,11 +91,12 @@ partial class SourceGenHelper
 		var registrationType = TypeLibrary.RegistryTypeValues.GetByName(nestedType.Name);
 		return registrationType == RegistryTypeDefinition.Empty
 			? false
-			: ScanNestedClassFields(logger, registryMembers[registrationType], nestedType);
+			: ScanNestedClassFields(logger, defaultSeverity, registryMembers[registrationType], nestedType);
 	}
 
 	static bool ScanNestedClassFields(
 		ISourceGenLogger? logger,
+		SeverityDefinition severityDefinition,
 		List<RegistrySpecDefinition> specDefinitions,
 		INamedTypeSymbol nestedType
 	)
@@ -97,7 +107,7 @@ partial class SourceGenHelper
 		{
 			if (member is IFieldSymbol fieldSymbol && IsValidField(fieldSymbol))
 			{
-				specDefinitions.Add(new((string)fieldSymbol.ConstantValue!, fieldSymbol.Locations));
+				specDefinitions.Add(new((string)fieldSymbol.ConstantValue!, severityDefinition, fieldSymbol.Locations));
 				logger?.Info($"Found field: {member.Name}", 3);
 				foundField = true;
 			}

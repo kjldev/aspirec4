@@ -24,12 +24,11 @@ static partial class SourceGenHelper
 			.Select(static (f, ct) => LikeC4DSLHelpers.ParseDSLFile(f, ct))
 			.WithTrackingName("GetAddtionalLikeC4DSLFiles");
 
-		var generationContext = IncrementalPipeline.GenerationContextValueProvider(
+		var generationContext = IncrementalPipeline.DefaultGenerationContextValueProvider(
 			context,
 			TypeLibrary.LikeC4StrictValidatorGenerator.MetadataFullName,
 			AssemblyInfo.Version,
-			logger,
-			(compilation, settings, logger, _) => new StrictValidatorGenerationContext(compilation, settings, logger)
+			logger
 		);
 
 		var registryTargets = IncrementalPipeline.ForAttributeWithMetadataName(
@@ -80,8 +79,12 @@ static partial class SourceGenHelper
 
 		logger?.Info($"Building registry target for attribute: {context.TargetSymbol.ToDisplayString()}");
 
+		var likeC4RegistryTarget = LikeC4RegistryAttributeData.FromAttributeData(context.TargetSymbol);
+		var defaultSeverity = TypeLibrary.SeverityValues.Get(likeC4RegistryTarget.Strict);
+
 		var getRegistryMembers = CollectRegistryMembers(
 			(INamedTypeSymbol)context.TargetSymbol,
+			defaultSeverity,
 			logger,
 			cancellationToken
 		);
@@ -91,6 +94,7 @@ static partial class SourceGenHelper
 
 		return GeneratorResult<LikeC4RegistryTarget>.Ok(
 			new(
+				defaultSeverity,
 				getRegistryMembers.ToImmutableDictionary(
 					k => k.Key,
 					v => new EquatableArray<RegistrySpecDefinition>(v.Value)

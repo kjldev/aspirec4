@@ -3,14 +3,8 @@ using Microsoft.CodeAnalysis;
 
 namespace Aspire.Hosting.AspireC4.SourceGenerators.Models;
 
-sealed class StrictValidatorGenerationContext(
-	Compilation compilation,
-	GenerationSettings settings,
-	ISourceGenLogger? logger
-) : GenerationContext(compilation, settings, logger);
-
 readonly record struct StrictValidatorGenerationModel(
-	StrictValidatorGenerationContext Context,
+	GenerationContext Context,
 	EquatableArray<GeneratorResult<LikeC4RegistryTarget>> Targets
 )
 {
@@ -30,10 +24,15 @@ readonly record struct StrictValidatorGenerationModel(
 }
 
 readonly record struct LikeC4RegistryTarget(
+	SeverityDefinition DefaultSeverity,
 	ImmutableDictionary<RegistryTypeDefinition, EquatableArray<RegistrySpecDefinition>> Specifications
 );
 
-readonly record struct RegistrySpecDefinition(string SpecName, ImmutableArray<Location> Locations)
+readonly record struct RegistrySpecDefinition(
+	string SpecName,
+	SeverityDefinition Severity,
+	ImmutableArray<Location> Locations
+)
 {
 	public override int GetHashCode() => SpecName.GetHashCode();
 }

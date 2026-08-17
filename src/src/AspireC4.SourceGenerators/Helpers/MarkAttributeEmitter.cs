@@ -8,6 +8,7 @@ static class MarkAttributeEmitter
 	{
 		yield return (GetHintName(TypeLibrary.LikeC4RegistryAttribute), LikeC4RegistryAttribute());
 		yield return (GetHintName(TypeLibrary.KnownTypeAttribute), KnownTypeAttribute());
+		yield return (GetHintName(TypeLibrary.SeverityAttribute), SeverityAttribute());
 		yield return (GetHintName(TypeLibrary.LikeC4RegistryType), LikeC4RegistryType());
 		yield return (GetHintName(TypeLibrary.LikeC4Severity), LikeC4Severity());
 	}
@@ -93,6 +94,32 @@ static class MarkAttributeEmitter
 							}
 						);
 				}
+			);
+	}
+
+	static SourceText SeverityAttribute()
+	{
+		var writer = CreateCodeWriter(TypeLibrary.SeverityAttribute);
+		return writer
+			.XmlSummary(
+				$"Marks a registry class, nested under another with {CodeWriter.XmlSee(TypeLibrary.LikeC4RegistryAttribute)}, with a default {CodeWriter.XmlSee(TypeLibrary.LikeC4Severity)}."
+			)
+			.WriteAttributeClass(
+				new(TypeLibrary.SeverityAttribute)
+				{
+					PrimaryConstructorParameters = [new("severity", TypeLibrary.LikeC4Severity)],
+				},
+				AttributeTargets.Class,
+				bodyWriter =>
+					writer
+						.XmlSummary("The diagnostic severity for this registry class.")
+						.WriteProperty(
+							new("Severity", TypeLibrary.LikeC4Severity)
+							{
+								Accessibility = TypeDeclarationAccessibility.Public,
+								Initializer = "severity",
+							}
+						)
 			);
 	}
 

@@ -163,156 +163,156 @@ public sealed partial class LikeC4StrictValidatorGenerator : IIncrementalGenerat
 		);
 	}
 
-	static void ScanForKnownTypes(
-		INamedTypeSymbol classSymbol,
-		List<string> tags,
-		List<string> elementKinds,
-		List<string> relationshipKinds,
-		List<string> groups,
-		List<string> metadataKeys,
-		Dictionary<int, List<(string Value, int StrictMode, Location? Loc)>> knownTypeFieldsByType,
-		CancellationToken ct
-	)
-	{
-		foreach (var member in classSymbol.GetMembers())
-		{
-			ct.ThrowIfCancellationRequested();
+	//static void ScanForKnownTypes(
+	//	INamedTypeSymbol classSymbol,
+	//	List<string> tags,
+	//	List<string> elementKinds,
+	//	List<string> relationshipKinds,
+	//	List<string> groups,
+	//	List<string> metadataKeys,
+	//	Dictionary<int, List<(string Value, int StrictMode, Location? Loc)>> knownTypeFieldsByType,
+	//	CancellationToken ct
+	//)
+	//{
+	//	foreach (var member in classSymbol.GetMembers())
+	//	{
+	//		ct.ThrowIfCancellationRequested();
 
-			if (
-				member is not IFieldSymbol field
-				|| !field.IsConst
-				|| field.Type.SpecialType != SpecialType.System_String
-				|| field.ConstantValue is not string value
-			)
-				continue;
+	//		if (
+	//			member is not IFieldSymbol field
+	//			|| !field.IsConst
+	//			|| field.Type.SpecialType != SpecialType.System_String
+	//			|| field.ConstantValue is not string value
+	//		)
+	//			continue;
 
-			var knownTypeAttr = field
-				.GetAttributes()
-				.FirstOrDefault(static a => a.AttributeClass?.Name == "KnownTypeAttribute");
+	//		var knownTypeAttr = field
+	//			.GetAttributes()
+	//			.FirstOrDefault(static a => a.AttributeClass?.Name == "KnownTypeAttribute");
 
-			if (knownTypeAttr is null)
-				continue;
+	//		if (knownTypeAttr is null)
+	//			continue;
 
-			if (knownTypeAttr.ConstructorArguments.Length == 0)
-				continue;
+	//		if (knownTypeAttr.ConstructorArguments.Length == 0)
+	//			continue;
 
-			var typeArg = knownTypeAttr.ConstructorArguments[0];
-			if (typeArg.Kind != TypedConstantKind.Enum || typeArg.Value is not int registryTypeInt)
-				continue;
+	//		var typeArg = knownTypeAttr.ConstructorArguments[0];
+	//		if (typeArg.Kind != TypedConstantKind.Enum || typeArg.Value is not int registryTypeInt)
+	//			continue;
 
-			var strictArg = knownTypeAttr.NamedArguments.FirstOrDefault(static a => a.Key == "Strict");
-			var fieldStrictMode =
-				strictArg.Value.Kind == TypedConstantKind.Enum && strictArg.Value.Value is int strictInt
-					? strictInt
-					: ClassDefinitions.SeverityInherit;
+	//		var strictArg = knownTypeAttr.NamedArguments.FirstOrDefault(static a => a.Key == "Strict");
+	//		var fieldStrictMode =
+	//			strictArg.Value.Kind == TypedConstantKind.Enum && strictArg.Value.Value is int strictInt
+	//				? strictInt
+	//				: ClassDefinitions.SeverityInherit;
 
-			var fieldLocation = field.Locations.Length > 0 ? field.Locations[0] : null;
+	//		var fieldLocation = field.Locations.Length > 0 ? field.Locations[0] : null;
 
-			if (!knownTypeFieldsByType.TryGetValue(registryTypeInt, out var fieldList))
-				knownTypeFieldsByType[registryTypeInt] = fieldList = [];
+	//		if (!knownTypeFieldsByType.TryGetValue(registryTypeInt, out var fieldList))
+	//			knownTypeFieldsByType[registryTypeInt] = fieldList = [];
 
-			fieldList.Add((value, fieldStrictMode, fieldLocation));
+	//		fieldList.Add((value, fieldStrictMode, fieldLocation));
 
-			GetTargetList(registryTypeInt, tags, elementKinds, relationshipKinds, groups, metadataKeys)?.Add(value);
-		}
-	}
+	//		GetTargetList(registryTypeInt, tags, elementKinds, relationshipKinds, groups, metadataKeys)?.Add(value);
+	//	}
+	//}
 
-	static void ScanNestedClasses(
-		INamedTypeSymbol classSymbol,
-		List<string> tags,
-		List<string> elementKinds,
-		List<string> relationshipKinds,
-		List<string> groups,
-		List<string> metadataKeys,
-		HashSet<int> nestedClassTypes,
-		CancellationToken ct
-	)
-	{
-		foreach (var nested in classSymbol.GetTypeMembers())
-		{
-			ct.ThrowIfCancellationRequested();
+	//static void ScanNestedClasses(
+	//	INamedTypeSymbol classSymbol,
+	//	List<string> tags,
+	//	List<string> elementKinds,
+	//	List<string> relationshipKinds,
+	//	List<string> groups,
+	//	List<string> metadataKeys,
+	//	HashSet<int> nestedClassTypes,
+	//	CancellationToken ct
+	//)
+	//{
+	//	foreach (var nested in classSymbol.GetTypeMembers())
+	//	{
+	//		ct.ThrowIfCancellationRequested();
 
-			var registryType = nested.Name switch
-			{
-				"Tags" => RegistryTypeTag,
-				"ElementKinds" => RegistryTypeElementKind,
-				"RelationshipKinds" => RegistryTypeRelationshipKind,
-				"Groups" => RegistryTypeGroup,
-				"MetadataKeys" => RegistryTypeMetadataKey,
-				_ => (int?)null,
-			};
+	//		var registryType = nested.Name switch
+	//		{
+	//			"Tags" => RegistryTypeTag,
+	//			"ElementKinds" => RegistryTypeElementKind,
+	//			"RelationshipKinds" => RegistryTypeRelationshipKind,
+	//			"Groups" => RegistryTypeGroup,
+	//			"MetadataKeys" => RegistryTypeMetadataKey,
+	//			_ => (int?)null,
+	//		};
 
-			if (registryType is null)
-				continue;
+	//		if (registryType is null)
+	//			continue;
 
-			nestedClassTypes.Add(registryType.Value);
-			var target = GetTargetList(
-				registryType.Value,
-				tags,
-				elementKinds,
-				relationshipKinds,
-				groups,
-				metadataKeys
-			)!;
+	//		nestedClassTypes.Add(registryType.Value);
+	//		var target = GetTargetList(
+	//			registryType.Value,
+	//			tags,
+	//			elementKinds,
+	//			relationshipKinds,
+	//			groups,
+	//			metadataKeys
+	//		)!;
 
-			foreach (var member in nested.GetMembers())
-			{
-				if (
-					member is not IFieldSymbol field
-					|| !field.IsConst
-					|| field.DeclaredAccessibility != Accessibility.Public
-					|| field.Type.SpecialType != SpecialType.System_String
-					|| field.ConstantValue is not string value
-				)
-					continue;
+	//		foreach (var member in nested.GetMembers())
+	//		{
+	//			if (
+	//				member is not IFieldSymbol field
+	//				|| !field.IsConst
+	//				|| field.DeclaredAccessibility != Accessibility.Public
+	//				|| field.Type.SpecialType != SpecialType.System_String
+	//				|| field.ConstantValue is not string value
+	//			)
+	//				continue;
 
-				target.Add(value);
-			}
-		}
-	}
+	//			target.Add(value);
+	//		}
+	//	}
+	//}
 
-	static List<string>? GetTargetList(
-		int registryType,
-		List<string> tags,
-		List<string> elementKinds,
-		List<string> relationshipKinds,
-		List<string> groups,
-		List<string> metadataKeys
-	) =>
-		registryType switch
-		{
-			RegistryTypeTag => tags,
-			RegistryTypeElementKind => elementKinds,
-			RegistryTypeRelationshipKind => relationshipKinds,
-			RegistryTypeGroup => groups,
-			RegistryTypeMetadataKey => metadataKeys,
-			_ => null,
-		};
+	//static List<string>? GetTargetList(
+	//	int registryType,
+	//	List<string> tags,
+	//	List<string> elementKinds,
+	//	List<string> relationshipKinds,
+	//	List<string> groups,
+	//	List<string> metadataKeys
+	//) =>
+	//	registryType switch
+	//	{
+	//		RegistryTypeTag => tags,
+	//		RegistryTypeElementKind => elementKinds,
+	//		RegistryTypeRelationshipKind => relationshipKinds,
+	//		RegistryTypeGroup => groups,
+	//		RegistryTypeMetadataKey => metadataKeys,
+	//		_ => null,
+	//	};
 
-	static (DiagnosticSeverity? Severity, bool IncludesMetadata) ParseGlobalStrict(string? val)
-	{
-		if (string.IsNullOrWhiteSpace(val))
-			return (null, false);
+	//static (DiagnosticSeverity? Severity, bool IncludesMetadata) ParseGlobalStrict(string? val)
+	//{
+	//	if (string.IsNullOrWhiteSpace(val))
+	//		return (null, false);
 
-		var normalized = val.Trim();
-		if (normalized.Equals("off", StringComparison.OrdinalIgnoreCase))
-			return (null, false);
-		if (normalized.Equals("suggestion", StringComparison.OrdinalIgnoreCase))
-			return (DiagnosticSeverity.Info, false);
-		if (normalized.Equals("warning", StringComparison.OrdinalIgnoreCase))
-			return (DiagnosticSeverity.Warning, false);
-		if (
-			normalized.Equals("error", StringComparison.OrdinalIgnoreCase)
-			|| normalized.Equals("true", StringComparison.OrdinalIgnoreCase)
-			|| normalized.Equals("yes", StringComparison.OrdinalIgnoreCase)
-			|| normalized.Equals("all", StringComparison.OrdinalIgnoreCase)
-		)
-			return (DiagnosticSeverity.Error, false);
-		if (normalized.Equals("allincludingmetadata", StringComparison.OrdinalIgnoreCase))
-			return (DiagnosticSeverity.Error, true);
+	//	var normalized = val.Trim();
+	//	if (normalized.Equals("off", StringComparison.OrdinalIgnoreCase))
+	//		return (null, false);
+	//	if (normalized.Equals("suggestion", StringComparison.OrdinalIgnoreCase))
+	//		return (DiagnosticSeverity.Info, false);
+	//	if (normalized.Equals("warning", StringComparison.OrdinalIgnoreCase))
+	//		return (DiagnosticSeverity.Warning, false);
+	//	if (
+	//		normalized.Equals("error", StringComparison.OrdinalIgnoreCase)
+	//		|| normalized.Equals("true", StringComparison.OrdinalIgnoreCase)
+	//		|| normalized.Equals("yes", StringComparison.OrdinalIgnoreCase)
+	//		|| normalized.Equals("all", StringComparison.OrdinalIgnoreCase)
+	//	)
+	//		return (DiagnosticSeverity.Error, false);
+	//	if (normalized.Equals("allincludingmetadata", StringComparison.OrdinalIgnoreCase))
+	//		return (DiagnosticSeverity.Error, true);
 
-		return (null, false);
-	}
+	//	return (null, false);
+	//}
 
 	static DiagnosticDescriptor WithSeverity(DiagnosticDescriptor descriptor, DiagnosticSeverity severity) =>
 		severity == descriptor.DefaultSeverity

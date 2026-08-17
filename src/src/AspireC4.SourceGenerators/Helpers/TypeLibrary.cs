@@ -7,14 +7,21 @@ static class TypeLibrary
 	public const string AspireC4Namespace = "Aspire.Hosting.AspireC4";
 
 	public const string LikeC4RegistryAttributeFullname = AspireC4Namespace + "." + nameof(LikeC4RegistryAttribute);
+
 	public const string KnownTypeAttributeFullname = AspireC4Namespace + "." + nameof(KnownTypeAttribute);
 
+	public const string SeverityAttributeFullname = AspireC4Namespace + "." + nameof(SeverityAttribute);
+
 	public const string LikeC4RegistryTypeFullname = AspireC4Namespace + "." + nameof(LikeC4RegistryType);
+
+	public const string LikeC4SeverityFullname = AspireC4Namespace + "." + nameof(LikeC4Severity);
 
 	public static readonly TypeValueObject LikeC4RegistryAttribute = new(
 		nameof(LikeC4RegistryAttribute),
 		AspireC4Namespace
 	);
+
+	public static readonly TypeValueObject SeverityAttribute = new(nameof(SeverityAttribute), AspireC4Namespace);
 
 	public static readonly TypeValueObject KnownTypeAttribute = new(nameof(KnownTypeAttribute), AspireC4Namespace);
 
@@ -36,30 +43,46 @@ static class TypeLibrary
 		public static readonly SeverityDefinition Warning = new(nameof(Warning), 3);
 
 		public static readonly SeverityDefinition Error = new(nameof(Error), 4);
+
+		public static SeverityDefinition Get(string name)
+		{
+			if (Inherit.FullName == name || Inherit.Name == name)
+				return Inherit;
+			if (Off.FullName == name || Off.Name == name)
+				return Off;
+			if (Suggestion.FullName == name || Suggestion.Name == name)
+				return Suggestion;
+			if (Warning.FullName == name || Warning.Name == name)
+				return Warning;
+			if (Error.FullName == name || Error.Name == name)
+				return Error;
+
+			return SeverityDefinition.Empty;
+		}
 	}
 
 	public static class RegistryTypeValues
 	{
-		public static readonly RegistryTypeDefinition Tag = new(nameof(Tag), 0, ["Tag", "Tags"]);
+		public static readonly RegistryTypeDefinition Tag = new(nameof(Tag), 0, new(["Tag", "Tags"]));
 
 		public static readonly RegistryTypeDefinition ElementKind = new(
 			nameof(ElementKind),
 			1,
-			["ElementKind", "ElementKinds", "Element", "Elements"]
+			new(["ElementKind", "ElementKinds", "Element", "Elements"])
 		);
 
 		public static readonly RegistryTypeDefinition RelationshipKind = new(
 			nameof(RelationshipKind),
 			2,
-			["RelationshipKind", "RelationshipKinds", "Relationship", "Relationships"]
+			new(["RelationshipKind", "RelationshipKinds", "Relationship", "Relationships"])
 		);
 
-		public static readonly RegistryTypeDefinition Group = new(nameof(Group), 3, ["Group", "Groups"]);
+		public static readonly RegistryTypeDefinition Group = new(nameof(Group), 3, new(["Group", "Groups"]));
 
 		public static readonly RegistryTypeDefinition MetadataKey = new(
 			nameof(MetadataKey),
 			4,
-			["MetadataKey", "MetadataKeys"]
+			new(["MetadataKey", "MetadataKeys"])
 		);
 
 		public static RegistryTypeDefinition GetByName(string name)
