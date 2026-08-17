@@ -105,7 +105,57 @@ public static class AspireC4DistributedApplicationBuilderExtensions
 				return Task.CompletedTask;
 			}
 		);
+		var serverBuilder = CreateLikeC4ServerResource(
+			builder,
+			name,
+			port,
+			options,
+			imageTag,
+			defaultViewId,
+			serverResource
+		);
 
+		//if (!options.IncludeAspireC4InternalResource)
+		//{
+		//	// Exclude the sidecar from the architecture diagram — it is tooling, not a system element.
+		//	// Set a stable DSL identifier equal to the base name so that the element, when explicitly
+		//	// included by a consumer (e.g. via ConfigureTestHost), is always emitted as "aspirec4"
+		//	// regardless of the "-server" suffix on the Aspire resource name.
+		//	serverBuilder.ExcludeFromLikeC4();
+		//}
+
+		if (!options.DisableHMR)
+			EnableHotModuleReloading(resolvedHmrPort, hmrHostPort, serverBuilder);
+
+		AspireC4Resource aspirec4Resource = new(name, outputDir) { InnerResource = serverResource };
+
+		return builder
+			.AddResource(aspirec4Resource)
+			.ExcludeFromLikeC4()
+			.ExcludeFromManifest()
+			.WithInitialState(
+				new CustomResourceSnapshot
+				{
+					// Shown as a container type since it IS backed by a container (or local CLI).
+					// URLs, state, and properties are forwarded from the inner resource at runtime
+					// by ForwardInnerResourceStateAsync so this entry stays accurate.
+					ResourceType = "Container",
+					IsHidden = false,
+					Properties = [],
+				}
+			);
+	}
+
+	static IResourceBuilder<LikeC4ServerResource> CreateLikeC4ServerResource(
+		IDistributedApplicationBuilder builder,
+		string name,
+		int? port,
+		AspireC4DiagramOptions options,
+		string imageTag,
+		string? defaultViewId,
+		LikeC4ServerResource serverResource
+	)
+	{
 		var serverBuilder = builder
 			.AddResource(serverResource)
 			.WithImage(LikeC4ServerResource.DefaultImage)
@@ -181,62 +231,36 @@ public static class AspireC4DistributedApplicationBuilderExtensions
 			})
 			.WithAnnotation(new LikeC4DSLIdAnnotation(name))
 			.ExcludeFromManifest();
+		return serverBuilder;
+	}
 
-		//if (!options.IncludeAspireC4InternalResource)
-		//{
-		//	// Exclude the sidecar from the architecture diagram — it is tooling, not a system element.
-		//	// Set a stable DSL identifier equal to the base name so that the element, when explicitly
-		//	// included by a consumer (e.g. via ConfigureTestHost), is always emitted as "aspirec4"
-		//	// regardless of the "-server" suffix on the Aspire resource name.
-		//	serverBuilder.ExcludeFromLikeC4();
-		//}
-
-		if (!options.DisableHMR)
-		{
-			serverBuilder
-				.WithHttpEndpoint(
-					port: hmrHostPort,
-					targetPort: resolvedHmrPort,
-					name: AspireC4Resource.HMREndpointName
-				)
-				.WithUrlForEndpoint(
-					AspireC4Resource.HMREndpointName,
-					opts =>
-					{
-						opts.DisplayText = "LikeC4 HMR Endpoint";
-						opts.DisplayOrder = 1;
-						opts.DisplayLocation = UrlDisplayLocation.DetailsOnly;
-					}
-				);
-
-			if (OperatingSystem.IsWindows())
-			{
-				serverBuilder
-					// Required on Windows/Docker Desktop: inotify events do not propagate from the host
-					// filesystem into the container, so chokidar must fall back to polling to detect
-					// changes to the generated .c4 file.
-					.WithEnvironment("CHOKIDAR_USEPOLLING", "1")
-					.WithEnvironment("CHOKIDAR_INTERVAL", "200");
-			}
-		}
-
-		AspireC4Resource aspirec4Resource = new(name, outputDir) { InnerResource = serverResource };
-
-		return builder
-			.AddResource(aspirec4Resource)
-			.ExcludeFromLikeC4()
-			.ExcludeFromManifest()
-			.WithInitialState(
-				new CustomResourceSnapshot
+	static void EnableHotModuleReloading(
+		int resolvedHmrPort,
+		int? hmrHostPort,
+		IResourceBuilder<LikeC4ServerResource> serverBuilder
+	)
+	{
+		serverBuilder
+			.WithHttpEndpoint(port: hmrHostPort, targetPort: resolvedHmrPort, name: AspireC4Resource.HMREndpointName)
+			.WithUrlForEndpoint(
+				AspireC4Resource.HMREndpointName,
+				opts =>
 				{
-					// Shown as a container type since it IS backed by a container (or local CLI).
-					// URLs, state, and properties are forwarded from the inner resource at runtime
-					// by ForwardInnerResourceStateAsync so this entry stays accurate.
-					ResourceType = "Container",
-					IsHidden = false,
-					Properties = [],
+					opts.DisplayText = "LikeC4 HMR Endpoint";
+					opts.DisplayOrder = 1;
+					opts.DisplayLocation = UrlDisplayLocation.DetailsOnly;
 				}
 			);
+
+		if (OperatingSystem.IsWindows())
+		{
+			serverBuilder
+				// Required on Windows/Docker Desktop: inotify events do not propagate from the host
+				// filesystem into the container, so chokidar must fall back to polling to detect
+				// changes to the generated .c4 file.
+				.WithEnvironment("CHOKIDAR_USEPOLLING", "1")
+				.WithEnvironment("CHOKIDAR_INTERVAL", "200");
+		}
 	}
 
 	static string ResolveOutputDirectory(string appHostDirectory, string outputDirectory)

@@ -72,6 +72,11 @@ static class AspireC4Builder
 	/// Bun  → <c>("bunx", ["--bun", "likec4"])</c>
 	/// Deno → <c>("deno", ["run", "--allow-all", "npm:likec4"])</c>
 	/// </example>
+	[System.Diagnostics.CodeAnalysis.SuppressMessage(
+		"Style",
+		"IDE0072:Add missing cases",
+		Justification = "Already handled"
+	)]
 	public static (string Command, string[] Prefix) BuildLikeC4CLIPrefix(LocalCLIRuntime runtime) =>
 		runtime switch
 		{
@@ -93,6 +98,11 @@ static class AspireC4Builder
 	/// Resolves the executable command and arguments for the given local CLI runtime.
 	/// Internal and visible for testing.
 	/// </summary>
+	[System.Diagnostics.CodeAnalysis.SuppressMessage(
+		"Style",
+		"IDE0072:Add missing cases",
+		Justification = "Already handled"
+	)]
 	public static (string Command, string[] Args) BuildLocalCLICommand(
 		LocalCLIRuntime runtime,
 		string outputDirectory,

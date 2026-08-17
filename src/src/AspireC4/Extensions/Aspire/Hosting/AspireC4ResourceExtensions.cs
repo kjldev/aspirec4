@@ -80,7 +80,24 @@ public static class AspireC4ResourceExtensions
 			Path.GetTempPath()
 		);
 
-		var localBuilder = builder
+		AddLocalServerResource(builder, aspirec4, baseArgs, localResource);
+
+		aspirec4.InnerResource = localResource;
+
+		builder.ApplicationBuilder.Services.Configure<ContainerWorkspaceOptions>(wsOpts =>
+			wsOpts.LocalCLIRuntime = resolvedRuntime
+		);
+
+		return builder;
+	}
+
+	static void AddLocalServerResource(
+		IResourceBuilder<AspireC4Resource> builder,
+		AspireC4Resource aspirec4,
+		string[] baseArgs,
+		LikeC4LocalServerResource localResource
+	) =>
+		builder
 			.ApplicationBuilder.AddResource(localResource)
 			.WithArgs(context =>
 			{
@@ -122,15 +139,6 @@ public static class AspireC4ResourceExtensions
 					Properties = [],
 				}
 			);
-
-		aspirec4.InnerResource = localResource;
-
-		builder.ApplicationBuilder.Services.Configure<ContainerWorkspaceOptions>(wsOpts =>
-			wsOpts.LocalCLIRuntime = resolvedRuntime
-		);
-
-		return builder;
-	}
 
 	/// <summary>
 	/// Provides access to the underlying LikeC4 server resource builder for advanced configuration.

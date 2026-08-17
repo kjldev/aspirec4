@@ -1,6 +1,7 @@
 using System.Collections.Immutable;
 using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
+using Aspire.Hosting.AspireC4.SourceGenerators.Helpers;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.Diagnostics;
@@ -27,7 +28,7 @@ public sealed class LikeC4StrictValidatorGeneratorTests
 			""";
 
 		// Act
-		var result = LikeC4StrictValidatorGenerator.ExtractSpecificationItems(dsl);
+		var result = LikeC4DSLHelpers.ExtractSpecificationItems(dsl);
 
 		// Assert
 		await Assert.That(result.Tags).Contains("my-tag");
@@ -47,7 +48,7 @@ public sealed class LikeC4StrictValidatorGeneratorTests
 			""";
 
 		// Act
-		var result = LikeC4StrictValidatorGenerator.ExtractSpecificationItems(dsl);
+		var result = LikeC4DSLHelpers.ExtractSpecificationItems(dsl);
 
 		// Assert
 		await Assert.That(result.ElementKinds).Contains("container");
@@ -68,7 +69,7 @@ public sealed class LikeC4StrictValidatorGeneratorTests
 			""";
 
 		// Act
-		var result = LikeC4StrictValidatorGenerator.ExtractSpecificationItems(dsl);
+		var result = LikeC4DSLHelpers.ExtractSpecificationItems(dsl);
 
 		// Assert
 		await Assert.That(result.RelationshipKinds).Contains("async");
@@ -83,7 +84,7 @@ public sealed class LikeC4StrictValidatorGeneratorTests
 		const string dsl = "";
 
 		// Act
-		var result = LikeC4StrictValidatorGenerator.ExtractSpecificationItems(dsl);
+		var result = LikeC4DSLHelpers.ExtractSpecificationItems(dsl);
 
 		// Assert
 		await Assert.That(result.Tags).IsEmpty();
@@ -116,7 +117,7 @@ public sealed class LikeC4StrictValidatorGeneratorTests
 			""";
 
 		// Act
-		var result = LikeC4StrictValidatorGenerator.ExtractSpecificationItems(dsl);
+		var result = LikeC4DSLHelpers.ExtractSpecificationItems(dsl);
 
 		// Assert
 		await Assert.That(result.Tags).Contains("aspire-run-state-finished");
@@ -144,7 +145,7 @@ public sealed class LikeC4StrictValidatorGeneratorTests
 			""";
 
 		// Act
-		var result = LikeC4StrictValidatorGenerator.ExtractSpecificationItems(dsl);
+		var result = LikeC4DSLHelpers.ExtractSpecificationItems(dsl);
 
 		// Assert — nothing from the model block should be extracted
 		await Assert.That(result.Tags).IsEmpty();

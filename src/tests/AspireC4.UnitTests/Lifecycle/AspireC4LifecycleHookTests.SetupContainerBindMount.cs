@@ -137,7 +137,7 @@ public sealed partial class AspireC4LifecycleHookTests
 			new OptionsWrapper<ContainerWorkspaceOptions>(workspaceOptions ?? new ContainerWorkspaceOptions()),
 			null!,
 			null!,
-			telemetry ?? Substitute.For<IAspireC4LifecycleHookTelemetry>(),
+			telemetry ?? IAspireC4LifecycleHookTelemetry.Mock(),
 			null!
 		);
 	}

@@ -50,11 +50,11 @@ public sealed partial class AspireC4DiagramOptionsExtensionsTests
 	public async Task WithRelationshipKindSpec_SpecOverload_NullSpec_Throws()
 	{
 		// Arrange
+		LikeC4RelationshipKindSpec spec = null!;
+
 		var sut = CreateSut();
 
 		// Act / Assert
-		await Assert
-			.That(() => sut.WithRelationshipKindSpec((LikeC4RelationshipKindSpec)null!))
-			.Throws<ArgumentNullException>();
+		await Assert.That(() => sut.WithRelationshipKindSpec(spec)).Throws<ArgumentNullException>();
 	}
 }

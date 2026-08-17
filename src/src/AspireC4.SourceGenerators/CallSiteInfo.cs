@@ -18,7 +18,7 @@ readonly struct CallSiteInfo(string value, Location location) : IEquatable<CallS
 	{
 		unchecked
 		{
-			var h = Value?.GetHashCode(StringComparison.Ordinal) ?? 0;
+			var h = Value?.GetHashCode() ?? 0;
 			h = (h * 397) ^ (Location?.GetHashCode() ?? 0);
 			return h;
 		}

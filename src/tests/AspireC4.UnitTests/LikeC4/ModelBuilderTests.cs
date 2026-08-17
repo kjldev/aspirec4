@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using Aspire.Hosting.ApplicationModel;
 using Aspire.Hosting.AspireC4.LikeC4;
 using Aspire.Hosting.AspireC4.LikeC4.Annotations;
@@ -6,6 +7,11 @@ using Aspire.Hosting.AspireC4.LikeC4.Models;
 
 namespace Aspire.Hosting.AspireC4;
 
+[SuppressMessage(
+	"Maintainability",
+	"CA1506:Avoid excessive class coupling",
+	Justification = "This class is complex because it handles many different resource types and state changes. However, I will come back to this at somepoint."
+)]
 public sealed partial class ModelBuilderTests
 {
 	[Test]

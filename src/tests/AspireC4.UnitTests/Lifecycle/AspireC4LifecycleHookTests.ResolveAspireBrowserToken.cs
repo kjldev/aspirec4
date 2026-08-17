@@ -69,10 +69,11 @@ public sealed partial class AspireC4LifecycleHookTests
 		await Assert.That(result).IsNull();
 	}
 
-	static IConfiguration CreateConfig(string? browserToken)
+	static IConfigurationMock CreateConfig(string? browserToken)
 	{
-		var config = Substitute.For<IConfiguration>();
-		config["AppHost:BrowserToken"].Returns(browserToken);
+		var config = IConfiguration.Mock();
+		config.Item("AppHost:BrowserToken").Returns(browserToken);
+
 		return config;
 	}
 

@@ -99,7 +99,7 @@ sealed class ClassDefinitions(
 	{
 		unchecked
 		{
-			var h = DisplayName?.GetHashCode(StringComparison.Ordinal) ?? 0;
+			var h = DisplayName?.GetHashCode() ?? 0;
 			h = (h * 397) ^ Tags.Length;
 			h = (h * 397) ^ ElementKinds.Length;
 			h = (h * 397) ^ RelationshipKinds.Length;

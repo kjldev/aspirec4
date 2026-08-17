@@ -30,7 +30,10 @@ public sealed class LikeC4DSLValidationTests
 		_tempDir = Path.Combine(Path.GetTempPath(), $"aspirec4-dslval-{Guid.NewGuid():N}");
 		Directory.CreateDirectory(_tempDir);
 		// Minimal LikeC4 project config — `name` is required by the CLI.
-		File.WriteAllText(Path.Combine(_tempDir, "likec4.config.json"), """{"name":"aspirec4-test"}""");
+		File.WriteAllText(
+			Path.Combine(_tempDir, "likec4.config.json"), /*lang=json,strict*/
+			"""{"name":"aspirec4-test"}"""
+		);
 		_dslFile = Path.Combine(_tempDir, "model.c4");
 	}
 
@@ -127,35 +130,6 @@ public sealed class LikeC4DSLValidationTests
 			TotalErrors: totalErrors,
 			RawOutput: rawOut
 		);
-	}
-
-	[System.Diagnostics.CodeAnalysis.SuppressMessage(
-		"Design",
-		"CA1031:Do not catch general exception types",
-		Justification = "dot availability check is best-effort; any failure means dot is unavailable"
-	)]
-	static bool IsDotAvailable()
-	{
-		try
-		{
-			using var proc = Process.Start(
-				new ProcessStartInfo
-				{
-					FileName = "dot",
-					Arguments = "-V",
-					RedirectStandardOutput = true,
-					RedirectStandardError = true,
-					UseShellExecute = false,
-					CreateNoWindow = true,
-				}
-			);
-			proc?.WaitForExit();
-			return proc?.ExitCode == 0;
-		}
-		catch
-		{
-			return false;
-		}
 	}
 
 	static void AssertNoValidationErrors(ValidationResult result, string dsl)

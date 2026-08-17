@@ -11,11 +11,11 @@ readonly struct DSLDefinitions(
 {
 	public static readonly DSLDefinitions Empty = new([], [], []);
 
-	public ImmutableArray<string> Tags { get; } = tags;
+	public EquatableArray<string> Tags { get; } = tags;
 
-	public ImmutableArray<string> ElementKinds { get; } = elementKinds;
+	public EquatableArray<string> ElementKinds { get; } = elementKinds;
 
-	public ImmutableArray<string> RelationshipKinds { get; } = relationshipKinds;
+	public EquatableArray<string> RelationshipKinds { get; } = relationshipKinds;
 
 	public bool HasAny => !Tags.IsEmpty || !ElementKinds.IsEmpty || !RelationshipKinds.IsEmpty;
 
@@ -30,9 +30,9 @@ readonly struct DSLDefinitions(
 	{
 		unchecked
 		{
-			var h = Tags.Length;
-			h = (h * 397) ^ ElementKinds.Length;
-			h = (h * 397) ^ RelationshipKinds.Length;
+			var h = Tags.Count;
+			h = (h * 397) ^ ElementKinds.Count;
+			h = (h * 397) ^ RelationshipKinds.Count;
 
 			return h;
 		}
