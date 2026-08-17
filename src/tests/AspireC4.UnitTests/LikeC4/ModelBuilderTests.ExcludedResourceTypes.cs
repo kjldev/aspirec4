@@ -3,7 +3,7 @@ using Aspire.Hosting.AspireC4.LikeC4;
 
 namespace Aspire.Hosting.AspireC4;
 
-public sealed partial class ModelBuilderTests
+partial class ModelBuilderTests
 {
 	[Test]
 	public async Task Build_WithExcludedResourceTypes_ExcludesMatchingResource()

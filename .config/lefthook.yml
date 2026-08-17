@@ -1,7 +1,7 @@
 pre-commit:
   jobs:
     - name: csharpier format check
-      run: just lintcheck
+      run: just lint-check
 
     - name: biome lint check
       run: just ts-lint

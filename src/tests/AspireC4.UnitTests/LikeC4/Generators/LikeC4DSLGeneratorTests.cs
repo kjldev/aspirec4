@@ -46,7 +46,7 @@ public sealed partial class LikeC4DSLGeneratorTests
 		// Timestamp in the header must fall within the test window.
 		var match = TimeStampRegex().Match(dsl);
 		await Assert.That(match.Success).IsTrue();
-		DateTimeOffset timestamp = DateTimeOffset.ParseExact(
+		var timestamp = DateTimeOffset.ParseExact(
 			match.Groups[1].Value,
 			"yyyy-MM-dd HH:mm:ss",
 			System.Globalization.CultureInfo.InvariantCulture,

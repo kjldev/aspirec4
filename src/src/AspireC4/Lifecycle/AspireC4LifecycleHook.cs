@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using System.Collections.Immutable;
+using System.Diagnostics.CodeAnalysis;
 using Aspire.Hosting.AspireC4.ApplicationModel;
 using Aspire.Hosting.AspireC4.LikeC4.Runtime;
 using Aspire.Hosting.Eventing;
@@ -13,6 +14,11 @@ namespace Aspire.Hosting.AspireC4.Lifecycle;
 /// Aspire eventing subscriber that generates the LikeC4 <c>.c4</c> model file before the
 /// application starts, and dynamically regenerates it whenever a resource changes state at runtime.
 /// </summary>
+[SuppressMessage(
+	"Maintainability",
+	"CA1506:Avoid excessive class coupling",
+	Justification = "This class is complex because it handles many different resource types and state changes. However, I will come back to this at somepoint."
+)]
 sealed partial class AspireC4LifecycleHook(
 	IOptions<AspireC4DiagramOptions> options,
 	IOptions<ContainerWorkspaceOptions> workspaceOptions,

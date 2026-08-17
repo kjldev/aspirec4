@@ -60,12 +60,12 @@ test-integration configuration=config_default:
 
 # Run C# linting (CSharpier check)
 [group('dotnet')]
-lintcheck:
+lint-check:
     dotnet csharpier check {{ _root }}
 
 # Run C# linting and auto-fix (CSharpier format)
 [group('dotnet')]
-lintfix:
+lint-fix:
     dotnet csharpier format {{ _root }}
 
 # Build and produce NuGet packages into artifacts/nuget (version read from package.json)

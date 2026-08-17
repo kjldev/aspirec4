@@ -7,9 +7,8 @@
 		<COPYRIGHT_YEAR>2026</COPYRIGHT_YEAR>
 		<PackageId>AspireC4.Hosting</PackageId>
 		<Title>AspireC4.Hosting - Aspire LikeC4 Visualisation</Title>
-		<Authors>Kieron Lanning</Authors>
-		<Company>KJL Solutions Ltd.</Company>
-		<Copyright>KJL Solutions Ltd., $(COPYRIGHT_YEAR) | All rights reserved.</Copyright>
+		<Authors>Purview Constributors</Authors>
+		<Copyright>Purview-Dev., $(COPYRIGHT_YEAR) | All rights reserved.</Copyright>
 		<PackageIcon>likec4-logo.png</PackageIcon>
 		<PackageLicenseFile>LICENSE.md</PackageLicenseFile>
 		<PackageReadmeFile>README.md</PackageReadmeFile>
@@ -18,7 +17,6 @@
 		<RepositoryType>git</RepositoryType>
 		<PackageTags>aspire;dotnet;aspnetcore;c4;likec4;architecture;diagram;visualisation;visualization;</PackageTags>
 		<IncludeSymbols>true</IncludeSymbols>
-		<SymbolPackageFormat>snupkg</SymbolPackageFormat>
 		<!--
 			Opting into the Aspire integration analysers - hoping it'll help me to
 			figure out some issues with the TypeScript exports.
@@ -33,11 +31,10 @@
 	<ItemGroup>
 		<None
 			Include="$(MSBuildThisFileDirectory)..\..\..\assets\images\likec4\likec4-logo.png"
-			Pack="true"
-			PackagePath="\"
+			Link="Sdk/likec4-logo.png"
 		/>
-		<None Include="$(MSBuildThisFileDirectory)..\..\..\LICENSE.md" Pack="true" PackagePath="\" />
-		<None Include="$(MSBuildThisFileDirectory)..\..\..\README.md" Pack="true" PackagePath="\" />
+		<None Include="$(MSBuildThisFileDirectory)..\..\..\LICENSE.md" Link="Sdk/LICENSE.md" />
+		<None Include="$(MSBuildThisFileDirectory)..\..\..\README.md" Link="Sdk/README.md" />
 	</ItemGroup>
 
 	<ItemGroup>
@@ -53,32 +50,6 @@
 			IsAspireProjectResource="false"
 		/>
 	</ItemGroup>
-
-	<!-- Ship the generator DLL and build props file inside the NuGet package. -->
-	<Target Name="IncludeAnalyzerInPackage" BeforeTargets="_GetPackageFiles">
-		<MSBuild
-			Projects="..\AspireC4.SourceGenerators\AspireC4.SourceGenerators.csproj"
-			Targets="GetTargetPath"
-			Properties="Configuration=$(Configuration)"
-			RebaseOutputs="true"
-		>
-			<Output TaskParameter="TargetOutputs" ItemName="_AnalyzerDll" />
-		</MSBuild>
-		<ItemGroup>
-			<None
-				Include="@(_AnalyzerDll)"
-				Pack="true"
-				PackagePath="analyzers/dotnet/cs"
-				Visible="false"
-			/>
-			<None
-				Include="$(MSBuildThisFileDirectory)build\AspireC4.Hosting.props"
-				Pack="true"
-				PackagePath="build"
-				Visible="false"
-			/>
-		</ItemGroup>
-	</Target>
 
 	<ItemGroup>
 		<Using Include="Aspire.Hosting.ApplicationModel" />

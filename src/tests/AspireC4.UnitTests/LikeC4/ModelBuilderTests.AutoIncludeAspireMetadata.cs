@@ -4,7 +4,7 @@ using Aspire.Hosting.AspireC4.LikeC4.Annotations;
 
 namespace Aspire.Hosting.AspireC4;
 
-public sealed partial class ModelBuilderTests
+partial class ModelBuilderTests
 {
 	[Test]
 	public async Task Build_AutoMetadata_Default_InjectsAspireName()

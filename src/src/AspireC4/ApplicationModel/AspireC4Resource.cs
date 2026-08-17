@@ -1,5 +1,3 @@
-using Aspire.Hosting.AspireC4.LikeC4.Runtime;
-
 namespace Aspire.Hosting.AspireC4.ApplicationModel;
 
 /// <summary>

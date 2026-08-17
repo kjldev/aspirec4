@@ -1,6 +1,6 @@
 using System.Collections.Immutable;
 
-namespace Aspire.Hosting.AspireC4.SourceGenerators;
+namespace Aspire.Hosting.AspireC4.SourceGenerators.Models;
 
 /// <summary>Definitions extracted from one or more LikeC4 DSL additional files.</summary>
 readonly struct DSLDefinitions(
@@ -9,17 +9,13 @@ readonly struct DSLDefinitions(
 	ImmutableArray<string> relationshipKinds
 ) : IEquatable<DSLDefinitions>
 {
-	public static readonly DSLDefinitions Empty = new(
-		ImmutableArray<string>.Empty,
-		ImmutableArray<string>.Empty,
-		ImmutableArray<string>.Empty
-	);
+	public static readonly DSLDefinitions Empty = new([], [], []);
 
-	public ImmutableArray<string> Tags { get; } = tags;
+	public EquatableArray<string> Tags { get; } = tags;
 
-	public ImmutableArray<string> ElementKinds { get; } = elementKinds;
+	public EquatableArray<string> ElementKinds { get; } = elementKinds;
 
-	public ImmutableArray<string> RelationshipKinds { get; } = relationshipKinds;
+	public EquatableArray<string> RelationshipKinds { get; } = relationshipKinds;
 
 	public bool HasAny => !Tags.IsEmpty || !ElementKinds.IsEmpty || !RelationshipKinds.IsEmpty;
 
@@ -28,15 +24,16 @@ readonly struct DSLDefinitions(
 		&& ElementKinds.SequenceEqual(other.ElementKinds, StringComparer.Ordinal)
 		&& RelationshipKinds.SequenceEqual(other.RelationshipKinds, StringComparer.Ordinal);
 
-	public override bool Equals(object obj) => obj is DSLDefinitions d && Equals(d);
+	public override bool Equals(object? obj) => obj is DSLDefinitions d && Equals(d);
 
 	public override int GetHashCode()
 	{
 		unchecked
 		{
-			int h = Tags.Length;
-			h = (h * 397) ^ ElementKinds.Length;
-			h = (h * 397) ^ RelationshipKinds.Length;
+			var h = Tags.Count;
+			h = (h * 397) ^ ElementKinds.Count;
+			h = (h * 397) ^ RelationshipKinds.Count;
+
 			return h;
 		}
 	}

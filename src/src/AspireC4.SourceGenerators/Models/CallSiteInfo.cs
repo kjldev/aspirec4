@@ -1,6 +1,6 @@
 using Microsoft.CodeAnalysis;
 
-namespace Aspire.Hosting.AspireC4.SourceGenerators;
+namespace Aspire.Hosting.AspireC4.SourceGenerators.Models;
 
 /// <summary>A resolved constant string value from a call-site argument, with its source location.</summary>
 readonly struct CallSiteInfo(string value, Location location) : IEquatable<CallSiteInfo>
@@ -12,7 +12,7 @@ readonly struct CallSiteInfo(string value, Location location) : IEquatable<CallS
 
 	public bool Equals(CallSiteInfo other) => Value == other.Value && Location.Equals(other.Location);
 
-	public override bool Equals(object obj) => obj is CallSiteInfo c && Equals(c);
+	public override bool Equals(object? obj) => obj is CallSiteInfo c && Equals(c);
 
 	public override int GetHashCode()
 	{

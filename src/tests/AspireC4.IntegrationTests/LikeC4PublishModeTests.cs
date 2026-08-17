@@ -39,6 +39,7 @@ public sealed class LikeC4PublishModeTests
 				RedirectStandardError = true,
 				UseShellExecute = false,
 				CreateNoWindow = true,
+				WorkingDirectory = Path.GetDirectoryName(appHostProject),
 			};
 			configBuilder.Populate(startInfo.Environment);
 
@@ -58,7 +59,7 @@ public sealed class LikeC4PublishModeTests
 			var combinedOutput = standardOutput + Environment.NewLine + standardError;
 
 			// Assert
-			await Assert.That(process.ExitCode).IsEqualTo(0);
+			await Assert.That(process.ExitCode).IsEqualTo(0).Because(standardError);
 			await Assert.That(File.Exists(modelPath)).IsTrue();
 			await Assert.That(File.Exists(Path.Combine(outputDir, "aspire-manifest.json"))).IsTrue();
 			await Assert.That(combinedOutput).Contains("PublishMode");
