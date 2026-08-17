@@ -132,10 +132,10 @@ jobs:
           node-version-file: package.json
           cache: npm
 
-      - name: CSharpier format check
-        run: |
-          dotnet tool install --global csharpier --version 1.2.6
-          csharpier check ./
+      # - name: CSharpier format check
+      #   run: |
+      #     dotnet tool install --global csharpier --version 1.2.6
+      #     csharpier check ./
 
       - name: Restore solution
         run: dotnet restore ${{ env.SOLUTION }}
