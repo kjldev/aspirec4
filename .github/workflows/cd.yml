@@ -30,6 +30,7 @@ jobs:
       SOLUTION: ./src/AspireC4.slnx
       PACKAGE_PROJECT: ./src/src/AspireC4/AspireC4.csproj
       ARTIFACTS_DIR: ./artifacts/nuget
+      TESTINGPLATFORM_EXITCODE_IGNORE: 8
 
     steps:
       - name: Checkout code

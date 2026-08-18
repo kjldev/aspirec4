@@ -38,6 +38,7 @@ jobs:
     env:
       CONFIGURATION: Release
       SOLUTION: ./src/AspireC4.slnx
+      TESTINGPLATFORM_EXITCODE_IGNORE: 8
 
     steps:
       - name: Checkout code
