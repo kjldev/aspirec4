@@ -144,7 +144,9 @@ function readStateForHelp(): {
 
   try {
     const props = readFileSync(join(ROOT, 'Directory.Packages.props'), 'utf8')
-    const m = props.match(/<PackageVersion\s+Include="Aspire\.Hosting"\s+Version="([^"]+)"/)
+    const m = props.match(
+      /<PackageVersion\s+Include="Aspire\.Hosting"\s+Version="[[(]?([^,\])"]+)/,
+    )
     if (m) aspireVersion = m[1]
   } catch {}
 
@@ -513,7 +515,13 @@ ${lines.join('\n').trim()}
 // 7. Compute Aspire-constrained new version
 // ---------------------------------------------------------------------------
 
-const currentSemver = semver.parse(currentVersion.replace(/-prerelease\.\d+$/, ''))!
+const currentSemver = semver.parse(currentVersion.replace(/-prerelease\.\d+$/, ''))
+if (!currentSemver) {
+  console.error(
+    `Invalid version in package.json: ${JSON.stringify(currentVersion)}. Expected a valid semantic version.`,
+  )
+  process.exit(1)
+}
 const currentMajorMinor = `${currentSemver.major}.${currentSemver.minor}`
 const currentIsPrerelease = /-prerelease\.\d+$/.test(currentVersion)
 
