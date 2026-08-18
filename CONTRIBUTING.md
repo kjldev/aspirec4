@@ -14,7 +14,6 @@ Thank you for contributing! This guide covers the tools, conventions, and proces
 - [Git hooks — Lefthook](#git-hooks--lefthook)
 - [Commit messages](#commit-messages)
 - [Tests](#tests)
-- [Changesets](#changesets)
 - [Release guide](#release-guide)
 
 ---
@@ -24,18 +23,18 @@ Thank you for contributing! This guide covers the tools, conventions, and proces
 | Tool | Purpose |
 |---|---|
 | [.NET SDK](https://dotnet.microsoft.com/download) (version from `global.json`) | Build and test |
-| [Node.js](https://nodejs.org/) (version from `package.json` → `engines.node`) | Release scripts, changesets |
+| [Node.js](https://nodejs.org/) (version from `package.json` → `engines.node`) | Repository scripts and commit hooks |
 | [just](https://just.systems/man/en/packages.html) | Task runner |
+| [Lefthook](https://github.com/evilmartians/lefthook) | Git hooks |
 | [Docker](https://www.docker.com/) | Integration tests, local diagram viewer |
 
 After cloning, install all dependencies:
 
 ```sh
-npm install       # Node dependencies (changesets, release tooling)
-just restore      # NuGet packages + local .NET tools (CSharpier, dotnet-inspect)
+just init         # Node dependencies, NuGet packages, local tools, and Git hooks
 ```
 
-Lefthook hooks install automatically when Node dependencies are installed. See [Git hooks — Lefthook](#git-hooks--lefthook).
+See [Git hooks — Lefthook](#git-hooks--lefthook) for hook configuration.
 
 ---
 
@@ -44,7 +43,7 @@ Lefthook hooks install automatically when Node dependencies are installed. See [
 ```sh
 just build        # Build the solution (Release by default)
 just test         # Run all tests (unit + integration)
-just lintcheck    # Check formatting
+just lint-check   # Check formatting
 ```
 
 ---
@@ -80,17 +79,9 @@ Two distinct brands exist in this repository. Use them consistently:
 | `just test` | **Run all tests** (unit + integration) |
 | `just test-unit` | Run unit tests only |
 | `just test-integration` | Run integration tests only |
-| `just lintcheck` | Check formatting with CSharpier |
-| `just lintfix` | Auto-fix formatting with CSharpier |
+| `just lint-check` | Check formatting with CSharpier |
+| `just lint-fix` | Auto-fix formatting with CSharpier |
 | `just pack` | Build and pack NuGet artifacts into `artifacts/nuget/` |
-
-### Release
-
-| Recipe | Description |
-|---|---|
-| `just changeset` | Open the interactive changeset prompt to describe your changes |
-| `just release` | Cut a full release (creates PR from `release/vX.Y.Z` branch) |
-| `just release prerelease` | Cut a prerelease (creates PR from `release/vX.Y.Z-prerelease.N` branch) |
 
 ### Container runtime tests (local only)
 
@@ -122,11 +113,11 @@ dotnet test src/tests/AspireC4.IntegrationTests/AspireC4.IntegrationTests.csproj
 All C# code is formatted with [CSharpier](https://csharpier.com/), pinned to the version in `.config/dotnet-tools.json`. It is installed as a local .NET tool via `just restore`.
 
 ```sh
-just lintcheck    # Report formatting violations
-just lintfix      # Auto-fix formatting violations
+just lint-check   # Report formatting violations
+just lint-fix     # Auto-fix formatting violations
 ```
 
-CSharpier runs automatically on every `git commit` via Lefthook. Commits with formatting violations are rejected. Always run `just lintfix` before committing if you have unsaved format changes, or configure your editor to format on save using the CSharpier extension.
+CSharpier runs automatically on every `git commit` via Lefthook. Commits with formatting violations are rejected. Always run `just lint-fix` before committing if you have unsaved format changes, or configure your editor to format on save using the CSharpier extension.
 
 **Do not pin a specific CSharpier version in `.csproj` files.** The version lives exclusively in `.config/dotnet-tools.json` and `Directory.Packages.props`.
 
@@ -141,7 +132,7 @@ CSharpier runs automatically on every `git commit` via Lefthook. Commits with fo
 | `pre-commit` | Runs `csharpier check` across the entire `src/` tree. Rejects the commit if any file is mis-formatted. |
 | `commit-msg` | Runs `commitlint` to enforce [conventional commit](#commit-messages) format. |
 
-Lefthook installs automatically when you run `npm install`. To verify it is active:
+Lefthook installs when you run `just init`. To verify it is active:
 
 ```sh
 npx lefthook install
@@ -261,154 +252,30 @@ Integration tests require Docker to be running. They pull `ghcr.io/likec4/likec4
 
 ---
 
-## Changesets
-
-This repository uses [Changesets](https://github.com/changesets/changesets) to track what changed between releases and generate `CHANGELOG.md` entries.
-
-### When to add a changeset
-
-Add a changeset for every PR that changes user-facing behaviour: new features, bug fixes, breaking changes, deprecations. You do **not** need a changeset for CI, tooling, test, or documentation-only changes.
-
-### How to add a changeset
-
-```sh
-just changeset
-```
-
-This runs the interactive `changeset add` prompt. Select the bump type and write a short description of the change. The file is saved to `.changeset/<slug>.md`.
-
-### Changeset format
-
-```md
----
-"aspirec4": patch
----
-
-Fix incorrect volume mount path on Windows when output directory is on a different drive.
-```
-
-The package name is always `"aspirec4"` (lower-case, matching `package.json`). Bump types:
-
-| Type | When to use |
-|---|---|
-| `patch` | Bug fixes, minor improvements — **use this for almost everything** |
-| `minor` | Significant new user-facing capability |
-| `major` | Breaking change |
-
-> **Note:** The MAJOR.MINOR version is always locked to the `Aspire.Hosting` package version in `src/Directory.Packages.props`. Changesets influence the CHANGELOG content and bump logic, but the release script enforces the Aspire version constraint regardless of the changeset bump type.
-
-### What happens at release time
-
-The `just release` script:
-
-1. Reads all pending changesets in `.changeset/`
-2. Auto-generates a changeset from conventional commits if none exist
-3. Runs `npx changeset version` to write `CHANGELOG.md` and consume the changeset files
-4. Overrides the computed version with the Aspire-constrained version
-5. Commits everything to a `release/vX.Y.Z` branch and opens a PR
-
-You never need to run `npx changeset version` manually.
-
----
-
 ## Release guide
 
-### Versioning scheme
+The version in `package.json` is maintained manually and is the sole version used by the CD workflow. Versions must use valid SemVer, including an optional prerelease suffix when required.
 
-Versions follow `MAJOR.MINOR.PATCH[-prerelease.N]`:
+### Preparing a release
 
-- **MAJOR.MINOR** always matches the `Aspire.Hosting` package version in `src/Directory.Packages.props`. When Aspire ships a new MAJOR.MINOR, update that file and the next release resets PATCH to 0.
-- **PATCH** increments with each release regardless of whether changes are features or fixes (because MAJOR.MINOR is locked).
-- **Prerelease** suffix `-prerelease.N` is used for early-access builds. Each successive prerelease on the same PATCH increments N.
+1. Choose an unused version and update `package.json`.
+2. Use conventional commit subjects for noteworthy changes:
+   - `feat:` for features
+   - `fix:` or `bug:` for bug fixes
+   - `perf:`, `security:`, `refactor:`, or `revert:` for other noteworthy changes
+3. Commit the version update and merge or push it to `main`.
 
-Examples: `13.3.0-prerelease.0` → `13.3.0-prerelease.1` → `13.3.0` → `13.3.1`
-
----
-
-### Before releasing
-
-1. Make sure your working tree is **clean** (`git status` shows nothing).
-2. Make sure you are on a **development branch** (e.g., `chore/my-feature`), **not on `main`** and not on an existing `release/` branch.
-3. Make sure all intended changesets are present in `.changeset/` — or the script will auto-generate one from commits.
-
----
-
-### Cutting a prerelease
-
-Use this when you want to publish an early-access build without committing to a stable API.
-
-```sh
-just release prerelease
-```
-
-What happens:
-
-- Computes the next `-prerelease.N` version (increments N if already on a prerelease; starts at `X.Y.Z-prerelease.0` otherwise).
-- Creates branch `release/vX.Y.Z-prerelease.N`.
-- Commits `package.json` + `CHANGELOG.md` (changeset files consumed).
-- Opens a PR against `main`.
-
-Once the PR's CI Gate passes, merge it. The CD pipeline creates a GitHub Release with `.nupkg` / `.snupkg` artifacts.
-
----
-
-### Cutting a stable release
-
-Use this when the feature/fix set is complete and ready for general availability.
-
-```sh
-just release
-```
-
-What happens:
-
-- Computes the next `X.Y.PATCH` version.
-- Creates branch `release/vX.Y.PATCH`.
-- Commits `package.json` + `CHANGELOG.md`.
-- Opens a PR against `main`.
-
-Once the PR's CI Gate passes, merge it.
-
----
-
-### Branch summary
-
-| Branch | Purpose |
-|---|---|
-| `main` | Always reflects the latest published state. Every merge triggers CD. |
-| `chore/*`, `feat/*`, `fix/*`, etc. | Development branches. **Start releases from here.** |
-| `release/vX.Y.Z[-prerelease.N]` | Automatically created by `just release [prerelease]`. Never create manually. |
-
-> **Start all releases from a development branch, not from `main`.**
-> Running `just release` on `main` itself would mean there is no development work to fold in and the release PR would have an empty diff.
-
----
+Commits beginning with `chore:`, `build:`, `ci:`, `test:`, `docs:`, or `style:` are intentionally omitted from release notes. When no noteworthy commits exist, the release notes contain “Improvements ongoing.”
 
 ### CD pipeline
 
-Merging any `release/v*` branch to `main` triggers `.github/workflows/cd.yml`, which:
+A push to `main` triggers `.github/workflows/cd.yml`, which:
 
-1. Detects whether `package.json` changed (no-op if not).
-2. Checks for duplicate tags / GitHub Releases to prevent double-publishing.
-3. Builds the solution, runs unit and integration tests.
-4. Packs NuGet artifacts.
-5. Creates a GitHub Release tagged `vX.Y.Z[-prerelease.N]` with `.nupkg` and `.snupkg` attached.
+1. Reads and validates the version from `package.json`.
+2. Skips the release when the corresponding Git tag or GitHub Release already exists.
+3. Builds the solution and runs unit and integration tests.
+4. Packs the NuGet package using the exact manual version.
+5. Builds release notes from noteworthy commits since the previous tag.
+6. Creates a GitHub Release with the `.nupkg` and `.snupkg` files attached.
 
-> The CD pipeline does **not** push to NuGet.org automatically. Download the `.nupkg` from the GitHub Release and push manually, or configure a NuGet push step in the workflow for your fork.
-
----
-
-### Fixing a broken release branch
-
-If a `release/vX.Y.Z` branch already exists (e.g., from a previously failed run), the release script will exit with a clear error. Clean it up and retry:
-
-```sh
-# Remove local branch
-git branch -D release/vX.Y.Z
-
-# Remove remote branch (if pushed)
-git push origin --delete release/vX.Y.Z
-
-# Retry
-just release [prerelease]
-```
+The workflow does not publish to NuGet. Download the package from GitHub Releases and push it to the desired feed manually.

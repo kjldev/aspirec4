@@ -6,7 +6,7 @@ namespace Aspire.Hosting.AspireC4.LikeC4.Icons;
 /// </summary>
 /// <remarks>
 /// The manifest is loaded once from embedded resources and cached for the lifetime
-/// of the process. Refresh it by running <c>node scripts/generate-icon-manifest.mjs</c>
+/// of the process. Refresh it by running <c>just refresh-icons</c>
 /// (or <c>just refresh-icons</c>) and rebuilding the project.
 /// </remarks>
 static partial class IconMatcher

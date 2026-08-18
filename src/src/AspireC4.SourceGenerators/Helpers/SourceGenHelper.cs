@@ -8,11 +8,9 @@ namespace Aspire.Hosting.AspireC4.SourceGenerators.Helpers;
 static partial class SourceGenHelper
 {
 	public static IncrementalValueProvider<StrictValidatorGenerationModel> CreateGenerationPipeline(
-		IncrementalGeneratorInitializationContext context,
-		ISourceGenLogger? logger
+		IncrementalGeneratorInitializationContext context
 	)
 	{
-		var isDisabled = IncrementalPipeline.IsDisabledValueProvider(context, PropertyLibrary.DisableSourceGenerator);
 		var strictMode = IncrementalPipeline.PropertyValueProvider(
 			context,
 			PropertyLibrary.AspireC4Strict,
@@ -28,13 +26,13 @@ static partial class SourceGenHelper
 			context,
 			TypeLibrary.LikeC4StrictValidatorGenerator.MetadataFullName,
 			AssemblyInfo.Version,
-			logger
+			PropertyLibrary.DisableSourceGenerator
 		);
 
 		var registryTargets = IncrementalPipeline.ForAttributeWithMetadataName(
 			context,
 			TypeLibrary.LikeC4RegistryAttribute,
-			(ctx, cancellationToken) => BuildRegistryTarget(ctx, logger, cancellationToken),
+			static (ctx, cancellationToken) => BuildRegistryTarget(ctx, cancellationToken),
 			trackingName: "GetLikeC4RegistryTarget"
 		);
 
@@ -63,7 +61,6 @@ static partial class SourceGenHelper
 						DSLDefinition = LikeC4DSLHelpers.MergeDSLDefinitions(dslDefinitions),
 					}
 			)
-			.CombineWith(isDisabled, (modelContext, isDisabled, _) => modelContext with { IsDisabled = isDisabled })
 			.CombineWith(strictMode, (modelContext, value, _) => modelContext with { StrictMode = value });
 
 		return model;
@@ -71,13 +68,10 @@ static partial class SourceGenHelper
 
 	static GeneratorResult<LikeC4RegistryTarget> BuildRegistryTarget(
 		GeneratorAttributeSyntaxContext context,
-		ISourceGenLogger? logger,
 		CancellationToken cancellationToken
 	)
 	{
 		cancellationToken.ThrowIfCancellationRequested();
-
-		logger?.Info($"Building registry target for attribute: {context.TargetSymbol.ToDisplayString()}");
 
 		var likeC4RegistryTarget = LikeC4RegistryAttributeData.FromAttributeData(context.TargetSymbol);
 		var defaultSeverity = TypeLibrary.SeverityValues.Get(likeC4RegistryTarget.Strict);
@@ -85,7 +79,6 @@ static partial class SourceGenHelper
 		var getRegistryMembers = CollectRegistryMembers(
 			(INamedTypeSymbol)context.TargetSymbol,
 			defaultSeverity,
-			logger,
 			cancellationToken
 		);
 

@@ -8,8 +8,6 @@ readonly record struct StrictValidatorGenerationModel(
 	EquatableArray<GeneratorResult<LikeC4RegistryTarget>> Targets
 )
 {
-	public bool IsDisabled { get; init; } = false;
-
 	public StrictModeSettings StrictMode { get; init; }
 
 	public DSLDefinitions DSLDefinition { get; init; }

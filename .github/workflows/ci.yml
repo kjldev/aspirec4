@@ -61,7 +61,7 @@ jobs:
         run: dotnet build ${{ env.SOLUTION }} --no-restore --configuration ${{ env.CONFIGURATION }}
 
       - name: Run unit tests
-        run: dotnet test --project src/tests/AspireC4.UnitTests --no-build --verbosity normal --configuration ${{ env.CONFIGURATION }}
+        run: dotnet test ${{ env.SOLUTION }} --configuration ${{ env.CONFIGURATION }} --treenode-filter "/*/*/*/*[Category=Unit]" --no-build
 
   ci-gate:
     name: CI Gate
