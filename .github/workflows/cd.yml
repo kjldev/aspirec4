@@ -161,7 +161,7 @@ jobs:
 
           dotnet pack "${PACKAGE_PROJECT}" \
             --configuration "${CONFIGURATION}" \
-            --no-build \
+            # --no-build \
             --output "${ARTIFACTS_DIR}" \
             "/p:Version=${PACKAGE_VERSION}" \
             "/p:RepositoryBranch=${GITHUB_REF_NAME}" \
