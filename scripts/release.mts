@@ -379,7 +379,7 @@ console.log(`Proceeding with ${isPrerelease ? 'prerelease' : 'stable'} release f
 const packagesPropsPath = join(ROOT, 'Directory.Packages.props')
 const packagesPropsContent = readFileSync(packagesPropsPath, 'utf8')
 const aspireVersionMatch = packagesPropsContent.match(
-  /<PackageVersion\s+Include="Aspire\.Hosting"\s+Version="([^"]+)"/,
+  /<PackageVersion\s+Include="Aspire\.Hosting"\s+Version="[[(]?([^,\])"]+)/,
 )
 if (!aspireVersionMatch) {
   console.error('Could not find Aspire.Hosting version in Directory.Packages.props')
