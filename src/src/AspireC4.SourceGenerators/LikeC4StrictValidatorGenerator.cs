@@ -36,23 +36,24 @@ public sealed partial class LikeC4StrictValidatorGenerator : IIncrementalGenerat
 {
 	public void Initialize(IncrementalGeneratorInitializationContext context)
 	{
+		context.RegisterEmbeddedAttribute(
+			TypeLibrary.LikeC4StrictValidatorGenerator.MetadataFullName,
+			AssemblyInfo.Version
+		);
+
 		context.RegisterPostInitializationOutput(ctx =>
 		{
-			_logger?.Info("Adding the following types:");
 			foreach (var (HintName, Source) in MarkAttributeEmitter.EmitMarkAttribute())
-			{
-				_logger?.Info($"- {HintName}", 1);
 				ctx.AddSource(HintName, Source);
-			}
 		});
 
 		// Combine everything and validate.
-		var pipeline = SourceGenHelper.CreateGenerationPipeline(context, _logger);
+		var pipeline = SourceGenHelper.CreateGenerationPipeline(context);
 		context.RegisterSourceOutput(
 			pipeline,
 			static (ctx, model) =>
 			{
-				if (model.IsDisabled)
+				if (model.Context.Settings.IsSourceGeneratorDisabled)
 				{
 					model.Context.Debug(
 						"LikeC4StrictValidatorGenerator is disabled via <DisableAspireC4SourceGenerator> property."
@@ -103,7 +104,7 @@ public sealed partial class LikeC4StrictValidatorGenerator : IIncrementalGenerat
 			{
 				ctx.ReportDiagnostic(
 					Diagnostic.Create(
-						DiagnosticLibrary.MultipleDefinitionsClasses,
+						DiagnosticLibrary.MultipleRegistryClassesDefined,
 						targets[index].Location,
 						targets[index].DisplayName
 					)

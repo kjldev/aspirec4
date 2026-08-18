@@ -9,7 +9,6 @@ partial class SourceGenHelper
 	static ImmutableDictionary<RegistryTypeDefinition, ImmutableArray<RegistrySpecDefinition>> CollectRegistryMembers(
 		INamedTypeSymbol targetSymbol,
 		SeverityDefinition defaultSeverity,
-		ISourceGenLogger? logger,
 		CancellationToken cancellationToken
 	)
 	{
@@ -26,23 +25,17 @@ partial class SourceGenHelper
 			{ TypeLibrary.RegistryTypeValues.MetadataKey, [] },
 		};
 
-		logger?.Info($"Collecting registry members for: {registryType}");
-
 		foreach (var member in targetSymbol.GetTypeMembers())
 		{
 			if (member.TypeKind == TypeKind.Class)
-			{
-				if (ScanNestedType(logger, defaultSeverity, registryMembers, member))
-					logger?.Info($"Found class: {member.Name}", 1);
-			}
+				ScanNestedType(defaultSeverity, registryMembers, member);
 		}
 
 		foreach (var member in targetSymbol.GetMembers())
 		{
 			if (member is IFieldSymbol fieldSymbol && IsValidField(fieldSymbol))
 			{
-				if (ScanField(logger, registryMembers, fieldSymbol))
-					logger?.Info($"Found field: {member.Name}", 1);
+				ScanField(registryMembers, fieldSymbol);
 			}
 		}
 
@@ -83,7 +76,6 @@ partial class SourceGenHelper
 	}
 
 	static bool ScanField(
-		ISourceGenLogger? logger,
 		Dictionary<RegistryTypeDefinition, List<RegistrySpecDefinition>> registryMembers,
 		IFieldSymbol fieldSymbol
 	)
@@ -96,7 +88,6 @@ partial class SourceGenHelper
 		if (registrationType == RegistryTypeDefinition.Empty)
 			return false;
 
-		logger?.Info($"Field is a {registrationType.Name}", 2);
 		registryMembers[registrationType]
 			.Add(
 				new(
@@ -110,7 +101,6 @@ partial class SourceGenHelper
 	}
 
 	static bool ScanNestedType(
-		ISourceGenLogger? logger,
 		SeverityDefinition defaultSeverity,
 		Dictionary<RegistryTypeDefinition, List<RegistrySpecDefinition>> registryMembers,
 		INamedTypeSymbol nestedType
@@ -125,24 +115,21 @@ partial class SourceGenHelper
 			? TypeLibrary.SeverityValues.Get(severityAttribute.Severity)
 			: defaultSeverity;
 
-		return ScanNestedClassFields(logger, severity, registryMembers[registrationType], nestedType);
+		return ScanNestedClassFields(severity, registryMembers[registrationType], nestedType);
 	}
 
 	static bool ScanNestedClassFields(
-		ISourceGenLogger? logger,
 		SeverityDefinition severityDefinition,
 		List<RegistrySpecDefinition> specDefinitions,
 		INamedTypeSymbol nestedType
 	)
 	{
-		logger?.Info($"Scanning nested class fields for: {nestedType.Name}", 2);
 		var foundField = false;
 		foreach (var member in nestedType.GetMembers())
 		{
 			if (member is IFieldSymbol fieldSymbol && IsValidField(fieldSymbol))
 			{
 				specDefinitions.Add(new((string)fieldSymbol.ConstantValue!, severityDefinition, fieldSymbol.Locations));
-				logger?.Info($"Found field: {member.Name}", 3);
 				foundField = true;
 			}
 		}

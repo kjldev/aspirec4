@@ -1,187 +1,14 @@
 using System.Collections.Immutable;
-using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using Aspire.Hosting.AspireC4.SourceGenerators.Helpers;
-using Aspire.Hosting.AspireC4.SourceGenerators.Models;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
-using Microsoft.CodeAnalysis.Diagnostics;
 using Microsoft.CodeAnalysis.Text;
 
 namespace Aspire.Hosting.AspireC4.SourceGenerators;
 
-public sealed class LikeC4StrictValidatorGeneratorTests
+public sealed class LikeC4StrictValidatorGeneratorTests : TUnitSourceGeneratorTestBase<LikeC4StrictValidatorGenerator>
 {
-	// -----------------------------------------------------------------------
-	// ExtractSpecificationItems — direct unit tests (no Roslyn pipeline needed)
-	// -----------------------------------------------------------------------
-
-	[Test]
-	public async Task ExtractSpecificationItems_WithTagDeclaration_ExtractsTags()
-	{
-		// Arrange
-		const string dsl = """
-			specification {
-			  element container
-			  tag my-tag
-			  tag external
-			}
-			""";
-
-		// Act
-		var result = LikeC4DSLHelpers.ExtractSpecificationItems(dsl);
-
-		// Assert
-		await Assert.That(result.Tags).Contains("my-tag");
-		await Assert.That(result.Tags).Contains("external");
-	}
-
-	[Test]
-	public async Task ExtractSpecificationItems_WithElementDeclaration_ExtractsElementKinds()
-	{
-		// Arrange
-		const string dsl = """
-			specification {
-			  element container
-			  element executable
-			  element service
-			}
-			""";
-
-		// Act
-		var result = LikeC4DSLHelpers.ExtractSpecificationItems(dsl);
-
-		// Assert
-		await Assert.That(result.ElementKinds).Contains("container");
-		await Assert.That(result.ElementKinds).Contains("executable");
-		await Assert.That(result.ElementKinds).Contains("service");
-	}
-
-	[Test]
-	public async Task ExtractSpecificationItems_WithRelationshipDeclaration_ExtractsRelationshipKinds()
-	{
-		// Arrange
-		const string dsl = """
-			specification {
-			  relationship async
-			  relationship RESP
-			  relationship tcp-ip
-			}
-			""";
-
-		// Act
-		var result = LikeC4DSLHelpers.ExtractSpecificationItems(dsl);
-
-		// Assert
-		await Assert.That(result.RelationshipKinds).Contains("async");
-		await Assert.That(result.RelationshipKinds).Contains("RESP");
-		await Assert.That(result.RelationshipKinds).Contains("tcp-ip");
-	}
-
-	[Test]
-	public async Task ExtractSpecificationItems_WithEmptyText_ReturnsEmptyDefinitions()
-	{
-		// Arrange
-		const string dsl = "";
-
-		// Act
-		var result = LikeC4DSLHelpers.ExtractSpecificationItems(dsl);
-
-		// Assert
-		await Assert.That(result.Tags).IsEmpty();
-		await Assert.That(result.ElementKinds).IsEmpty();
-		await Assert.That(result.RelationshipKinds).IsEmpty();
-	}
-
-	[Test]
-	public async Task ExtractSpecificationItems_WithFullGeneratedFile_ExtractsAllDeclarations()
-	{
-		// Arrange
-		const string dsl = """
-			specification {
-			  element container
-			  element executable
-			  relationship RESP
-			  relationship tcp-ip
-			  tag aspire-run-state-finished
-			  tag aspire-run-state-running
-			  tag local-dev
-			}
-
-			model {
-			  redis = container 'redis' {
-			    #local-dev
-			    link https://redis.io/ 'Redis'
-			  }
-			  redis -> container_other 'Connects'
-			}
-			""";
-
-		// Act
-		var result = LikeC4DSLHelpers.ExtractSpecificationItems(dsl);
-
-		// Assert
-		await Assert.That(result.Tags).Contains("aspire-run-state-finished");
-		await Assert.That(result.Tags).Contains("aspire-run-state-running");
-		await Assert.That(result.Tags).Contains("local-dev");
-		await Assert.That(result.ElementKinds).Contains("container");
-		await Assert.That(result.ElementKinds).Contains("executable");
-		await Assert.That(result.RelationshipKinds).Contains("RESP");
-		await Assert.That(result.RelationshipKinds).Contains("tcp-ip");
-	}
-
-	[Test]
-	public async Task ExtractSpecificationItems_WithExtendBlockInModel_DoesNotFalselyExtract()
-	{
-		// Arrange — model block with #tag (hash-prefix) should not be picked up as a declaration
-		const string dsl = """
-			model {
-			  extend azure_redis {
-			    link https://redis.io/ 'Redis'
-			    metadata {
-			      team 'Platform'
-			    }
-			  }
-			}
-			""";
-
-		// Act
-		var result = LikeC4DSLHelpers.ExtractSpecificationItems(dsl);
-
-		// Assert — nothing from the model block should be extracted
-		await Assert.That(result.Tags).IsEmpty();
-		await Assert.That(result.ElementKinds).IsEmpty();
-		await Assert.That(result.RelationshipKinds).IsEmpty();
-	}
-
-	// -----------------------------------------------------------------------
-	// HasAny on DslDefinitions
-	// -----------------------------------------------------------------------
-
-	[Test]
-	public async Task DslDefinitions_Empty_HasAnyIsFalse()
-	{
-		// Arrange / Act
-		var empty = DSLDefinitions.Empty;
-
-		// Assert
-		await Assert.That(empty.HasAny).IsFalse();
-	}
-
-	[Test]
-	public async Task DslDefinitions_WithTags_HasAnyIsTrue()
-	{
-		// Arrange / Act
-		var defs = new DSLDefinitions(["my-tag"], [], []);
-
-		// Assert
-		await Assert.That(defs.HasAny).IsTrue();
-	}
-
-	// -----------------------------------------------------------------------
-	// Full generator pipeline — attribute injection
-	// -----------------------------------------------------------------------
-
 	[Test]
 	public async Task RunGenerator_Always_InjectsLikeC4RegistryAttributes(CancellationToken cancellationToken)
 	{
@@ -189,14 +16,16 @@ public sealed class LikeC4StrictValidatorGeneratorTests
 		const string source = "namespace TestApp;";
 
 		// Act
-		var result = RunGenerator(source, cancellationToken: cancellationToken);
-		var attributeSource = GetGeneratedSource(result, "LikeC4RegistryAttribute.g.cs");
+		var result = await RunGeneratorAsync(source, cancellationToken: cancellationToken);
+		var likeC4RegistryAttribute = result.GetSource("LikeC4RegistryAttribute.g.cs");
+		var knownTypeAttribute = result.GetSource("KnownTypeAttribute.g.cs");
 
 		// Assert
-		await Assert.That(attributeSource).IsNotNull();
-		await Assert.That(attributeSource!).Contains("LikeC4RegistryAttribute");
-		await Assert.That(GetGeneratedSource(result, "LikeC4RegistryType.g.cs")).IsNotNull();
-		await Assert.That(GetGeneratedSource(result, "KnownTypeAttribute.g.cs")).IsNotNull();
+		await Assert.That(likeC4RegistryAttribute).IsNotNull();
+		await Assert.That(likeC4RegistryAttribute!).Contains("LikeC4RegistryAttribute");
+
+		await Assert.That(knownTypeAttribute).IsNotNull();
+		await Assert.That(knownTypeAttribute!).Contains("KnownTypeAttribute");
 	}
 
 	// -----------------------------------------------------------------------
@@ -215,7 +44,7 @@ public sealed class LikeC4StrictValidatorGeneratorTests
 		var source = BuildSourceWithCallSites(".WithTag(\"external\")");
 
 		// Act
-		var result = RunGenerator(
+		var result = await RunGeneratorAsync(
 			source,
 			additionalFiles: [new TestAdditionalText("model.c4", dsl)],
 			strictMode: "warning",
@@ -223,7 +52,7 @@ public sealed class LikeC4StrictValidatorGeneratorTests
 		);
 
 		// Assert
-		await Assert.That(GetDiagnostics(result, "ASPIREC4001")).IsEmpty();
+		await Assert.That(result).DoesNotHaveDiagnostic(DiagnosticLibrary.UndeclaredTag);
 	}
 
 	[Test]
@@ -240,7 +69,7 @@ public sealed class LikeC4StrictValidatorGeneratorTests
 		var source = BuildSourceWithCallSites(".WithTag(\"unknown-tag\")");
 
 		// Act
-		var result = RunGenerator(
+		var result = await RunGeneratorAsync(
 			source,
 			additionalFiles: [new TestAdditionalText("model.c4", dsl)],
 			strictMode: "error",
@@ -248,9 +77,8 @@ public sealed class LikeC4StrictValidatorGeneratorTests
 		);
 
 		// Assert
-		var diagnostics = GetDiagnostics(result, "ASPIREC4001");
-		await Assert.That(diagnostics.Count).IsGreaterThan(0);
-		await Assert.That(diagnostics[0].GetMessage(CultureInfo.InvariantCulture)).Contains("unknown-tag");
+		var diagnostic = await Assert.That(result).HasDiagnostic(DiagnosticLibrary.UndeclaredTag);
+		await Assert.That(diagnostic.GetMessage(CultureInfo.InvariantCulture)).Contains("unknown-tag");
 	}
 
 	[Test]
@@ -263,7 +91,7 @@ public sealed class LikeC4StrictValidatorGeneratorTests
 		var source = BuildSourceWithCallSites(".WithTag(\"unknown-tag\")");
 
 		// Act
-		var result = RunGenerator(
+		var result = await RunGeneratorAsync(
 			source,
 			additionalFiles: [new TestAdditionalText("model.c4", dsl)],
 			strictMode: "off",
@@ -271,7 +99,7 @@ public sealed class LikeC4StrictValidatorGeneratorTests
 		);
 
 		// Assert — no validation without strict mode
-		await Assert.That(GetDiagnostics(result, "ASPIREC4001")).IsEmpty();
+		await Assert.That(result).DoesNotHaveDiagnostic(DiagnosticLibrary.UndeclaredTag);
 	}
 
 	[Test]
@@ -281,10 +109,15 @@ public sealed class LikeC4StrictValidatorGeneratorTests
 		var source = BuildSourceWithCallSites(".WithTag(\"any-value\")");
 
 		// Act
-		var result = RunGenerator(source, additionalFiles: [], strictMode: "all", cancellationToken: cancellationToken);
+		var result = await RunGeneratorAsync(
+			source,
+			additionalFiles: [],
+			strictMode: "all",
+			cancellationToken: cancellationToken
+		);
 
 		// Assert — no DSL definitions = nothing to validate against
-		await Assert.That(GetDiagnostics(result, "ASPIREC4001")).IsEmpty();
+		await Assert.That(result).DoesNotHaveDiagnostic(DiagnosticLibrary.UndeclaredTag);
 	}
 
 	[Test]
@@ -295,7 +128,7 @@ public sealed class LikeC4StrictValidatorGeneratorTests
 		var source = BuildSourceWithCallSites(".WithKind(\"service\")");
 
 		// Act
-		var result = RunGenerator(
+		var result = await RunGeneratorAsync(
 			source,
 			additionalFiles: [new TestAdditionalText("spec.c4", dsl)],
 			strictMode: "all",
@@ -303,7 +136,7 @@ public sealed class LikeC4StrictValidatorGeneratorTests
 		);
 
 		// Assert
-		await Assert.That(GetDiagnostics(result, "ASPIREC4002")).IsEmpty();
+		await Assert.That(result).DoesNotHaveDiagnostic(DiagnosticLibrary.UndeclaredKind);
 	}
 
 	[Test]
@@ -320,7 +153,7 @@ public sealed class LikeC4StrictValidatorGeneratorTests
 		var source = BuildSourceWithCallSites(".WithKind(\"unknown-kind\")");
 
 		// Act
-		var result = RunGenerator(
+		var result = await RunGeneratorAsync(
 			source,
 			additionalFiles: [new TestAdditionalText("spec.c4", dsl)],
 			strictMode: "all",
@@ -328,9 +161,8 @@ public sealed class LikeC4StrictValidatorGeneratorTests
 		);
 
 		// Assert
-		var diagnostics = GetDiagnostics(result, "ASPIREC4002");
-		await Assert.That(diagnostics.Count).IsGreaterThan(0);
-		await Assert.That(diagnostics[0].GetMessage(CultureInfo.InvariantCulture)).Contains("unknown-kind");
+		var diagnostic = await Assert.That(result).HasDiagnostic(DiagnosticLibrary.UndeclaredKind);
+		await Assert.That(diagnostic.GetMessage(CultureInfo.InvariantCulture)).Contains("unknown-kind");
 	}
 
 	[Test]
@@ -347,7 +179,7 @@ public sealed class LikeC4StrictValidatorGeneratorTests
 		var source = BuildSourceWithCallSites(".WithKind(\"async\")");
 
 		// Act
-		var result = RunGenerator(
+		var result = await RunGeneratorAsync(
 			source,
 			additionalFiles: [new TestAdditionalText("spec.c4", dsl)],
 			strictMode: "all",
@@ -355,7 +187,7 @@ public sealed class LikeC4StrictValidatorGeneratorTests
 		);
 
 		// Assert
-		await Assert.That(GetDiagnostics(result, "ASPIREC4002")).IsEmpty();
+		await Assert.That(result).DoesNotHaveDiagnostic(DiagnosticLibrary.UndeclaredKind);
 	}
 
 	[Test]
@@ -378,7 +210,7 @@ public sealed class LikeC4StrictValidatorGeneratorTests
 			""";
 
 		// Act
-		var result = RunGenerator(
+		var result = await RunGeneratorAsync(
 			source,
 			additionalFiles: [new TestAdditionalText("spec.c4", dsl)],
 			strictMode: "all",
@@ -386,7 +218,7 @@ public sealed class LikeC4StrictValidatorGeneratorTests
 		);
 
 		// Assert
-		await Assert.That(GetDiagnostics(result, "ASPIREC4001")).IsEmpty();
+		await Assert.That(result).DoesNotHaveDiagnostic(DiagnosticLibrary.UndeclaredTag);
 	}
 
 	// -----------------------------------------------------------------------
@@ -405,10 +237,10 @@ public sealed class LikeC4StrictValidatorGeneratorTests
 		);
 
 		// Act
-		var result = RunGenerator(source, cancellationToken: cancellationToken);
+		var result = await RunGeneratorAsync(source, cancellationToken: cancellationToken);
 
 		// Assert
-		await Assert.That(GetDiagnostics(result, "ASPIREC4001")).IsEmpty();
+		await Assert.That(result).DoesNotHaveDiagnostic(DiagnosticLibrary.UndeclaredTag);
 	}
 
 	[Test]
@@ -423,12 +255,11 @@ public sealed class LikeC4StrictValidatorGeneratorTests
 		);
 
 		// Act
-		var result = RunGenerator(source, cancellationToken: cancellationToken);
+		var result = await RunGeneratorAsync(source, cancellationToken: cancellationToken);
 
 		// Assert
-		var diagnostics = GetDiagnostics(result, "ASPIREC4001");
-		await Assert.That(diagnostics.Count).IsGreaterThan(0);
-		await Assert.That(diagnostics[0].GetMessage(CultureInfo.InvariantCulture)).Contains("unknown");
+		var diagnostic = await Assert.That(result).HasDiagnostic(DiagnosticLibrary.UndeclaredTag);
+		await Assert.That(diagnostic.GetMessage(CultureInfo.InvariantCulture)).Contains("unknown");
 	}
 
 	[Test]
@@ -443,10 +274,10 @@ public sealed class LikeC4StrictValidatorGeneratorTests
 		);
 
 		// Act
-		var result = RunGenerator(source, cancellationToken: cancellationToken);
+		var result = await RunGeneratorAsync(source, cancellationToken: cancellationToken);
 
 		// Assert
-		await Assert.That(GetDiagnostics(result, "ASPIREC4002")).IsEmpty();
+		await Assert.That(result).DoesNotHaveDiagnostic(DiagnosticLibrary.UndeclaredKind);
 	}
 
 	[Test]
@@ -461,10 +292,10 @@ public sealed class LikeC4StrictValidatorGeneratorTests
 		);
 
 		// Act
-		var result = RunGenerator(source, cancellationToken: cancellationToken);
+		var result = await RunGeneratorAsync(source, cancellationToken: cancellationToken);
 
 		// Assert
-		await Assert.That(GetDiagnostics(result, "ASPIREC4002")).IsEmpty();
+		await Assert.That(result).DoesNotHaveDiagnostic(DiagnosticLibrary.UndeclaredKind);
 	}
 
 	[Test]
@@ -479,12 +310,11 @@ public sealed class LikeC4StrictValidatorGeneratorTests
 		);
 
 		// Act
-		var result = RunGenerator(source, cancellationToken: cancellationToken);
+		var result = await RunGeneratorAsync(source, cancellationToken: cancellationToken);
 
 		// Assert
-		var diagnostics = GetDiagnostics(result, "ASPIREC4002");
-		await Assert.That(diagnostics.Count).IsGreaterThan(0);
-		await Assert.That(diagnostics[0].GetMessage(CultureInfo.InvariantCulture)).Contains("unknown-kind");
+		var diagnostic = await Assert.That(result).HasDiagnostic(DiagnosticLibrary.UndeclaredKind);
+		await Assert.That(diagnostic.GetMessage(CultureInfo.InvariantCulture)).Contains("unknown-kind");
 	}
 
 	[Test]
@@ -500,10 +330,10 @@ public sealed class LikeC4StrictValidatorGeneratorTests
 		);
 
 		// Act
-		var result = RunGenerator(source, cancellationToken: cancellationToken);
+		var result = await RunGeneratorAsync(source, cancellationToken: cancellationToken);
 
 		// Assert
-		await Assert.That(GetDiagnostics(result, "ASPIREC4001")).IsEmpty();
+		await Assert.That(result).DoesNotHaveDiagnostic(DiagnosticLibrary.UndeclaredTag);
 	}
 
 	// -----------------------------------------------------------------------
@@ -534,11 +364,10 @@ public sealed class LikeC4StrictValidatorGeneratorTests
 			""";
 
 		// Act
-		var result = RunGenerator(source, cancellationToken: cancellationToken);
+		var result = await RunGeneratorAsync(source, cancellationToken: cancellationToken);
 
 		// Assert
-		var diagnostics = GetDiagnostics(result, "ASPIREC4003");
-		await Assert.That(diagnostics.Count).IsGreaterThan(0);
+		await Assert.That(result).HasDiagnostic(DiagnosticLibrary.MultipleRegistryClassesDefined);
 	}
 
 	[Test]
@@ -550,11 +379,11 @@ public sealed class LikeC4StrictValidatorGeneratorTests
 		var source = BuildSourceWithCallSites(".WithTag(\"anything\")", ".WithKind(\"anything\")");
 
 		// Act
-		var result = RunGenerator(source, cancellationToken: cancellationToken);
+		var result = await RunGeneratorAsync(source, cancellationToken: cancellationToken);
 
 		// Assert — no validation active when no definitions are present
-		await Assert.That(GetDiagnostics(result, "ASPIREC4001")).IsEmpty();
-		await Assert.That(GetDiagnostics(result, "ASPIREC4002")).IsEmpty();
+		await Assert.That(result).DoesNotHaveDiagnostic(DiagnosticLibrary.UndeclaredTag);
+		await Assert.That(result).DoesNotHaveDiagnostic(DiagnosticLibrary.UndeclaredKind);
 	}
 
 	// -----------------------------------------------------------------------
@@ -573,10 +402,10 @@ public sealed class LikeC4StrictValidatorGeneratorTests
 		);
 
 		// Act
-		var result = RunGenerator(source, cancellationToken: cancellationToken);
+		var result = await RunGeneratorAsync(source, cancellationToken: cancellationToken);
 
 		// Assert
-		await Assert.That(GetDiagnostics(result, "ASPIREC4004")).IsEmpty();
+		await Assert.That(result).DoesNotHaveDiagnostic(DiagnosticLibrary.UndeclaredGroup);
 	}
 
 	[Test]
@@ -591,12 +420,11 @@ public sealed class LikeC4StrictValidatorGeneratorTests
 		);
 
 		// Act
-		var result = RunGenerator(source, cancellationToken: cancellationToken);
+		var result = await RunGeneratorAsync(source, cancellationToken: cancellationToken);
 
 		// Assert
-		var diagnostics = GetDiagnostics(result, "ASPIREC4004");
-		await Assert.That(diagnostics.Count).IsGreaterThan(0);
-		await Assert.That(diagnostics[0].GetMessage(CultureInfo.InvariantCulture)).Contains("Backend");
+		var diagnostic = await Assert.That(result).HasDiagnostic(DiagnosticLibrary.UndeclaredGroup);
+		await Assert.That(diagnostic.GetMessage(CultureInfo.InvariantCulture)).Contains("Backend");
 	}
 
 	[Test]
@@ -611,10 +439,10 @@ public sealed class LikeC4StrictValidatorGeneratorTests
 		);
 
 		// Act
-		var result = RunGenerator(source, cancellationToken: cancellationToken);
+		var result = await RunGeneratorAsync(source, cancellationToken: cancellationToken);
 
 		// Assert
-		await Assert.That(GetDiagnostics(result, "ASPIREC4004")).IsEmpty();
+		await Assert.That(result).DoesNotHaveDiagnostic(DiagnosticLibrary.UndeclaredGroup);
 	}
 
 	[Test]
@@ -629,10 +457,10 @@ public sealed class LikeC4StrictValidatorGeneratorTests
 		);
 
 		// Act
-		var result = RunGenerator(source, cancellationToken: cancellationToken);
+		var result = await RunGeneratorAsync(source, cancellationToken: cancellationToken);
 
 		// Assert — group validation is opt-in via declaring a Groups nested class
-		await Assert.That(GetDiagnostics(result, "ASPIREC4004")).IsEmpty();
+		await Assert.That(result).DoesNotHaveDiagnostic(DiagnosticLibrary.UndeclaredGroup);
 	}
 
 	[Test]
@@ -644,10 +472,10 @@ public sealed class LikeC4StrictValidatorGeneratorTests
 		var source = BuildSourceWithCallSites(".WithLikeC4Group(\"Frontend\")");
 
 		// Act
-		var result = RunGenerator(source, cancellationToken: cancellationToken);
+		var result = await RunGeneratorAsync(source, cancellationToken: cancellationToken);
 
 		// Assert
-		await Assert.That(GetDiagnostics(result, "ASPIREC4004")).IsEmpty();
+		await Assert.That(result).DoesNotHaveDiagnostic(DiagnosticLibrary.UndeclaredGroup);
 	}
 
 	// -----------------------------------------------------------------------
@@ -682,12 +510,11 @@ public sealed class LikeC4StrictValidatorGeneratorTests
 			""";
 
 		// Act
-		var result = RunGenerator(source, cancellationToken: cancellationToken);
+		var result = await RunGeneratorAsync(source, cancellationToken: cancellationToken);
 
 		// Assert
-		var diagnostics = GetDiagnostics(result, "ASPIREC4001");
-		await Assert.That(diagnostics.Count).IsGreaterThan(0);
-		await Assert.That(diagnostics[0].GetMessage(CultureInfo.InvariantCulture)).Contains("unknown-tag");
+		var diagnostic = await Assert.That(result).HasDiagnostic(DiagnosticLibrary.UndeclaredTag);
+		await Assert.That(diagnostic.GetMessage(CultureInfo.InvariantCulture)).Contains("unknown-tag");
 	}
 
 	[Test]
@@ -718,10 +545,10 @@ public sealed class LikeC4StrictValidatorGeneratorTests
 			""";
 
 		// Act
-		var result = RunGenerator(source, cancellationToken: cancellationToken);
+		var result = await RunGeneratorAsync(source, cancellationToken: cancellationToken);
 
 		// Assert
-		await Assert.That(GetDiagnostics(result, "ASPIREC4001")).IsEmpty();
+		await Assert.That(result).DoesNotHaveDiagnostic(DiagnosticLibrary.UndeclaredTag);
 	}
 
 	[Test]
@@ -753,11 +580,10 @@ public sealed class LikeC4StrictValidatorGeneratorTests
 			""";
 
 		// Act
-		var result = RunGenerator(source, cancellationToken: cancellationToken);
+		var result = await RunGeneratorAsync(source, cancellationToken: cancellationToken);
 
 		// Assert
-		var diagnostics = GetDiagnostics(result, "ASPIREC4005");
-		await Assert.That(diagnostics.Count).IsGreaterThan(0);
+		await Assert.That(result).HasDiagnostic(DiagnosticLibrary.DuplicateTypeDeclaration);
 	}
 
 	[Test]
@@ -786,12 +612,11 @@ public sealed class LikeC4StrictValidatorGeneratorTests
 			""";
 
 		// Act
-		var result = RunGenerator(source, cancellationToken: cancellationToken);
+		var result = await RunGeneratorAsync(source, cancellationToken: cancellationToken);
 
 		// Assert
-		var diagnostics = GetDiagnostics(result, "ASPIREC4004");
-		await Assert.That(diagnostics.Count).IsGreaterThan(0);
-		await Assert.That(diagnostics[0].GetMessage(CultureInfo.InvariantCulture)).Contains("Backend");
+		var diagnostic = await Assert.That(result).HasDiagnostic(DiagnosticLibrary.UndeclaredGroup);
+		await Assert.That(diagnostic.GetMessage(CultureInfo.InvariantCulture)).Contains("Backend");
 	}
 
 	[Test]
@@ -822,10 +647,10 @@ public sealed class LikeC4StrictValidatorGeneratorTests
 			""";
 
 		// Act
-		var result = RunGenerator(source, cancellationToken: cancellationToken);
+		var result = await RunGeneratorAsync(source, cancellationToken: cancellationToken);
 
 		// Assert — strict disabled for tags, so no diagnostic
-		await Assert.That(GetDiagnostics(result, "ASPIREC4001")).IsEmpty();
+		await Assert.That(result).DoesNotHaveDiagnostic(DiagnosticLibrary.UndeclaredTag);
 	}
 
 	[Test]
@@ -855,11 +680,11 @@ public sealed class LikeC4StrictValidatorGeneratorTests
 			""";
 
 		// Act
-		var result = RunGenerator(source, cancellationToken: cancellationToken);
+		var result = await RunGeneratorAsync(source, cancellationToken: cancellationToken);
 
 		// Assert — strict enabled at registry level, no tags declared → fires
-		var diagnostics = GetDiagnostics(result, "ASPIREC4001");
-		await Assert.That(diagnostics.Count).IsGreaterThan(0);
+		var diagnostic = await Assert.That(result).HasDiagnostic(DiagnosticLibrary.UndeclaredTag);
+		await Assert.That(diagnostic.GetMessage(CultureInfo.InvariantCulture)).Contains("any-tag");
 	}
 
 	// -----------------------------------------------------------------------
@@ -876,12 +701,10 @@ public sealed class LikeC4StrictValidatorGeneratorTests
 		);
 
 		// Act
-		var result = RunGenerator(source, cancellationToken: cancellationToken);
+		var result = await RunGeneratorAsync(source, cancellationToken: cancellationToken);
 
 		// Assert — no diagnostics from having a MetadataKeys nested class
-		await Assert
-			.That(result.Diagnostics.Where(d => d.Id.StartsWith("ASPIREC4", StringComparison.Ordinal)))
-			.IsEmpty();
+		await Assert.That(result).DoesNotHaveDiagnostic(DiagnosticLibrary.UndeclaredMetadataKey);
 	}
 
 	[Test]
@@ -896,10 +719,14 @@ public sealed class LikeC4StrictValidatorGeneratorTests
 		);
 
 		// Act — AllIncludingMetadata enables metadata key validation
-		var result = RunGenerator(source, strictMode: "AllIncludingMetadata", cancellationToken: cancellationToken);
+		var result = await RunGeneratorAsync(
+			source,
+			strictMode: "AllIncludingMetadata",
+			cancellationToken: cancellationToken
+		);
 
 		// Assert
-		await Assert.That(result.Diagnostics.Where(static d => d.Id == "ASPIREC4006")).IsEmpty();
+		await Assert.That(result).DoesNotHaveDiagnostic(DiagnosticLibrary.UndeclaredMetadataKey);
 	}
 
 	[Test]
@@ -914,10 +741,14 @@ public sealed class LikeC4StrictValidatorGeneratorTests
 		);
 
 		// Act — AllIncludingMetadata enables metadata key validation
-		var result = RunGenerator(source, strictMode: "AllIncludingMetadata", cancellationToken: cancellationToken);
+		var result = await RunGeneratorAsync(
+			source,
+			strictMode: "AllIncludingMetadata",
+			cancellationToken: cancellationToken
+		);
 
 		// Assert — "azure sku" normalises to "azure_sku" which matches "Azure_SKU" case-insensitively
-		await Assert.That(result.Diagnostics.Where(static d => d.Id == "ASPIREC4006")).IsEmpty();
+		await Assert.That(result).DoesNotHaveDiagnostic(DiagnosticLibrary.UndeclaredMetadataKey);
 	}
 
 	[Test]
@@ -932,10 +763,14 @@ public sealed class LikeC4StrictValidatorGeneratorTests
 		);
 
 		// Act — AllIncludingMetadata enables metadata key validation
-		var result = RunGenerator(source, strictMode: "AllIncludingMetadata", cancellationToken: cancellationToken);
+		var result = await RunGeneratorAsync(
+			source,
+			strictMode: "AllIncludingMetadata",
+			cancellationToken: cancellationToken
+		);
 
 		// Assert — OrdinalIgnoreCase handles the case difference
-		await Assert.That(result.Diagnostics.Where(static d => d.Id == "ASPIREC4006")).IsEmpty();
+		await Assert.That(result).DoesNotHaveDiagnostic(DiagnosticLibrary.UndeclaredMetadataKey);
 	}
 
 	[Test]
@@ -950,10 +785,14 @@ public sealed class LikeC4StrictValidatorGeneratorTests
 		);
 
 		// Act — AllIncludingMetadata enables metadata key validation
-		var result = RunGenerator(source, strictMode: "AllIncludingMetadata", cancellationToken: cancellationToken);
+		var result = await RunGeneratorAsync(
+			source,
+			strictMode: "AllIncludingMetadata",
+			cancellationToken: cancellationToken
+		);
 
 		// Assert — "Azure SKU" normalises to "Azure_SKU" in the registry set
-		await Assert.That(result.Diagnostics.Where(static d => d.Id == "ASPIREC4006")).IsEmpty();
+		await Assert.That(result).DoesNotHaveDiagnostic(DiagnosticLibrary.UndeclaredMetadataKey);
 	}
 
 	[Test]
@@ -968,12 +807,15 @@ public sealed class LikeC4StrictValidatorGeneratorTests
 		);
 
 		// Act — AllIncludingMetadata enables metadata key validation
-		var result = RunGenerator(source, strictMode: "AllIncludingMetadata", cancellationToken: cancellationToken);
+		var result = await RunGeneratorAsync(
+			source,
+			strictMode: "AllIncludingMetadata",
+			cancellationToken: cancellationToken
+		);
 
 		// Assert
-		var aspireDiags = result.Diagnostics.Where(static d => d.Id == "ASPIREC4006").ToList();
-		await Assert.That(aspireDiags.Count).IsEqualTo(1);
-		await Assert.That(aspireDiags[0].GetMessage(CultureInfo.InvariantCulture)).Contains("unknown_key");
+		var diagnostic = await Assert.That(result).HasDiagnostic(DiagnosticLibrary.UndeclaredMetadataKey);
+		await Assert.That(diagnostic.GetMessage(CultureInfo.InvariantCulture)).Contains("unknown_key");
 	}
 
 	// -----------------------------------------------------------------------
@@ -1046,12 +888,10 @@ public sealed class LikeC4StrictValidatorGeneratorTests
 		);
 
 		// Act
-		var result = RunGenerator(source, disabled: true, cancellationToken: cancellationToken);
+		var result = await RunGeneratorAsync(source, disabled: true, cancellationToken: cancellationToken);
 
 		// Assert — generator disabled, so no ASPIREC4001 should fire
-		await Assert
-			.That(result.Diagnostics.Where(d => d.Id.StartsWith("ASPIREC4", StringComparison.Ordinal)))
-			.IsEmpty();
+		await Assert.That(result).DoesNotHaveDiagnostic(DiagnosticLibrary.UndeclaredTag);
 	}
 
 	[Test]
@@ -1066,11 +906,11 @@ public sealed class LikeC4StrictValidatorGeneratorTests
 		);
 
 		// Act — disabled=false is the default; verification that normal validation still runs
-		var result = RunGenerator(source, disabled: false, cancellationToken: cancellationToken);
+		var result = await RunGeneratorAsync(source, disabled: false, cancellationToken: cancellationToken);
 
 		// Assert — validation is active, undeclared tag triggers ASPIREC4001
-		var diagnostics = GetDiagnostics(result, "ASPIREC4001");
-		await Assert.That(diagnostics.Count).IsGreaterThan(0);
+		var diagnostic = await Assert.That(result).HasDiagnostic(DiagnosticLibrary.UndeclaredTag);
+		await Assert.That(diagnostic.GetMessage(CultureInfo.InvariantCulture)).Contains("undeclared-tag");
 	}
 
 	// -----------------------------------------------------------------------
@@ -1089,16 +929,15 @@ public sealed class LikeC4StrictValidatorGeneratorTests
 		);
 
 		// Act
-		var result = RunGenerator(source, cancellationToken: cancellationToken);
+		var result = await RunGeneratorAsync(source, cancellationToken: cancellationToken);
 
 		// Assert
-		var diagnostics = GetDiagnostics(result, "ASPIREC4001");
-		await Assert.That(diagnostics.Count).IsGreaterThan(0);
-		await Assert.That(diagnostics[0].Severity).IsEqualTo(DiagnosticSeverity.Info);
+		var diagnostic = await Assert.That(result).HasDiagnostic(DiagnosticLibrary.UndeclaredTag);
+		await Assert.That(diagnostic.Severity).IsEqualTo(DiagnosticSeverity.Info);
 	}
 
 	[Test]
-	public async Task RunGenerator_WithDslWarningModeAndUndeclaredTag_EmitsWarningSeverity(
+	public async Task RunGenerator_WithDSLWarningModeAndUndeclaredTag_EmitsWarningSeverity(
 		CancellationToken cancellationToken
 	)
 	{
@@ -1111,7 +950,7 @@ public sealed class LikeC4StrictValidatorGeneratorTests
 		var source = BuildSourceWithCallSites(".WithTag(\"unknown-tag\")");
 
 		// Act
-		var result = RunGenerator(
+		var result = await RunGeneratorAsync(
 			source,
 			additionalFiles: [new TestAdditionalText("model.c4", dsl)],
 			strictMode: "warning",
@@ -1119,13 +958,12 @@ public sealed class LikeC4StrictValidatorGeneratorTests
 		);
 
 		// Assert
-		var diagnostics = GetDiagnostics(result, "ASPIREC4001");
-		await Assert.That(diagnostics.Count).IsGreaterThan(0);
-		await Assert.That(diagnostics[0].Severity).IsEqualTo(DiagnosticSeverity.Warning);
+		var diagnostic = await Assert.That(result).HasDiagnostic(DiagnosticLibrary.UndeclaredTag);
+		await Assert.That(diagnostic.Severity).IsEqualTo(DiagnosticSeverity.Warning);
 	}
 
 	[Test]
-	public async Task RunGenerator_WithDslErrorModeAndUndeclaredTag_EmitsErrorSeverity(
+	public async Task RunGenerator_WithDSLErrorModeAndUndeclaredTag_EmitsErrorSeverity(
 		CancellationToken cancellationToken
 	)
 	{
@@ -1138,7 +976,7 @@ public sealed class LikeC4StrictValidatorGeneratorTests
 		var source = BuildSourceWithCallSites(".WithTag(\"unknown-tag\")");
 
 		// Act
-		var result = RunGenerator(
+		var result = await RunGeneratorAsync(
 			source,
 			additionalFiles: [new TestAdditionalText("model.c4", dsl)],
 			strictMode: "error",
@@ -1146,13 +984,12 @@ public sealed class LikeC4StrictValidatorGeneratorTests
 		);
 
 		// Assert
-		var diagnostics = GetDiagnostics(result, "ASPIREC4001");
-		await Assert.That(diagnostics.Count).IsGreaterThan(0);
-		await Assert.That(diagnostics[0].Severity).IsEqualTo(DiagnosticSeverity.Error);
+		var diagnostic = await Assert.That(result).HasDiagnostic(DiagnosticLibrary.UndeclaredTag);
+		await Assert.That(diagnostic.Severity).IsEqualTo(DiagnosticSeverity.Error);
 	}
 
 	[Test]
-	public async Task RunGenerator_WithDslWarningModeAndUndeclaredKind_EmitsWarningSeverity(
+	public async Task RunGenerator_WithDSLWarningModeAndUndeclaredKind_EmitsWarningSeverity(
 		CancellationToken cancellationToken
 	)
 	{
@@ -1165,7 +1002,7 @@ public sealed class LikeC4StrictValidatorGeneratorTests
 		var source = BuildSourceWithCallSites(".WithKind(\"unknown-kind\")");
 
 		// Act
-		var result = RunGenerator(
+		var result = await RunGeneratorAsync(
 			source,
 			additionalFiles: [new TestAdditionalText("spec.c4", dsl)],
 			strictMode: "warning",
@@ -1173,9 +1010,8 @@ public sealed class LikeC4StrictValidatorGeneratorTests
 		);
 
 		// Assert
-		var diagnostics = GetDiagnostics(result, "ASPIREC4002");
-		await Assert.That(diagnostics.Count).IsGreaterThan(0);
-		await Assert.That(diagnostics[0].Severity).IsEqualTo(DiagnosticSeverity.Warning);
+		var diagnostic = await Assert.That(result).HasDiagnostic(DiagnosticLibrary.UndeclaredKind);
+		await Assert.That(diagnostic.Severity).IsEqualTo(DiagnosticSeverity.Warning);
 	}
 
 	[Test]
@@ -1205,12 +1041,11 @@ public sealed class LikeC4StrictValidatorGeneratorTests
 			""";
 
 		// Act
-		var result = RunGenerator(source, cancellationToken: cancellationToken);
+		var result = await RunGeneratorAsync(source, cancellationToken: cancellationToken);
 
 		// Assert
-		var diagnostics = GetDiagnostics(result, "ASPIREC4001");
-		await Assert.That(diagnostics.Count).IsGreaterThan(0);
-		await Assert.That(diagnostics[0].Severity).IsEqualTo(DiagnosticSeverity.Error);
+		var diagnostic = await Assert.That(result).HasDiagnostic(DiagnosticLibrary.UndeclaredTag);
+		await Assert.That(diagnostic.Severity).IsEqualTo(DiagnosticSeverity.Error);
 	}
 
 	[Test]
@@ -1240,12 +1075,11 @@ public sealed class LikeC4StrictValidatorGeneratorTests
 			""";
 
 		// Act
-		var result = RunGenerator(source, cancellationToken: cancellationToken);
+		var result = await RunGeneratorAsync(source, cancellationToken: cancellationToken);
 
 		// Assert
-		var diagnostics = GetDiagnostics(result, "ASPIREC4002");
-		await Assert.That(diagnostics.Count).IsGreaterThan(0);
-		await Assert.That(diagnostics[0].Severity).IsEqualTo(DiagnosticSeverity.Error);
+		var diagnostic = await Assert.That(result).HasDiagnostic(DiagnosticLibrary.UndeclaredKind);
+		await Assert.That(diagnostic.Severity).IsEqualTo(DiagnosticSeverity.Error);
 	}
 
 	[Test]
@@ -1275,12 +1109,11 @@ public sealed class LikeC4StrictValidatorGeneratorTests
 			""";
 
 		// Act
-		var result = RunGenerator(source, cancellationToken: cancellationToken);
+		var result = await RunGeneratorAsync(source, cancellationToken: cancellationToken);
 
 		// Assert
-		var diagnostics = GetDiagnostics(result, "ASPIREC4004");
-		await Assert.That(diagnostics.Count).IsGreaterThan(0);
-		await Assert.That(diagnostics[0].Severity).IsEqualTo(DiagnosticSeverity.Error);
+		var diagnostic = await Assert.That(result).HasDiagnostic(DiagnosticLibrary.UndeclaredGroup);
+		await Assert.That(diagnostic.Severity).IsEqualTo(DiagnosticSeverity.Error);
 	}
 
 	[Test]
@@ -1311,12 +1144,11 @@ public sealed class LikeC4StrictValidatorGeneratorTests
 			""";
 
 		// Act
-		var result = RunGenerator(source, cancellationToken: cancellationToken);
+		var result = await RunGeneratorAsync(source, cancellationToken: cancellationToken);
 
 		// Assert
-		var diagnostics = GetDiagnostics(result, "ASPIREC4001");
-		await Assert.That(diagnostics.Count).IsGreaterThan(0);
-		await Assert.That(diagnostics[0].Severity).IsEqualTo(DiagnosticSeverity.Error);
+		var diagnostic = await Assert.That(result).HasDiagnostic(DiagnosticLibrary.UndeclaredTag);
+		await Assert.That(diagnostic.Severity).IsEqualTo(DiagnosticSeverity.Error);
 	}
 
 	[Test]
@@ -1343,11 +1175,10 @@ public sealed class LikeC4StrictValidatorGeneratorTests
 			}
 			""";
 
-		var result = RunGenerator(source, cancellationToken: cancellationToken);
+		var result = await RunGeneratorAsync(source, cancellationToken: cancellationToken);
 
-		var diagnostics = GetDiagnostics(result, "ASPIREC4001");
-		await Assert.That(diagnostics.Count).IsGreaterThan(0);
-		await Assert.That(diagnostics[0].Severity).IsEqualTo(DiagnosticSeverity.Error);
+		var diagnostic = await Assert.That(result).HasDiagnostic(DiagnosticLibrary.UndeclaredTag);
+		await Assert.That(diagnostic.Severity).IsEqualTo(DiagnosticSeverity.Error);
 	}
 
 	[Test]
@@ -1381,74 +1212,50 @@ public sealed class LikeC4StrictValidatorGeneratorTests
 			""";
 
 		// Act
-		var result = RunGenerator(source, cancellationToken: cancellationToken);
+		var result = await RunGeneratorAsync(source, cancellationToken: cancellationToken);
 
 		// Assert — tags are errors, kinds remain suggestions
-		var tagDiagnostics = GetDiagnostics(result, "ASPIREC4001");
-		var kindDiagnostics = GetDiagnostics(result, "ASPIREC4002");
-		await Assert.That(tagDiagnostics.Count).IsGreaterThan(0);
-		await Assert.That(tagDiagnostics[0].Severity).IsEqualTo(DiagnosticSeverity.Error);
-		await Assert.That(kindDiagnostics.Count).IsGreaterThan(0);
-		await Assert.That(kindDiagnostics[0].Severity).IsEqualTo(DiagnosticSeverity.Info);
+		var tagDiagnostic = await Assert.That(result).HasDiagnostic(DiagnosticLibrary.UndeclaredTag);
+		await Assert.That(tagDiagnostic.Severity).IsEqualTo(DiagnosticSeverity.Error);
+
+		var kindDiagnostic = await Assert.That(result).HasDiagnostic(DiagnosticLibrary.UndeclaredKind);
+		await Assert.That(kindDiagnostic.Severity).IsEqualTo(DiagnosticSeverity.Info);
 	}
 
-	// -----------------------------------------------------------------------
-
-	static LikeC4StrictValidatorGenerator CreateSut() => new();
-
-	static GeneratorDriverRunResult RunGenerator(
+	async Task<DriverRunResult> RunGeneratorAsync(
 		string source,
-		TestAdditionalText[]? additionalFiles = null,
+		AdditionalText[]? additionalFiles = null,
 		string? strictMode = null,
 		bool disabled = false,
 		CancellationToken cancellationToken = default
 	)
 	{
-		var compilation = CSharpCompilation.Create(
-			"TestAssembly",
-			[CSharpSyntaxTree.ParseText(source, cancellationToken: cancellationToken)],
-			GetMetadataReferences(),
-			new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary)
-		);
-
-		var generator = CreateSut();
-		var additionalTexts = additionalFiles?.Cast<AdditionalText>().ToArray() ?? [];
-
-		var buildProperties = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+		Dictionary<string, string> analyzerConfigOptions = [];
 		if (strictMode is not null)
-			buildProperties["build_property.AspireC4Strict"] = strictMode;
-		if (disabled)
-			buildProperties["build_property.DisableAspireC4SourceGenerator"] = "true";
+			analyzerConfigOptions[PropertyLibrary.AspireC4Strict] = strictMode;
 
-		AnalyzerConfigOptionsProvider? optionsProvider =
-			buildProperties.Count > 0 ? new TestAnalyzerConfigOptionsProvider(buildProperties) : null;
-
-		GeneratorDriver driver = CSharpGeneratorDriver.Create(
-			generators: [generator.AsSourceGenerator()],
-			additionalTexts: [.. additionalTexts],
-			parseOptions: CSharpParseOptions.Default,
-			optionsProvider: optionsProvider
+		return await GenerateAsync(
+			source,
+			new()
+			{
+				AdditionalReferences = GetMetadataReferences(),
+				DisableSourceGeneratorPropertyName = PropertyLibrary.DisableSourceGenerator,
+				DisableSourceGeneratorValue = disabled,
+				AnalyzerConfigOptions = analyzerConfigOptions,
+				AdditionalText = additionalFiles?.ToImmutableArray() ?? [],
+				CompileToAssembly = false,
+			},
+			cancellationToken
 		);
-
-		driver = driver.RunGeneratorsAndUpdateCompilation(compilation, out _, out _, cancellationToken);
-		return driver.GetRunResult();
 	}
 
-	static IEnumerable<MetadataReference> GetMetadataReferences() =>
-		AppDomain
-			.CurrentDomain.GetAssemblies()
-			.Where(static a => !a.IsDynamic && !string.IsNullOrEmpty(a.Location))
-			.Select(static a => MetadataReference.CreateFromFile(a.Location));
-
-	static string? GetGeneratedSource(GeneratorDriverRunResult result, string hintName) =>
-		result
-			.Results.SelectMany(static r => r.GeneratedSources)
-			.Where(s => string.Equals(s.HintName, hintName, StringComparison.Ordinal))
-			.Select(static s => s.SourceText.ToString())
-			.SingleOrDefault();
-
-	static IReadOnlyList<Diagnostic> GetDiagnostics(GeneratorDriverRunResult result, string diagnosticId) =>
-		[.. result.Diagnostics.Where(d => d.Id == diagnosticId)];
+	static ImmutableArray<MetadataReference> GetMetadataReferences() =>
+		[
+			.. AppDomain
+				.CurrentDomain.GetAssemblies()
+				.Where(static a => !a.IsDynamic && !string.IsNullOrEmpty(a.Location))
+				.Select(static a => MetadataReference.CreateFromFile(a.Location)),
+		];
 
 	static string BuildSourceWithCallSites(params string[] invocations)
 	{
@@ -1541,20 +1348,20 @@ public sealed class LikeC4StrictValidatorGeneratorTests
 		public override SourceText? GetText(CancellationToken cancellationToken = default) => SourceText.From(content);
 	}
 
-	sealed class TestAnalyzerConfigOptionsProvider(Dictionary<string, string> options) : AnalyzerConfigOptionsProvider
-	{
-		readonly TestAnalyzerConfigOptions _options = new(options);
+	//sealed class TestAnalyzerConfigOptionsProvider(Dictionary<string, string> options) : AnalyzerConfigOptionsProvider
+	//{
+	//	readonly TestAnalyzerConfigOptions _options = new(options);
 
-		public override AnalyzerConfigOptions GlobalOptions => _options;
+	//	public override AnalyzerConfigOptions GlobalOptions => _options;
 
-		public override AnalyzerConfigOptions GetOptions(SyntaxTree tree) => _options;
+	//	public override AnalyzerConfigOptions GetOptions(SyntaxTree tree) => _options;
 
-		public override AnalyzerConfigOptions GetOptions(AdditionalText textFile) => _options;
-	}
+	//	public override AnalyzerConfigOptions GetOptions(AdditionalText textFile) => _options;
+	//}
 
-	sealed class TestAnalyzerConfigOptions(Dictionary<string, string> options) : AnalyzerConfigOptions
-	{
-		public override bool TryGetValue(string requestedKey, [NotNullWhen(true)] out string? optionValue) =>
-			options.TryGetValue(requestedKey, out optionValue);
-	}
+	//sealed class TestAnalyzerConfigOptions(Dictionary<string, string> options) : AnalyzerConfigOptions
+	//{
+	//	public override bool TryGetValue(string requestedKey, [NotNullWhen(true)] out string? optionValue) =>
+	//		options.TryGetValue(requestedKey, out optionValue);
+	//}
 }

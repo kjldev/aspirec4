@@ -5,13 +5,13 @@ permissions:
 
 on:
   schedule:
-    - cron: '0 2 * * 0' # Weekly on Sunday at 02:00 UTC
+    - cron: "0 2 * * 0" # Weekly on Sunday at 02:00 UTC
   workflow_dispatch:
     inputs:
       retention_days:
-        description: 'Delete artifacts older than this many days'
+        description: "Delete artifacts older than this many days"
         required: false
-        default: '7'
+        default: "7"
 
 jobs:
   cleanup:

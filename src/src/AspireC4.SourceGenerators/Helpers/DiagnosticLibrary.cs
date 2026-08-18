@@ -37,7 +37,7 @@ static class DiagnosticLibrary
 	);
 
 	/// <summary>Emitted when more than one class per assembly carries <c>[LikeC4Registry]</c>.</summary>
-	public static readonly DiagnosticDescriptor MultipleDefinitionsClasses = new(
+	public static readonly DiagnosticDescriptor MultipleRegistryClassesDefined = new(
 		id: "ASPIREC4003",
 		title: $"Multiple {TypeLibrary.LikeC4RegistryAttribute} classes",
 		messageFormat: $"Only one class per assembly may carry {TypeLibrary.LikeC4RegistryAttribute}. Duplicate found: '{{0}}'.",

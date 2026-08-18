@@ -9,7 +9,7 @@
 		<RoslynCompilerVersion Condition="'$(RoslynCompilerVersion)' == ''">[4.13.0,)</RoslynCompilerVersion>
 		<RoslynAnalyzersVersion Condition="'$(RoslynAnalyzersVersion)' == ''">[5.6.0,)</RoslynAnalyzersVersion>
 		<TUnitVersion>[1.65.0,)</TUnitVersion>
-		<PurviewSourceGenVersion>[1.0.0-prerelease.19,)</PurviewSourceGenVersion>
+		<PurviewSourceGenVersion>[1.0.0-prerelease.21,)</PurviewSourceGenVersion>
 	</PropertyGroup>
 	<ItemGroup>
 		<PackageVersion Include="Aspire.Hosting" Version="[13.4.3,)" />

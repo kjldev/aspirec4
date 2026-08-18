@@ -89,21 +89,6 @@ ts-run:
 ts-lint:
     cd {{ _typescriptAppHost }} && npm run lint
 
-# ── Release ───────────────────────────────────────────────────────────────────
-
-# Add a changeset description for the current changes (interactive)
-[group('release')]
-changeset:
-    npx changeset add
-# Compute next version from conventional commits + changesets and open a release PR.
-# Pass `prerelease` to produce a prerelease version (e.g. 13.3.1-prerelease.0).
-[group('release')]
-release prerelease="":
-    node scripts/release.mts {{ prerelease }}
-# Show context-aware release advice: current branch state, next version preview, and next steps.
-[group('release')]
-release-help:
-    node scripts/release.mts --help
 # ── Icon manifest ─────────────────────────────────────────────────────────────
 
 # Regenerate the LikeC4 icon manifest from the upstream GitHub repository

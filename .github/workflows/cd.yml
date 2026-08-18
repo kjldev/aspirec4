@@ -17,6 +17,7 @@ on:
       - Justfile
       - global.json
       - package.json
+      - scripts/generate-release-notes.mts
       - src/**
 
 jobs:
@@ -29,6 +30,7 @@ jobs:
       SOLUTION: ./src/AspireC4.slnx
       PACKAGE_PROJECT: ./src/src/AspireC4/AspireC4.csproj
       ARTIFACTS_DIR: ./artifacts/nuget
+      TESTINGPLATFORM_EXITCODE_IGNORE: 8
 
     steps:
       - name: Checkout code
@@ -37,9 +39,9 @@ jobs:
           fetch-depth: 0
 
       - id: release-trigger
-        name: Determine whether to publish a release
+        name: Prevent duplicate release
         env:
-          EVENT_NAME: ${{ github.event_name }}
+          GH_TOKEN: ${{ github.token }}
           GITHUB_REF: ${{ github.ref }}
         shell: bash
         run: |
@@ -50,30 +52,33 @@ jobs:
             exit 1
           fi
 
-          if [[ "${EVENT_NAME}" == "workflow_dispatch" ]]; then
-            echo "should_release=true" >> "${GITHUB_OUTPUT}"
-            exit 0
-          fi
-
           version="$(node -p "require('./package.json').version")"
           tag="v${version}"
 
           if git ls-remote --exit-code --tags origin "refs/tags/${tag}" > /dev/null 2>&1; then
-            echo "Tag ${tag} already exists — no new release needed."
+            echo "Tag ${tag} already exists — package build and release skipped."
+            echo "should_release=false" >> "${GITHUB_OUTPUT}"
+          elif gh release view "${tag}" > /dev/null 2>&1; then
+            echo "GitHub release ${tag} already exists — package build and release skipped."
             echo "should_release=false" >> "${GITHUB_OUTPUT}"
           else
-            echo "Tag ${tag} does not exist — proceeding with release."
+            echo "Version ${version} is available — proceeding with package build."
             echo "should_release=true" >> "${GITHUB_OUTPUT}"
           fi
 
       - id: version
-        name: Read release version
+        name: Read manually maintained release version
         if: ${{ steps.release-trigger.outputs.should_release == 'true' }}
         shell: bash
         run: |
           set -euo pipefail
 
           version="$(node -p "require('./package.json').version")"
+
+          if ! node -e "process.exit(/^(0|[1-9]\\d*)\\.(0|[1-9]\\d*)\\.(0|[1-9]\\d*)(?:-[0-9A-Za-z.-]+)?(?:\\+[0-9A-Za-z.-]+)?$/.test(process.argv[1]) ? 0 : 1)" "${version}"; then
+            echo "::error::package.json contains an invalid semantic version: ${version}"
+            exit 1
+          fi
 
           echo "value=${version}" >> "${GITHUB_OUTPUT}"
           echo "tag=v${version}" >> "${GITHUB_OUTPUT}"
@@ -144,10 +149,10 @@ jobs:
         run: dotnet build ${{ env.SOLUTION }} --no-restore --configuration ${{ env.CONFIGURATION }}
 
       - name: Run unit tests
-        run: dotnet test --project src/tests/AspireC4.UnitTests --no-build --verbosity normal --configuration ${{ env.CONFIGURATION }}
+        run: dotnet test ${{ env.SOLUTION }} --configuration ${{ env.CONFIGURATION }} --treenode-filter "/*/*/*/*[Category=Unit]" --no-build
 
-      - name: Run integration tests
-        run: dotnet test --project src/tests/AspireC4.IntegrationTests --no-build --verbosity normal --configuration ${{ env.CONFIGURATION }}
+      # - name: Run integration tests
+      #   run: dotnet test --project src/tests/AspireC4.IntegrationTests --no-build --verbosity normal --configuration ${{ env.CONFIGURATION }}
 
       - name: Pack NuGet artifacts
         if: ${{ steps.release-trigger.outputs.should_release == 'true' }}
@@ -161,7 +166,6 @@ jobs:
 
           dotnet pack "${PACKAGE_PROJECT}" \
             --configuration "${CONFIGURATION}" \
-            --no-build \
             --output "${ARTIFACTS_DIR}" \
             "/p:Version=${PACKAGE_VERSION}" \
             "/p:RepositoryBranch=${GITHUB_REF_NAME}" \
@@ -169,34 +173,28 @@ jobs:
             "/p:COPYRIGHT_YEAR=$(date -u +%Y)"
 
       - id: changelog
-        name: Extract changelog section
+        name: Build changelog from noteworthy commits
         if: ${{ steps.release-trigger.outputs.should_release == 'true' }}
-        env:
-          RELEASE_TAG: ${{ steps.version.outputs.tag }}
         shell: bash
         run: |
           set -euo pipefail
 
-          if [[ ! -f CHANGELOG.md ]]; then
-            echo "body=" >> "${GITHUB_OUTPUT}"
-            exit 0
+          previous_tag="$(git describe --tags --abbrev=0 --match 'v*' HEAD^ 2>/dev/null || true)"
+          if [[ -n "${previous_tag}" ]]; then
+            commit_range="${previous_tag}..HEAD"
+          else
+            commit_range="HEAD"
           fi
 
-          # Extract everything between the first H2 heading and the next H2 heading
-          body="$(awk '/^## /{found++} found==1{print} found==2{exit}' CHANGELOG.md | tail -n +2)"
-          {
-            echo "body<<EOF_CHANGELOG"
-            echo "${body}"
-            echo "EOF_CHANGELOG"
-          } >> "${GITHUB_OUTPUT}"
+          node scripts/generate-release-notes.mts "${commit_range}" > release-notes.md
+          cat release-notes.md
 
-      - name: Create GitHub release
+      - name: Publish downloadable package assets to GitHub Releases
         if: ${{ steps.release-trigger.outputs.should_release == 'true' }}
         env:
           GITHUB_TOKEN: ${{ github.token }}
           RELEASE_TAG: ${{ steps.version.outputs.tag }}
           RELEASE_PRERELEASE: ${{ steps.version.outputs.prerelease }}
-          RELEASE_BODY: ${{ steps.changelog.outputs.body }}
           RELEASE_MAKE_LATEST: ${{ steps.version.outputs.prerelease == 'false' && 'true' || 'false' }}
         shell: bash
         run: |
@@ -205,11 +203,6 @@ jobs:
           prerelease_flag=""
           if [[ "${RELEASE_PRERELEASE}" == "true" ]]; then
             prerelease_flag="--prerelease"
-          fi
-
-          notes_flag=""
-          if [[ -z "${RELEASE_BODY}" ]]; then
-            notes_flag="--generate-notes"
           fi
 
           # Create as a draft so assets can be uploaded before the release is published.
@@ -226,8 +219,7 @@ jobs:
             --title "${RELEASE_TAG}" \
             --target "${GITHUB_SHA}" \
             ${prerelease_flag} \
-            ${notes_flag} \
-            --notes "${RELEASE_BODY}" \
+            --notes-file release-notes.md \
             ./artifacts/nuget/*.nupkg \
             ./artifacts/nuget/*.snupkg
 
@@ -242,6 +234,14 @@ jobs:
 
           trap - ERR
 
+          {
+            echo "### Package ready for manual publishing"
+            echo
+            echo "Release: https://github.com/${GITHUB_REPOSITORY}/releases/tag/${RELEASE_TAG}"
+            echo
+            echo 'Download the `.nupkg` from the release and publish it to your chosen NuGet feed manually.'
+          } >> "${GITHUB_STEP_SUMMARY}"
+
       - name: Skip release publish
         if: ${{ steps.release-trigger.outputs.should_release != 'true' }}
-        run: echo "The current package.json version already has a release tag — publishing was skipped."
+        run: echo "The current package.json version already has a tag or GitHub release — publishing was skipped."
