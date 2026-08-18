@@ -376,7 +376,7 @@ console.log(`Proceeding with ${isPrerelease ? 'prerelease' : 'stable'} release f
 // 2. Read Aspire version from Directory.Packages.props
 // ---------------------------------------------------------------------------
 
-const packagesPropsPath = join(ROOT, 'src', 'Directory.Packages.props')
+const packagesPropsPath = join(ROOT, 'Directory.Packages.props')
 const packagesPropsContent = readFileSync(packagesPropsPath, 'utf8')
 const aspireVersionMatch = packagesPropsContent.match(
   /<PackageVersion\s+Include="Aspire\.Hosting"\s+Version="([^"]+)"/,
