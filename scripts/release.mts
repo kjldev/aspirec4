@@ -143,7 +143,7 @@ function readStateForHelp(): {
   } catch {}
 
   try {
-    const props = readFileSync(join(ROOT, 'src', 'Directory.Packages.props'), 'utf8')
+    const props = readFileSync(join(ROOT, 'Directory.Packages.props'), 'utf8')
     const m = props.match(/<PackageVersion\s+Include="Aspire\.Hosting"\s+Version="([^"]+)"/)
     if (m) aspireVersion = m[1]
   } catch {}
